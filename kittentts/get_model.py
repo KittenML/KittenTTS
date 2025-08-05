@@ -1,5 +1,6 @@
 import json
 import os
+import numpy as np
 from huggingface_hub import hf_hub_download
 from .onnx_model import KittenTTS_1_Onnx
 
@@ -22,8 +23,8 @@ class KittenTTS:
             repo_id = model_name
             
         self.model = download_from_huggingface(repo_id=repo_id, cache_dir=cache_dir)
-    
-    def generate(self, text, voice="expr-voice-5-m", speed=1.0):
+
+    def generate(self, text: str, voice: str = "expr-voice-5-m", speed: float = 1.0) -> np.ndarray:
         """Generate audio from text.
         
         Args:
@@ -34,9 +35,11 @@ class KittenTTS:
         Returns:
             Audio data as numpy array
         """
+        if not text:
+            raise ValueError("Input text cannot be empty.")
         return self.model.generate(text, voice=voice, speed=speed)
-    
-    def generate_to_file(self, text, output_path, voice="expr-voice-5-m", speed=1.0, sample_rate=24000):
+
+    def generate_to_file(self, text: str, output_path: str, voice: str = "expr-voice-5-m", speed: float = 1.0, sample_rate: int = 24000):
         """Generate audio from text and save to file.
         
         Args:
@@ -46,7 +49,7 @@ class KittenTTS:
             speed: Speech speed (1.0 = normal)
             sample_rate: Audio sample rate
         """
-        return self.model.generate_to_file(text, output_path, voice=voice, speed=speed, sample_rate=sample_rate)
+        self.model.generate_to_file(text, output_path, voice=voice, speed=speed, sample_rate=sample_rate)
     
     @property
     def available_voices(self):
@@ -54,7 +57,7 @@ class KittenTTS:
         return self.model.available_voices
 
 
-def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=None):
+def download_from_huggingface(repo_id: str="KittenML/kitten-tts-nano-0.1", cache_dir=None) -> KittenTTS_1_Onnx:
     """Download model files from Hugging Face repository.
     
     Args:
@@ -97,6 +100,6 @@ def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=
     return model
 
 
-def get_model(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=None):
+def get_model(repo_id: str="KittenML/kitten-tts-nano-0.1", cache_dir=None) -> KittenTTS:
     """Get a KittenTTS model (legacy function for backward compatibility)."""
     return KittenTTS(repo_id, cache_dir)
