@@ -161,11 +161,13 @@ with gr.Blocks(title="🐱 KittenTTS Demo", theme=gr.themes.Soft()) as demo:
 if __name__ == "__main__":
     print("🚀 Starting Gradio webapp...")
     print("📱 The webapp will be available at: http://localhost:7860")
+    print("🌐 Browser will open automatically...")
     print("🔄 Use Ctrl+C to stop the server")
-
+    
     demo.launch(
         server_name="0.0.0.0",  # Allow external access
         server_port=7860,
         share=False,  # Set to True if you want a public link
-        show_error=True
+        show_error=True,
+        inbrowser=True  # Automatically open in browser
     )
