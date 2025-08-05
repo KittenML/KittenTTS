@@ -35,6 +35,8 @@ class KittenTTS:
         Returns:
             Audio data as numpy array
         """
+        if not text:
+            raise ValueError("Input text cannot be empty.")
         return self.model.generate(text, voice=voice, speed=speed)
 
     def generate_to_file(self, text: str, output_path: str, voice: str = "expr-voice-5-m", speed: float = 1.0, sample_rate: int = 24000):
