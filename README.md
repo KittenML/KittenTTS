@@ -6,6 +6,8 @@ Kitten TTS is an open-source realistic text-to-speech model with just 15 million
 
 [Join our discord](https://discord.gg/upcyF5s6)
 
+> **Note**: This is a personal fork of [KittenML/KittenTTS](https://github.com/KittenML/KittenTTS) with additional features including a Gradio web interface for easy testing.
+
 
 ## ✨ Features
 
@@ -42,9 +44,46 @@ sf.write('output.wav', audio, 24000)
 
 ```
 
+## 🌐 Web Interface
 
+We've added a simple Gradio webapp for easy testing and experimentation with KittenTTS!
 
+### Features
+- 🎭 **Voice Selection**: Choose from 8 available voices (male/female variants)
+- ⚡ **Speed Control**: Adjust speech speed from 0.5x to 2.0x
+- 📝 **Easy Text Input**: Multi-line text input with example texts
+- 🔊 **Audio Output**: High-quality 24kHz audio generation
+- 💡 **Example Texts**: Pre-loaded examples to get started quickly
 
+### Running the Web Interface
+
+1. **Clone and setup**:
+   ```bash
+   git clone https://github.com/akashjss/KittenTTS.git
+   cd KittenTTS
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install -e .
+   pip install gradio
+   ```
+
+3. **Launch the webapp**:
+   ```bash
+   python gradio_app.py
+   ```
+
+4. **Open in browser**: Navigate to http://localhost:7860
+
+The webapp provides an intuitive interface where you can:
+- Type or paste text to synthesize
+- Select from 8 different voice options
+- Adjust speech speed with a slider
+- Generate and download audio files
+- Try example texts to get started
 
 ## 💻 System Requirements
 
@@ -57,5 +96,5 @@ Works literally everywhere
 - [x] Release a preview model
 - [ ] Release the fully trained model weights
 - [ ] Release mobile SDK 
-- [ ] Release web version 
+- [x] Release web version (Gradio webapp added) 
 
