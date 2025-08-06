@@ -16,6 +16,18 @@ Kitten TTS is an open-source realistic text-to-speech model with just 15 million
 - **High-quality voices**: Several premium voice options available
 - **Fast inference**: Optimized for real-time speech synthesis
 
+## 🎵 Sample Audio
+
+Here's a sample of what KittenTTS can generate:
+
+**Text**: "Welcome to the future of AI-powered speech synthesis!"
+**Voice**: expr-voice-5-f (Female voice)
+**Speed**: 1.0x
+
+🔊 [Sample Audio](./generated_speech_tmpa1hq_pip.wav)
+
+*Note: The audio file demonstrates the natural-sounding speech quality achievable with just 15 million parameters.*
+
 
 
 ## 🚀 Quick Start
