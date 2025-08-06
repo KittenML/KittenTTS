@@ -59,7 +59,7 @@ if model is None:
     exit(1)
 
 # Create Gradio interface
-with gr.Blocks(title="🐱 KittenTTS Demo", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="🐱 KittenTTS Demo", theme=gr.themes.Ocean()) as demo:
     gr.Markdown(
         """
         # 🐱 KittenTTS Demo
