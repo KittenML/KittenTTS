@@ -28,7 +28,7 @@ pip install https://github.com/KittenML/KittenTTS/releases/download/0.1/kittentt
 
 
 
- ### Basic Usage 
+ ### Basic Usage
 
 ```
 from kittentts import KittenTTS
@@ -43,6 +43,60 @@ import soundfile as sf
 sf.write('output.wav', audio, 24000)
 
 ```
+
+## 🔌 API Usage
+
+You can also use KittenTTS via the Gradio API when the web interface is running. This is perfect for integrating TTS into your applications programmatically.
+
+### API Example
+
+First, make sure the Gradio web interface is running:
+```bash
+python gradio_app.py
+```
+
+Then use the API client:
+
+```python
+from gradio_client import Client
+import shutil
+import os
+
+# Connect to the running Gradio app
+client = Client("http://localhost:7860/")
+
+# Generate speech via API
+result = client.predict(
+    text="Welcome to the future of AI-powered speech synthesis!",
+    voice="expr-voice-5-f",  # Choose from available voices
+    speed=1,  # Speed from 0.5 to 2.0
+    api_name="/generate_speech"
+)
+
+# Save the generated audio to current directory
+if result:
+    print(f"Raw result: {result}")
+
+    # Handle tuple result - extract file path
+    if isinstance(result, tuple):
+        audio_file_path = result[0]
+    else:
+        audio_file_path = result
+
+    # Copy to current directory with descriptive name
+    original_filename = os.path.basename(audio_file_path)
+    current_dir_filename = f"generated_speech_{original_filename}"
+    shutil.copy2(audio_file_path, current_dir_filename)
+
+    print(f"Audio saved to: {current_dir_filename}")
+else:
+    print("No audio file generated")
+```
+
+### Available API Parameters
+- **text**: The text to synthesize (string)
+- **voice**: Voice selection from: `expr-voice-2-m`, `expr-voice-2-f`, `expr-voice-3-m`, `expr-voice-3-f`, `expr-voice-4-m`, `expr-voice-4-f`, `expr-voice-5-m`, `expr-voice-5-f`
+- **speed**: Speech speed (float, 0.5 to 2.0)
 
 ## 🌐 Web Interface
 
@@ -69,6 +123,7 @@ We've added a simple Gradio webapp for easy testing and experimentation with Kit
    ```bash
    pip install -e .
    pip install gradio
+   pip install gradio_client # To use the TTS via Gradio API
    ```
 
 3. **Launch the webapp**:
@@ -91,10 +146,10 @@ Works literally everywhere
 
 
 
-## Checklist 
+## Checklist
 
 - [x] Release a preview model
 - [ ] Release the fully trained model weights
-- [ ] Release mobile SDK 
-- [x] Release web version (Gradio webapp added) 
+- [ ] Release mobile SDK
+- [x] Release web version (Gradio webapp added)
 
