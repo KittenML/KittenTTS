@@ -8,14 +8,6 @@ Kitten TTS is an open-source realistic text-to-speech model with just 15 million
 
 > **Note**: This is a personal fork of [KittenML/KittenTTS](https://github.com/KittenML/KittenTTS) with additional features including a Gradio web interface for easy testing.
 
-
-## ✨ Features
-
-- **Ultra-lightweight**: Model size less than 25MB
-- **CPU-optimized**: Runs without GPU on any device
-- **High-quality voices**: Several premium voice options available
-- **Fast inference**: Optimized for real-time speech synthesis
-
 ## 🎵 Sample Audio
 
 Here's a sample of what KittenTTS can generate:
@@ -24,10 +16,19 @@ Here's a sample of what KittenTTS can generate:
 **Voice**: expr-voice-5-f (Female voice)
 **Speed**: 1.0x
 
-🔊 [Sample Audio](./generated_speech_tmpa1hq_pip.wav)
+<audio controls>
+  <source src="./generated_speech_tmpa1hq_pip.wav" type="audio/wav">
+  🔊 [Download Sample Audio](./generated_speech_tmpa1hq_pip.wav)
+</audio>
 
 *Note: The audio file demonstrates the natural-sounding speech quality achievable with just 15 million parameters.*
 
+## ✨ Features
+
+- **Ultra-lightweight**: Model size less than 25MB
+- **CPU-optimized**: Runs without GPU on any device
+- **High-quality voices**: Several premium voice options available
+- **Fast inference**: Optimized for real-time speech synthesis
 
 
 ## 🚀 Quick Start
