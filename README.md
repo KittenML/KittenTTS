@@ -16,10 +16,9 @@ Here's a sample of what KittenTTS can generate:
 **Voice**: expr-voice-5-f (Female voice)
 **Speed**: 1.0x
 
-<audio controls>
-  <source src="./generated_speech_tmpa1hq_pip.wav" type="audio/wav">
-  🔊 [Download Sample Audio](./generated_speech_tmpa1hq_pip.wav)
-</audio>
+🔊 **[▶️ Play Sample Audio](./generated_speech_tmpa1hq_pip.wav)** _(Right-click → Save to download)_
+
+> 💡 **Tip**: Click the link above to play the audio in your browser, or right-click and "Save As" to download the WAV file.
 
 *Note: The audio file demonstrates the natural-sounding speech quality achievable with just 15 million parameters.*
 
