@@ -100,10 +100,14 @@ class KittenTTS_1_Onnx:
         onnx_inputs = self._prepare_inputs(text, voice, speed)
         
         outputs = self.session.run(None, onnx_inputs)
-        
-        # Trim audio
-        audio = outputs[0][5000:-10000]
 
+        audio = outputs[0]  # shape (n,)
+        # Trim edge silence from audio
+        non_silent = np.abs(audio) >= 0.01
+        if np.any(non_silent):
+            indices = np.where(non_silent)[0]
+            start, end = indices[0], indices[-1]
+            audio = audio[start : end + 1]
         return audio
     
     def generate_to_file(self, text: str, output_path: str, voice: str = "expr-voice-5-m", 
