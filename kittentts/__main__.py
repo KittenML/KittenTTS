@@ -15,13 +15,13 @@ voices = [
 ]
 
 
-def run(*, model: str, voice: str, output: str, text: str) -> datetime.timedelta:
+def run(*, model: str, voice: str, output: str, text: str, speed: float=1.0) -> datetime.timedelta:
     from kittentts import KittenTTS
     import soundfile as sf
 
     m = KittenTTS(model)
     t0 = datetime.datetime.now()
-    audio = m.generate(text, voice=voice)
+    audio = m.generate(text, voice=voice, speed=speed)
     if output == "-":
         # sf requires a seekable buffer for writing.
         bio = io.BytesIO()
@@ -38,6 +38,7 @@ def main() -> None:
     ap.add_argument("--model", default="KittenML/kitten-tts-nano-0.1", help="Model to use")
     ap.add_argument("--text", required=True, help="Text to synthesize")
     ap.add_argument("--voice", default="expr-voice-2-f", help="Voice to use", choices=voices)
+    ap.add_argument("--speed", type=float, default=1.0, help="Speech speed (1.0 = normal)")
     ap.add_argument("--output", help="Output audio file (- for stdout; use with care)")
 
     args = ap.parse_args()
@@ -51,6 +52,7 @@ def main() -> None:
         voice=args.voice,
         output=args.output,
         text=args.text,
+        speed=args.speed,
     )
     print(f"Generated audio in {gen_time}, saved to {args.output}", file=sys.stderr)
 
