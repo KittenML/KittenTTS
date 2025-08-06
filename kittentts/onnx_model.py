@@ -1,8 +1,12 @@
-from misaki import en, espeak
 import numpy as np
 import phonemizer
 import soundfile as sf
 import onnxruntime as ort
+import espeakng_loader
+from phonemizer.backend.espeak.wrapper import EspeakWrapper
+
+EspeakWrapper.set_library(espeakng_loader.get_library_path())
+EspeakWrapper.set_data_path(espeakng_loader.get_data_path())
 
 
 def basic_english_tokenize(text):
