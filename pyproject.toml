@@ -8,24 +8,29 @@ version = "0.1.0"
 description = "Ultra-lightweight text-to-speech model with just 15 million parameters"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "Apache 2.0"}
-authors = [
-    {name = "KittenML"}
+license = { text = "Apache 2.0" }
+authors = [{ name = "KittenML" }]
+keywords = [
+  "text-to-speech",
+  "tts",
+  "speech-synthesis",
+  "neural-networks",
+  "onnx",
 ]
-keywords = ["text-to-speech", "tts", "speech-synthesis", "neural-networks", "onnx"]
 classifiers = [
-    "Topic :: Multimedia :: Sound/Audio :: Speech",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Multimedia :: Sound/Audio :: Speech",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "num2words",
-    "spacy",
-    "espeakng_loader",
-    "misaki[en]>=0.9.4",
-    "onnxruntime",
-    "soundfile",
-    "numpy",
-    "huggingface_hub",
+  "num2words",
+  "spacy>=3.8.0",
+  "espeakng_loader",
+  "misaki>=0.7.4",
+  "phonemizer",
+  "onnxruntime",
+  "soundfile",
+  "numpy>=1.26.0",
+  "huggingface_hub",
 ]
 
 [project.urls]

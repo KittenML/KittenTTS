@@ -1,8 +1,9 @@
 num2words
-spacy
+spacy>=3.8.0
 espeakng_loader
-misaki[en]>=0.9.4
+misaki>=0.7.4
+phonemizer
 onnxruntime
 soundfile
-numpy
+numpy>=1.26.0
 huggingface_hub
