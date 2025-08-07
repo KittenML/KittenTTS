@@ -20,6 +20,32 @@ KittenTTS is an open-source realistic text-to-speech model with just 15 million 
 - **Fast inference**: Optimized for real-time speech synthesis
 - **Windows-friendly**: Specifically tested and optimized for Windows
 
+## 🎵 **Audio Examples**
+
+Listen to the generated audio samples:
+
+### 🔊 **Sample Audio Files:**
+
+**Male Voice:**
+- [🎤 Male Voice](output/male_voice.wav) - "Welcome to the future of text-to-speech!"
+
+**Female Voice:**
+- [🎤 Female Voice](output/female_voice.wav) - "Welcome to the future of text-to-speech!"
+
+### 🎧 **How to Listen:**
+1. **Direct Download** - Click the links above to download and play
+2. **Generate Your Own** - Run the examples to create custom audio
+3. **Multiple Voices** - Try different voice options
+
+### 📊 **Audio Quality:**
+- **Sample Rate:** 24000 Hz
+- **Format:** WAV (16-bit PCM)
+- **Quality:** High-quality professional synthesis
+- **Duration:** ~10-15 seconds per sample
+
+---
+
+
 ## 🚀 Quick Start
 
 ### Installation
