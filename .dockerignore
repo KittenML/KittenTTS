@@ -2,3 +2,5 @@
 ./.gitignore
 ./.dockerignore
 **/__pycache__
+./*.wav
+./requirements.txt

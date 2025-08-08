@@ -20,6 +20,8 @@ RUN python setup.py bdist_wheel && \
 
 COPY . .
 
+RUN python app.py --init
+
 # Define the default command to run when the container starts
 # The entrypoint will be the Python script itself
 ENTRYPOINT ["python", "app.py"]

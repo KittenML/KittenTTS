@@ -29,11 +29,11 @@ def main():
     """
     parser = argparse.ArgumentParser(
         description="Generate audio from text using KittenTTS.",
-        epilog="Example: python app.py --output hello.wav --voice expr-voice-2-f 'Hello, world!'"
+        epilog="Example: python generate_audio.py --output hello.wav --voice expr-voice-2-f 'Hello, world!'"
     )
 
     # Define mutually exclusive group for input (text or file)
-    group = parser.add_mutually_exclusive_group(required=True)
+    group = parser.add_mutually_exclusive_group(required=False)
     group.add_argument(
         'text',
         nargs='?', # Makes it optional and captures positional argument
@@ -66,9 +66,28 @@ def main():
         help="The output sample rate in Hz. Defaults to 24000."
     )
 
+    # New argument to download the model and exit
+    parser.add_argument(
+        '--init', '-i',
+        action='store_true',
+        help="Download the model from Hugging Face and exit."
+    )
+
     args = parser.parse_args()
 
-    # Get the input text
+    # If --init is passed, just download the model and exit.
+    if args.init:
+        print("Initializing and downloading the KittenTTS model...")
+        try:
+            # Instantiating the model will trigger the download if it's not present
+            m = KittenTTS("KittenML/kitten-tts-nano-0.1")
+            print("Model downloaded successfully!")
+        except Exception as e:
+            print(f"An error occurred during model download: {e}", file=sys.stderr)
+            sys.exit(1)
+        sys.exit(0)
+
+    # Check if text input is provided after handling the --init flag
     input_text = ""
     if args.file:
         input_text = args.file.read()
@@ -78,6 +97,7 @@ def main():
 
     if not input_text:
         print("Error: No text input provided.", file=sys.stderr)
+        # Ensure the script exits with an error code if no input is provided
         sys.exit(1)
 
     print("Loading TTS model...")
