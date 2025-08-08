@@ -12,7 +12,7 @@ services:
       - "${HOST_PORT:-8080}:5000"
 
     entrypoint: ""
-    command: ["gunicorn", "--bind", "0.0.0.0:5000", "--reload", "--workers", "1", "web:app"]
+    command: ["gunicorn", "--bind", "0.0.0.0:5000", "--reload", "--timeout", "${GUNICORN_TIMEOUT:-300}", "--workers", "1", "web:app"]
 
     volumes:
       - .:/app
