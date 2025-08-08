@@ -22,20 +22,22 @@ KittenTTS is an open-source realistic text-to-speech model with just 15 million 
 
 ## 🎵 **Audio Examples**
 
-Listen to the generated audio samples:
+### 🎧 **How to Generate Audio:**
 
-### 🔊 **Sample Audio Files:**
+1. **Run the Example:**
+   ```python
+   python simple_example.py
+   ```
+   This will create a sample audio in `output/output.wav`
 
-**Male Voice:**
-- [🎤 Male Voice](output/male_voice.wav) - "Welcome to the future of text-to-speech!"
+2. **Try Different Voices:**
+   ```python
+   python final_example.py
+   ```
+   This will generate samples with both male and female voices
 
-**Female Voice:**
-- [🎤 Female Voice](output/female_voice.wav) - "Welcome to the future of text-to-speech!"
-
-### 🎧 **How to Listen:**
-1. **Direct Download** - Click the links above to download and play
-2. **Generate Your Own** - Run the examples to create custom audio
-3. **Multiple Voices** - Try different voice options
+3. **Check the Output:**
+   Generated audio files will be saved in the `output/` folder
 
 ### 📊 **Audio Quality:**
 - **Sample Rate:** 24000 Hz
