@@ -1,6 +1,8 @@
 import argparse
 import sys
 import soundfile as sf
+import re
+import numpy as np
 from kittentts import KittenTTS
 
 # Available voices for the KittenTTS model
@@ -8,6 +10,18 @@ AVAILABLE_VOICES = [
     'expr-voice-2-m', 'expr-voice-2-f', 'expr-voice-3-m', 'expr-voice-3-f',
     'expr-voice-4-m', 'expr-voice-4-f', 'expr-voice-5-m', 'expr-voice-5-f'
 ]
+
+# A simple function to split text into chunks based on sentences.
+# This helps avoid the model's text length limit.
+def split_text_into_chunks(text):
+    """
+    Splits a long string into a list of sentences, preserving punctuation.
+    """
+    # Split by common sentence-ending punctuation, including the punctuation
+    sentences = re.findall(r'[^.!?]*[.!?]', text)
+    if not sentences:
+        return [text]
+    return sentences
 
 def main():
     """
@@ -60,15 +74,28 @@ def main():
 
     print("Loading TTS model...")
     try:
-        # Load the model
         m = KittenTTS("KittenML/kitten-tts-nano-0.1")
+        
+        # Split the text into manageable chunks (sentences)
+        text_chunks = split_text_into_chunks(input_text)
+        
+        all_audio = []
+        print(f"Generating audio in {len(text_chunks)} chunks with voice: '{args.voice}'...")
 
-        print(f"Generating audio with voice: '{args.voice}'...")
-        # Generate the audio
-        audio = m.generate(input_text, voice=args.voice)
+        for i, chunk in enumerate(text_chunks):
+            # Skip empty chunks
+            if not chunk.strip():
+                continue
 
-        # Save the audio file
-        sf.write(args.output, audio, 24000)
+            print(f"  - Processing chunk {i+1}/{len(text_chunks)}...")
+            audio_chunk = m.generate(chunk.strip(), voice=args.voice)
+            all_audio.append(audio_chunk)
+
+        # Concatenate all audio chunks into a single NumPy array
+        final_audio = np.concatenate(all_audio)
+
+        # Save the final audio file
+        sf.write(args.output, final_audio, 24000)
         print(f"Audio saved to '{args.output}'")
     except Exception as e:
         print(f"An error occurred: {e}", file=sys.stderr)
