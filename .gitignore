@@ -1,3 +1,4 @@
 *.wav
 **/__pycache__/
 .history
+.venv

@@ -5,22 +5,28 @@ FROM python:3.12-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Install the 'wheel' package, which is needed to build the wheel file
-RUN pip install setuptools wheel
+# Define a build-time argument for the environment
+# It defaults to 'production' if not explicitly set
+ARG BUILD_ENV=production
 
 # Copy the necessary project files into the container
 # This includes the setup.py and the script it references
-COPY setup.py README.md .
+COPY setup.py README.md ./
 
 # Build the wheel file and then install it with pip
 # This command first creates the wheel in the 'dist' folder and then installs it
 # Installing from the wheel is a clean and efficient way to handle dependencies
-RUN python setup.py bdist_wheel && \
+RUN pip install setuptools wheel && \
+    python setup.py bdist_wheel && \
     pip install dist/kittentts-0.1.0-py3-none-any.whl
+
+RUN if [ "$BUILD_ENV" = "development" ] ; then \
+    pip install ".[dev]" ; \
+    fi
 
 COPY . .
 
-RUN python app.py --init
+RUN python cli.py --init
 
 # Define the default command to run when the container starts
 # The entrypoint will be the Python script itself

@@ -6,3 +6,6 @@ onnxruntime
 soundfile
 numpy
 huggingface_hub
+Flask
+gunicorn
+debuggy

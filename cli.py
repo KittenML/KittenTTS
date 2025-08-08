@@ -29,7 +29,7 @@ def main():
     """
     parser = argparse.ArgumentParser(
         description="Generate audio from text using KittenTTS.",
-        epilog="Example: python generate_audio.py --output hello.wav --voice expr-voice-2-f 'Hello, world!'"
+        epilog="Example: python cli.py --output hello.wav --voice expr-voice-2-f 'Hello, world!'"
     )
 
     # Define mutually exclusive group for input (text or file)

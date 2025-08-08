@@ -37,7 +37,14 @@ setup(
         "soundfile",
         "numpy",
         "huggingface_hub",
+        "Flask",
+        "gunicorn",
     ],
+    extras_require={
+        'dev': [
+            'debugpy'
+        ]
+    },
     keywords="text-to-speech, tts, speech-synthesis, neural-networks, onnx",
     project_urls={
         "Bug Reports": "https://github.com/kittenml/kittentts/issues",
@@ -45,7 +52,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'app = app:main',
+            'cli = cli:main',
         ],
     },
 )
