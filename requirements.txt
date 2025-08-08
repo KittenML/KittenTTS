@@ -1,8 +1,7 @@
-num2words
-spacy
-espeakng_loader
-misaki[en]>=0.9.4
+numpy
 onnxruntime
 soundfile
-numpy
 huggingface_hub
+misaki[en]==0.7.4
+espeakng_loader
+scipy
