@@ -57,6 +57,14 @@ def main():
         choices=AVAILABLE_VOICES,
         help=f"The voice to use. Available voices: {AVAILABLE_VOICES}. Defaults to 'expr-voice-2-f'."
     )
+    
+    # New argument for the output sample rate
+    parser.add_argument(
+        '--rate', '-r',
+        type=int,
+        default=24000,
+        help="The output sample rate in Hz. Defaults to 24000."
+    )
 
     args = parser.parse_args()
 
@@ -94,9 +102,9 @@ def main():
         # Concatenate all audio chunks into a single NumPy array
         final_audio = np.concatenate(all_audio)
 
-        # Save the final audio file
-        sf.write(args.output, final_audio, 24000)
-        print(f"Audio saved to '{args.output}'")
+        # Save the final audio file using the specified sample rate
+        sf.write(args.output, final_audio, args.rate)
+        print(f"Audio saved to '{args.output}' at {args.rate} Hz.")
     except Exception as e:
         print(f"An error occurred: {e}", file=sys.stderr)
         sys.exit(1)
