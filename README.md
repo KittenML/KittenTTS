@@ -70,7 +70,9 @@ print("✅ Audio file created: output/output.wav")
 
 - `final_example.py` - Complete working example with multiple voices
 - `simple_example.py` - Basic usage example
-- `output/` - Generated audio files folder
+- `output/` - Generated audio files folder (not tracked in Git)
+
+> **Note:** The `output/` directory is gitignored by default. Generated audio files are stored here but not committed to the repository to keep it lightweight. Make sure to back up any important audio files separately.
 
 ## 🎯 Examples
 
