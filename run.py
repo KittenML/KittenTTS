@@ -11,7 +11,7 @@ app = FastAPI()
 
 @app.get("/tts")
 @app.post("/tts")
-def tts(text: str, voice: str = "expr-voice-2-f"):
+def tts(text: str, voice: str = "expr-voice-4-f" ,):
     # Reuse a single model instance across requests
     global _model
     if "_model" not in globals():
