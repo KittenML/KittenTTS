@@ -1,4 +1,3 @@
-import debugpy
 import re
 import io
 import os
@@ -7,13 +6,20 @@ import soundfile as sf
 from flask import Flask, render_template_string, request, send_file
 from kittentts import KittenTTS
 
-# --- Debugging setup ---
-# This line tells the debugger to listen on port 5678.
-# It should be placed at the very top of your application script.
-if os.environ.get('FLASK_ENV') == 'development':
-    debugpy.listen(("0.0.0.0", 5678))
-    print("Debugger listening on 0.0.0.0:5678. Waiting for client to attach...")
-    debugpy.wait_for_client() # Blocks until a debugger connects.
+# --- Dynamic Debugging Setup ---
+# Attempt to import debugpy for development mode.
+# This avoids a ModuleNotFoundError in production.
+if os.environ.get('BUILD_ENV') == 'development':
+    try:
+        import debugpy
+        debugpy.listen(("0.0.0.0", 5678))
+        print("Debugger listening on 0.0.0.0:5678. Waiting for client to attach...")
+        debugpy.wait_for_client() # Blocks until a debugger connects.
+    except ImportError:
+        print("debugpy not found. Is it installed?", file=sys.stderr)
+        # Continue without a debugger if not found
+else:
+    print("Running in production mode. Debugger is disabled.")
 
 
 # Initialize the Flask application
