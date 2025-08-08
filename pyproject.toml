@@ -7,7 +7,7 @@ name = "kittentts"
 version = "0.1.0"
 description = "Ultra-lightweight text-to-speech model with just 15 million parameters"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.8, <3.13"#New version not compatible with dependencies
 license = {text = "Apache 2.0"}
 authors = [
     {name = "KittenML"}
