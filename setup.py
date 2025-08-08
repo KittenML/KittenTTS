@@ -43,4 +43,9 @@ setup(
         "Bug Reports": "https://github.com/kittenml/kittentts/issues",
         "Source": "https://github.com/kittenml/kittentts",
     },
+    entry_points={
+        'console_scripts': [
+            'app = app:main',
+        ],
+    },
 )

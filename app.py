@@ -29,7 +29,7 @@ def main():
     """
     parser = argparse.ArgumentParser(
         description="Generate audio from text using KittenTTS.",
-        epilog="Example: python generate_audio.py --output hello.wav --voice expr-voice-2-f 'Hello, world!'"
+        epilog="Example: python app.py --output hello.wav --voice expr-voice-2-f 'Hello, world!'"
     )
 
     # Define mutually exclusive group for input (text or file)
@@ -57,7 +57,7 @@ def main():
         choices=AVAILABLE_VOICES,
         help=f"The voice to use. Available voices: {AVAILABLE_VOICES}. Defaults to 'expr-voice-2-f'."
     )
-    
+
     # New argument for the output sample rate
     parser.add_argument(
         '--rate', '-r',
@@ -83,10 +83,10 @@ def main():
     print("Loading TTS model...")
     try:
         m = KittenTTS("KittenML/kitten-tts-nano-0.1")
-        
+
         # Split the text into manageable chunks (sentences)
         text_chunks = split_text_into_chunks(input_text)
-        
+
         all_audio = []
         print(f"Generating audio in {len(text_chunks)} chunks with voice: '{args.voice}'...")
 
