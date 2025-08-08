@@ -3,7 +3,7 @@ import io
 import os
 import numpy as np
 import soundfile as sf
-from flask import Flask, render_template_string, request, send_file, redirect, url_for
+from flask import Flask, render_template_string, request, send_file, Response
 from kittentts import KittenTTS
 import secrets
 
@@ -38,9 +38,6 @@ AVAILABLE_VOICES = [
     'expr-voice-4-m', 'expr-voice-4-f', 'expr-voice-5-m', 'expr-voice-5-f'
 ]
 
-# A simple in-memory cache for audio data
-audio_cache = {}
-
 # --- Helper Functions ---
 def split_text_into_chunks(text):
     """
@@ -51,41 +48,13 @@ def split_text_into_chunks(text):
         return [text]
     return sentences
 
-def generate_audio_data(text_input, voice, rate):
-    """
-    Generates audio and returns it as an in-memory BytesIO object.
-    """
-    if not tts_model:
-        raise RuntimeError("Model not loaded.")
-
-    if not text_input:
-        raise ValueError("No text provided.")
-
-    text_chunks = split_text_into_chunks(text_input)
-    all_audio = []
-
-    for chunk in text_chunks:
-        if chunk.strip():
-            audio_chunk = tts_model.generate(chunk.strip(), voice=voice)
-            all_audio.append(audio_chunk)
-
-    if not all_audio:
-        raise ValueError("No audio generated from the provided text.")
-        
-    final_audio = np.concatenate(all_audio)
-
-    audio_buffer = io.BytesIO()
-    sf.write(audio_buffer, final_audio, rate, format='WAV')
-    audio_buffer.seek(0)
-    return audio_buffer
-
 # --- Flask Routes and Logic ---
 @app.route('/')
 def index():
     """
-    Serves the main page with a form and an optional audio player.
+    Serves the main page with a form to accept text input.
+    The HTML is embedded directly in this string for simplicity.
     """
-    audio_url = request.args.get('audio_url', None)
     return render_template_string("""
     <!doctype html>
     <html lang="en">
@@ -103,7 +72,7 @@ def index():
     <body>
         <h1>KittenTTS Web App</h1>
         <p>Enter text below to generate a downloadable audio file.</p>
-        <form action="/generate-and-play" method="post">
+        <form action="/stream-audio" method="post">
             <textarea name="text" placeholder="Enter your text here..."></textarea><br><br>
             <label for="voice-select">Choose a voice:</label>
             <select id="voice-select" name="voice">
@@ -113,56 +82,74 @@ def index():
             </select>
             <label for="rate-input">Sample Rate (Hz):</label>
             <input type="number" id="rate-input" name="rate" value="24000"><br><br>
-            <button type="submit">Generate Audio</button>
+            <button type="submit">Generate and Stream Audio</button>
         </form>
-        {% if audio_url %}
-            <hr>
-            <h2>Generated Audio</h2>
-            <audio controls autoplay>
-                <source src="{{ audio_url }}" type="audio/wav">
-                Your browser does not support the audio element.
-            </audio>
-        {% endif %}
+        <hr>
+        <h2>Audio Player</h2>
+        <audio id="audio-player" controls autoplay></audio>
     </body>
+    <script>
+        const form = document.querySelector('form');
+        const audioPlayer = document.getElementById('audio-player');
+        
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const formData = new FormData(form);
+            const text = formData.get('text');
+            const voice = formData.get('voice');
+            const rate = formData.get('rate');
+            
+            const url = new URL(form.action, window.location.origin);
+            url.searchParams.append('text', text);
+            url.searchParams.append('voice', voice);
+            url.searchParams.append('rate', rate);
+            
+            audioPlayer.src = url.href;
+            audioPlayer.play();
+        });
+    </script>
     </html>
-    """, voices=AVAILABLE_VOICES, audio_url=audio_url)
+    """, voices=AVAILABLE_VOICES)
 
-@app.route('/generate-and-play', methods=['POST'])
-def generate_and_play():
+@app.route('/stream-audio')
+def stream_audio():
     """
-    Handles form submission, generates audio, caches it, and redirects to the index
-    page with a link to the audio.
+    Generates and streams the audio in chunks.
+    This route uses a generator to send data to the browser as it's created.
     """
-    try:
-        text_input = request.form.get('text')
-        voice = request.form.get('voice')
-        rate = int(request.form.get('rate', 24000))
-        
-        audio_buffer = generate_audio_data(text_input, voice, rate)
-        
-        # Store the audio in a simple in-memory cache
-        file_id = secrets.token_hex(8)
-        audio_cache[file_id] = audio_buffer
+    if not tts_model:
+        return "Model not loaded.", 500
 
-        return redirect(url_for('index', audio_url=url_for('play_audio', file_id=file_id)))
+    text_input = request.args.get('text')
+    voice = request.args.get('voice')
+    rate = int(request.args.get('rate', 24000))
 
-    except Exception as e:
-        app.logger.error(f"Error during audio generation: {e}")
-        return f"An error occurred during audio generation: {e}", 500
+    if not text_input:
+        return "No text provided.", 400
 
-@app.route('/play-audio/<file_id>')
-def play_audio(file_id):
-    """
-    Serves the audio file from the in-memory cache for playback.
-    """
-    audio_buffer = audio_cache.get(file_id)
-    if not audio_buffer:
-        return "Audio not found.", 404
+    def generate_stream():
+        """
+        A generator that yields audio chunks.
+        """
+        try:
+            # We must manually create the WAV header first
+            header_buffer = io.BytesIO()
+            sf.write(header_buffer, np.zeros(0, dtype=np.float32), rate, format='WAV')
+            yield header_buffer.getvalue()
 
-    # The audio_buffer needs to be reset to the beginning to be re-read
-    audio_buffer.seek(0)
-    
-    return send_file(
-        audio_buffer,
-        mimetype='audio/wav'
-    )
+            text_chunks = split_text_into_chunks(text_input)
+            
+            for chunk in text_chunks:
+                if chunk.strip():
+                    audio_chunk = tts_model.generate(chunk.strip(), voice=voice)
+                    buffer = io.BytesIO()
+                    sf.write(buffer, audio_chunk, rate, format='WAV')
+                    # The audio data starts after the header, at position 44.
+                    yield buffer.getvalue()[44:]
+            
+        except Exception as e:
+            app.logger.error(f"Error during audio streaming: {e}")
+            # You can handle errors more gracefully here
+            pass
+
+    return Response(generate_stream(), mimetype='audio/wav')
