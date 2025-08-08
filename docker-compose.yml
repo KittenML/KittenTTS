@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  kittentts:
+    build:
+      context: .
+    image: kittentts:latest
+    container_name: kittentts
+    ports:
+      - "8000:8000"
+    # Persist HF cache to avoid re-downloading models
+    volumes:
+      - ${HOME}/.cache/huggingface:/root/.cache/huggingface
+    restart: unless-stopped
+
