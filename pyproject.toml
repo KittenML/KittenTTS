@@ -1,41 +1,46 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "kittentts"
-version = "0.1.0"
 description = "Ultra-lightweight text-to-speech model with just 15 million parameters"
 readme = "README.md"
 requires-python = ">=3.8"
-license = {text = "Apache 2.0"}
+license = "Apache-2.0"
 authors = [
     {name = "KittenML"}
 ]
 keywords = ["text-to-speech", "tts", "speech-synthesis", "neural-networks", "onnx"]
 classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Multimedia :: Sound/Audio :: Speech",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "num2words",
-    "spacy",
     "espeakng_loader",
+    "huggingface_hub",
     "misaki[en]>=0.9.4",
+    "num2words",
+    "numpy",
     "onnxruntime",
     "soundfile",
-    "numpy",
-    "huggingface_hub",
+    "spacy",
 ]
+dynamic = ["version"]
 
 [project.urls]
 Homepage = "https://github.com/kittenml/kittentts"
 Repository = "https://github.com/kittenml/kittentts"
 Issues = "https://github.com/kittenml/kittentts/issues"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["kittentts*"]
-
-[tool.setuptools.package-data]
-kittentts = ["*.json", "*.txt", "*.onnx"]
+[tool.hatch.version]
+path = "kittentts/__init__.py"
