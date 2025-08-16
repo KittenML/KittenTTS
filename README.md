@@ -1,6 +1,6 @@
 # Kitten TTS 😻
 
-Kitten TTS is an open-source realistic text-to-speech model with just 15 million parameters, designed for lightweight deployment and high-quality voice synthesis.
+Kitten TTS is an open-source realistic English text-to-speech model with just 15 million parameters, designed for lightweight deployment and high-quality voice synthesis.
 
 *Currently in developer preview*
 
