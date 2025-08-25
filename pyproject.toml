@@ -28,6 +28,9 @@ dependencies = [
     "huggingface_hub",
 ]
 
+[project.scripts]
+kittentts = "kittentts.__main__:main"
+
 [project.urls]
 Homepage = "https://github.com/kittenml/kittentts"
 Repository = "https://github.com/kittenml/kittentts"

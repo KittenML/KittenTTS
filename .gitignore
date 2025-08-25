@@ -1,0 +1,3 @@
+*.egg-info
+*.py[cod]
+*.wav
