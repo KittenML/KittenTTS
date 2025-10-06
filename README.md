@@ -47,8 +47,8 @@ sf.write('output.wav', audio, 24000)
 ```
 
 
-
-
+## 💻 Colab URL
+https://colab.research.google.com/drive/14RbrRt3j4dhHJdM9s-V7cdYrVPqdpg-4?usp=sharing
 
 ## 💻 System Requirements
 
