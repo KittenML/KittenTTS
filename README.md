@@ -17,6 +17,7 @@ Email the creators with any questions : info@stellonlabs.com
 - **CPU-optimized**: Runs without GPU on any device
 - **High-quality voices**: Several premium voice options available
 - **Fast inference**: Optimized for real-time speech synthesis
+- **Command-line interface**: Easy-to-use CLI with pipeline support
 
 
 
@@ -30,9 +31,10 @@ pip install https://github.com/KittenML/KittenTTS/releases/download/0.1/kittentt
 
 
 
- ### Basic Usage 
+ ### Basic Usage
 
-```
+#### Python API
+```python
 from kittentts import KittenTTS
 m = KittenTTS("KittenML/kitten-tts-nano-0.2")
 
@@ -43,8 +45,42 @@ audio = m.generate("This high quality TTS model works without a GPU", voice='exp
 # Save the audio
 import soundfile as sf
 sf.write('output.wav', audio, 24000)
-
 ```
+
+#### Command Line Interface (CLI)
+
+```bash
+# Clone the repository
+git clone https://github.com/KittenML/KittenTTS.git
+cd KittenTTS
+
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Use the CLI
+./kitten-tts "Hello world"                           # Speak text
+./kitten-tts "Hello world" --output hello.wav       # Save to file
+echo "Hello world" | ./kitten-tts                   # Read from stdin
+./kitten-tts --list-voices                          # List available voices
+```
+
+**CLI Features:**
+- **Text input** via arguments or stdin (pipeline support)
+- **8 different voices** (expr-voice-2/m/f through expr-voice-5/m/f)
+- **Speed control** with `--speed` option
+- **Audio fade-out** with `--fade-out` option (default: 0.2s)
+- **Multiple formats** (WAV, FLAC, OGG)
+- **Cross-platform audio playback** (macOS, Linux, Windows)
+
+**Available Voices:**
+- `expr-voice-2-m` / `expr-voice-2-f`
+- `expr-voice-3-m` / `expr-voice-3-f`
+- `expr-voice-4-m` / `expr-voice-4-f`
+- `expr-voice-5-m` / `expr-voice-5-f`
 
 
 
