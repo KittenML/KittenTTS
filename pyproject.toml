@@ -27,11 +27,10 @@ classifiers = [
 ]
 dependencies = [
     "espeakng_loader",
-    "huggingface_hub",
-    "misaki[en]>=0.9.4",
     "num2words",
     "numpy",
     "onnxruntime",
+    "phonemizer-fork~=3.3.2",
     "soundfile",
     "spacy",
 ]
