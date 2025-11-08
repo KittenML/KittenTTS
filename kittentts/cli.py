@@ -119,6 +119,7 @@ Examples:
   %(prog)s "Hello world" --output output.wav       # Save to file
   %(prog)s "Hello world" --speed 1.2               # Faster speech
   %(prog)s "Hello world" --fade-out 0.1            # 0.1s fade out
+  echo "Hello world" | %(prog)s                    # Read from stdin
   %(prog)s --list-voices                          # List available voices
         """
     )
@@ -126,7 +127,7 @@ Examples:
     parser.add_argument(
         "text",
         nargs="?",
-        help="Text to synthesize into speech"
+        help="Text to synthesize into speech (if not provided, reads from stdin)"
     )
 
     parser.add_argument(
@@ -185,11 +186,26 @@ Examples:
             print(f"Error loading model: {e}", file=sys.stderr)
             return 1
 
-    # Check if text is provided
-    if not args.text:
-        parser.print_help()
-        print("\nError: Text input is required", file=sys.stderr)
-        return 1
+    # Get text from command line or stdin
+    if args.text:
+        text = args.text
+    else:
+        # Read from stdin
+        try:
+            if sys.stdin.isatty():
+                # No pipe, interactive mode
+                parser.print_help()
+                print("\nError: Text input is required (provide as argument or pipe from stdin)", file=sys.stderr)
+                return 1
+            else:
+                # Pipe detected, read from stdin
+                text = sys.stdin.read().strip()
+                if not text:
+                    print("\nError: No text received from stdin", file=sys.stderr)
+                    return 1
+        except Exception as e:
+            print(f"Error reading from stdin: {e}", file=sys.stderr)
+            return 1
 
     try:
         # Initialize the model
@@ -203,13 +219,13 @@ Examples:
             return 1
 
         # Add dots at the end to prevent cutoff (simple fix)
-        if not args.text.endswith('...'):
-            args.text = args.text + '...'
+        if not text.endswith('...'):
+            text = text + '...'
             print(f"Added dots to prevent audio cutoff")
 
         # Generate audio
         print(f"Generating speech using voice: {args.voice}...")
-        audio = model.generate(args.text, voice=args.voice, speed=args.speed)
+        audio = model.generate(text, voice=args.voice, speed=args.speed)
 
         # Apply fade out if specified
         if args.fade_out > 0:
