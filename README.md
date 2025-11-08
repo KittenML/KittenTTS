@@ -123,6 +123,7 @@ Works literally everywhere
 ## Checklist 
 
 - [x] Release a preview model
+- [x] CLI support
 - [ ] Release the fully trained model weights
 - [ ] Release mobile SDK 
 - [ ] Release web version 
