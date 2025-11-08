@@ -10,7 +10,6 @@ Kitten TTS is an open-source realistic text-to-speech model with just 15 million
 
 Email the creators with any questions : info@stellonlabs.com
 
-
 ## ✨ Features
 
 - **Ultra-lightweight**: Model size less than 25MB
@@ -18,8 +17,6 @@ Email the creators with any questions : info@stellonlabs.com
 - **High-quality voices**: Several premium voice options available
 - **Fast inference**: Optimized for real-time speech synthesis
 - **Command-line interface**: Easy-to-use CLI with pipeline support
-
-
 
 ## 🚀 Quick Start
 
@@ -29,16 +26,14 @@ Email the creators with any questions : info@stellonlabs.com
 pip install https://github.com/KittenML/KittenTTS/releases/download/0.1/kittentts-0.1.0-py3-none-any.whl
 ```
 
-
-
- ### Basic Usage
+### Basic Usage
 
 #### Python API
 ```python
 from kittentts import KittenTTS
 m = KittenTTS("KittenML/kitten-tts-nano-0.2")
 
-audio = m.generate("This high quality TTS model works without a GPU", voice='expr-voice-2-f' )
+audio = m.generate("This high quality TTS model works without a GPU", voice='expr-voice-2-f')
 
 # available_voices : [  'expr-voice-2-m', 'expr-voice-2-f', 'expr-voice-3-m', 'expr-voice-3-f',  'expr-voice-4-m', 'expr-voice-4-f', 'expr-voice-5-m', 'expr-voice-5-f' ]
 
@@ -118,8 +113,6 @@ cat text_file.txt | ./kitten-tts --output speech.wav
 
 Works literally everywhere
 
-
-
 ## Checklist 
 
 - [x] Release a preview model
@@ -127,4 +120,3 @@ Works literally everywhere
 - [ ] Release the fully trained model weights
 - [ ] Release mobile SDK 
 - [ ] Release web version 
-
