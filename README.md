@@ -50,7 +50,7 @@ sf.write('output.wav', audio, 24000)
 #### Command Line Interface (CLI)
 
 <details>
-<summary>Click to expand CLI usage instructions</summary>
+<summary>CLI Usage Instructions</summary>
 
 ##### Installation
 
