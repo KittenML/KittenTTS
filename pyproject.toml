@@ -33,6 +33,9 @@ Homepage = "https://github.com/kittenml/kittentts"
 Repository = "https://github.com/kittenml/kittentts"
 Issues = "https://github.com/kittenml/kittentts/issues"
 
+[project.scripts]
+kitten-tts = "kittentts.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["kittentts*"]
