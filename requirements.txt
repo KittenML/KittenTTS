@@ -6,3 +6,4 @@ onnxruntime
 soundfile
 numpy
 huggingface_hub
+sounddevice

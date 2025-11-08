@@ -28,13 +28,18 @@ dependencies = [
     "huggingface_hub",
 ]
 
+[project.optional-dependencies]
+streaming = [
+    "sounddevice",
+]
+
 [project.urls]
 Homepage = "https://github.com/kittenml/kittentts"
 Repository = "https://github.com/kittenml/kittentts"
 Issues = "https://github.com/kittenml/kittentts/issues"
 
 [project.scripts]
-kitten-tts = "kittentts.cli:main"
+kitten-tts = "kittentts.cli_entry:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

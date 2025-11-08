@@ -15,6 +15,7 @@ import sys
 import os
 import numpy as np
 import soundfile as sf
+import tempfile
 
 # Add the current directory to Python path so we can import kittentts
 # We need to add the parent directory since we're inside kittentts/cli.py
@@ -25,12 +26,18 @@ sys.path.insert(0, parent_dir)
 # Default fade out duration in seconds
 DEFAULT_FADE_OUT = 0.2
 
-try:
-    from kittentts import KittenTTS
-except ImportError:
-    print("Error: KittenTTS not found. Please install it with:")
-    print("pip install https://github.com/KittenML/KittenTTS/releases/download/0.1/kittentts-0.1.0-py3-none-any.whl")
-    sys.exit(1)
+
+# Lazy import - only load KittenTTS when actually needed (not for help)
+def get_kittentts():
+    try:
+        # Import directly from get_model to avoid package-level imports
+        from kittentts.get_model import KittenTTS
+        return KittenTTS
+    except ImportError:
+        print("Error: KittenTTS not found. Please install it with:")
+        print(
+            "pip install https://github.com/KittenML/KittenTTS/releases/download/0.1/kittentts-0.1.0-py3-none-any.whl")
+        sys.exit(1)
 
 
 def apply_fade_out(audio_data, sample_rate=24000, fade_duration=DEFAULT_FADE_OUT):
@@ -69,10 +76,37 @@ def list_voices(model):
 
 
 def play_audio_simple(audio_data, sample_rate=24000):
-    """Simple audio playback using system command."""
-    # Save to temporary file and play with system command
-    temp_file = "temp_kitten_tts_output.wav"
+    """Direct audio streaming without temporary files."""
     try:
+        # Try to import sounddevice for direct audio streaming
+        import sounddevice as sd
+        import numpy as np
+
+        # Convert audio data to proper format if needed
+        if audio_data.dtype != np.float32:
+            audio_data = audio_data.astype(np.float32)
+
+        # Play audio directly
+        sd.play(audio_data, sample_rate)
+        sd.wait()  # Wait for playback to complete
+
+    except ImportError:
+        # Fallback to temp file method if sounddevice not available
+        print("sounddevice not available, falling back to temp file method...")
+        play_audio_with_tempfile(audio_data, sample_rate)
+    except Exception as e:
+        # Try alternative streaming method or fallback
+        print(f"Direct streaming failed: {e}")
+        play_audio_with_tempfile(audio_data, sample_rate)
+
+
+def play_audio_with_tempfile(audio_data, sample_rate=24000):
+    """Fallback method using temporary file in system temp directory."""
+    temp_file = None
+    try:
+        # Create temp file in system temp directory
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+            temp_file = tmp.name
         sf.write(temp_file, audio_data, sample_rate)
 
         # Try different system audio players based on OS
@@ -99,13 +133,17 @@ def play_audio_simple(audio_data, sample_rate=24000):
 
         # Clean up temp file
         try:
-            os.remove(temp_file)
+            if temp_file and os.path.exists(temp_file):
+                os.remove(temp_file)
         except:
             pass
 
     except Exception as e:
         print(f"Error playing audio: {e}")
-        print(f"Audio saved to {temp_file}")
+        if temp_file and os.path.exists(temp_file):
+            print(f"Audio saved to {temp_file}")
+        else:
+            print("Audio could not be saved - temp file creation failed")
 
 
 def main():
@@ -179,6 +217,7 @@ Examples:
     # Handle --list-voices
     if args.list_voices:
         try:
+            KittenTTS = get_kittentts()
             model = KittenTTS(args.model)
             list_voices(model)
             return 0
@@ -210,6 +249,7 @@ Examples:
     try:
         # Initialize the model
         print(f"Loading model: {args.model}...")
+        KittenTTS = get_kittentts()
         model = KittenTTS(args.model)
 
         # Validate voice
