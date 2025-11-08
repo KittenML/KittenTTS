@@ -24,7 +24,7 @@ class KittenTTS:
             
         self.model = download_from_huggingface(repo_id=repo_id, cache_dir=cache_dir)
 
-    def generate(self, text: str, voice: str = "expr-voice-5-m", speed: float = 1.0) -> np.ndarray:
+    def generate(self, text: str, voice: str = "expr-voice-5-m", speed: float = 1.0, old_trim=False) -> np.ndarray:
         """Generate audio from text.
         
         Args:
@@ -37,7 +37,7 @@ class KittenTTS:
         """
         if not text:
             raise ValueError("Input text cannot be empty.")
-        return self.model.generate(text, voice=voice, speed=speed)
+        return self.model.generate(text, voice=voice, speed=speed, old_trim)
 
     def generate_to_file(self, text: str, output_path: str, voice: str = "expr-voice-5-m", speed: float = 1.0, sample_rate: int = 24000):
         """Generate audio from text and save to file.

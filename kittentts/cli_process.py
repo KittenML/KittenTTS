@@ -24,7 +24,7 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir)
 
 # Default fade out duration in seconds
-DEFAULT_FADE_OUT = 0.2
+DEFAULT_FADE_OUT = 0.3
 
 
 # Lazy import - only load KittenTTS when actually needed (not for help)
@@ -259,13 +259,13 @@ Examples:
             return 1
 
         # Add dots at the end to prevent cutoff (simple fix)
-        if not text.endswith('...'):
-            text = text + '...'
-            print(f"Added dots to prevent audio cutoff")
+        # if not text.endswith('...'):
+            # text = text + '...'
+            # print(f"Added dots to prevent audio cutoff")
 
         # Generate audio
         print(f"Generating speech using voice: {args.voice}...")
-        audio = model.generate(text, voice=args.voice, speed=args.speed)
+        audio = model.generate(text, voice=args.voice, speed=args.speed, old_trim=True)
 
         # Apply fade out if specified
         if args.fade_out > 0:

@@ -24,7 +24,7 @@ class TextCleaner:
         _letters_ipa = "ɑɐɒæɓʙβɔɕçɗɖðʤəɘɚɛɜɝɞɟʄɡɠɢʛɦɧħɥʜɨɪʝɭɬɫɮʟɱɯɰŋɳɲɴøɵɸθœɶʘɹɺɾɻʀʁɽʂʃʈʧʉʊʋⱱʌɣɤʍχʎʏʑʐʒʔʡʕʢǀǁǂǃˈˌːˑʼʴʰʱʲʷˠˤ˞↓↑→↗↘'̩'ᵻ"
 
         symbols = [_pad] + list(_punctuation) + list(_letters) + list(_letters_ipa)
-        
+
         dicts = {}
         for i in range(len(symbols)):
             dicts[symbols[i]] = i
@@ -51,40 +51,40 @@ class KittenTTS_1_Onnx:
             language="en-us", preserve_punctuation=True, with_stress=True
         )
         self.text_cleaner = TextCleaner()
-        
+
         # Available voices
         self.available_voices = [
-            'expr-voice-2-m', 'expr-voice-2-f', 'expr-voice-3-m', 'expr-voice-3-f', 
+            'expr-voice-2-m', 'expr-voice-2-f', 'expr-voice-3-m', 'expr-voice-3-f',
             'expr-voice-4-m', 'expr-voice-4-f', 'expr-voice-5-m', 'expr-voice-5-f'
         ]
-    
+
     def _prepare_inputs(self, text: str, voice: str, speed: float = 1.0) -> dict:
         """Prepare ONNX model inputs from text and voice parameters."""
         if voice not in self.available_voices:
             raise ValueError(f"Voice '{voice}' not available. Choose from: {self.available_voices}")
-        
+
         # Phonemize the input text
         phonemes_list = self.phonemizer.phonemize([text])
-        
+
         # Process phonemes to get token IDs
         phonemes = basic_english_tokenize(phonemes_list[0])
         phonemes = ' '.join(phonemes)
         tokens = self.text_cleaner(phonemes)
-        
+
         # Add start and end tokens
         tokens.insert(0, 0)
         tokens.append(0)
-        
+
         input_ids = np.array([tokens], dtype=np.int64)
         ref_s = self.voices[voice]
-        
+
         return {
             "input_ids": input_ids,
             "style": ref_s,
             "speed": np.array([speed], dtype=np.float32),
         }
-    
-    def generate(self, text: str, voice: str = "expr-voice-5-m", speed: float = 1.0) -> np.ndarray:
+
+    def generate(self, text: str, voice: str = "expr-voice-5-m", speed: float = 1.0, old_trim=False) -> np.ndarray:
         """Synthesize speech from text.
         
         Args:
@@ -96,20 +96,26 @@ class KittenTTS_1_Onnx:
             Audio data as numpy array
         """
         onnx_inputs = self._prepare_inputs(text, voice, speed)
-        
+
         outputs = self.session.run(None, onnx_inputs)
 
-        audio = outputs[0]  # shape (n,)
-        # Trim edge silence from audio
-        non_silent = np.abs(audio) >= 0.01
-        if np.any(non_silent):
-            indices = np.where(non_silent)[0]
-            start, end = indices[0], indices[-1]
-            audio = audio[start : end + 1]
+        if old_trim:
+            return outputs[0][5000:-10000]
+        else:
+            # new trim approach, PR link:
+            # https://github.com/KittenML/KittenTTS/pull/22/commits/3883bdf80d9e9e4bdf0d1d4707fa68d995d41c56
+            audio = outputs[0]  # shape (n,)
+            # Trim edge silence from audio
+            non_silent = np.abs(audio) >= 0.1
+            if np.any(non_silent):
+                indices = np.where(non_silent)[0]
+                start, end = indices[0], indices[-1]
+                audio = audio[start: end + 1]
+
         return audio
-    
-    def generate_to_file(self, text: str, output_path: str, voice: str = "expr-voice-5-m", 
-                          speed: float = 1.0, sample_rate: int = 24000) -> None:
+
+    def generate_to_file(self, text: str, output_path: str, voice: str = "expr-voice-5-m",
+                         speed: float = 1.0, sample_rate: int = 24000) -> None:
         """Synthesize speech and save to file.
         
         Args:
@@ -127,7 +133,7 @@ class KittenTTS_1_Onnx:
 # Example usage
 if __name__ == "__main__":
     tts = KittenTTS_1_Onnx()
-    
+
     text = """
     It begins with an "Ugh!" Another mysterious stain appears on a favorite shirt. Every trick has been tried, but the stain persists.
     """
