@@ -49,6 +49,11 @@ sf.write('output.wav', audio, 24000)
 
 #### Command Line Interface (CLI)
 
+<details>
+<summary>Click to expand CLI usage instructions</summary>
+
+##### Installation
+
 ```bash
 # Clone the repository
 git clone https://github.com/KittenML/KittenTTS.git
@@ -60,27 +65,50 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+```
 
-# Use the CLI
+##### Basic Usage
+
+```bash
 ./kitten-tts "Hello world"                           # Speak text
 ./kitten-tts "Hello world" --output hello.wav       # Save to file
 echo "Hello world" | ./kitten-tts                   # Read from stdin
 ./kitten-tts --list-voices                          # List available voices
 ```
 
-**CLI Features:**
+##### Advanced Options
+
+```bash
+# With specific voice and fade-out
+./kitten-tts "Hello world" --voice expr-voice-2-f --fade-out 0.3
+
+# Adjust speech speed
+./kitten-tts "Hello world" --speed 1.5
+
+# Different audio formats
+./kitten-tts "Hello world" --output audio.flac --format flac
+
+# Pipeline usage with files
+cat text_file.txt | ./kitten-tts --output speech.wav
+```
+
+##### CLI Features
+
 - **Text input** via arguments or stdin (pipeline support)
 - **8 different voices** (expr-voice-2/m/f through expr-voice-5/m/f)
-- **Speed control** with `--speed` option
-- **Audio fade-out** with `--fade-out` option (default: 0.2s)
+- **Speed control** with `--speed` option (1.0 = normal)
+- **Audio fade-out** with `--fade-out` option (default: 0.2s, use 0 to disable)
 - **Multiple formats** (WAV, FLAC, OGG)
 - **Cross-platform audio playback** (macOS, Linux, Windows)
 
-**Available Voices:**
+##### Available Voices
+
 - `expr-voice-2-m` / `expr-voice-2-f`
 - `expr-voice-3-m` / `expr-voice-3-f`
 - `expr-voice-4-m` / `expr-voice-4-f`
 - `expr-voice-5-m` / `expr-voice-5-f`
+
+</details>
 
 
 
