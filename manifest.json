@@ -1,0 +1,19 @@
+{
+  "name": "KittenTTS",
+  "description": "Ultra-lightweight TTS engine with a Gradio web UI",
+  "icon": "https://raw.githubusercontent.com/akashjss/KittenTTS/main/icon.png",
+  "homepage": "https://github.com/akashjss/KittenTTS",
+  "categories": ["audio", "ml", "tts"],
+  "authors": [
+    {
+      "name": "KittenML",
+      "url": "https://github.com/KittenML"
+    },
+    {
+      "name": "akashjss",
+      "url": "https://github.com/akashjss"
+    }
+  ]
+}
+
+
