@@ -31,9 +31,7 @@ Email the creators with any questions : info@stellonlabs.com
 pip install https://github.com/KittenML/KittenTTS/releases/download/0.1/kittentts-0.1.0-py3-none-any.whl
 ```
 
-
-
- ### Basic Usage 
+### API Usage
 
 ```
 from kittentts import KittenTTS
@@ -47,6 +45,12 @@ audio = m.generate("This high quality TTS model works without a GPU", voice='exp
 import soundfile as sf
 sf.write('output.wav', audio, 24000)
 
+```
+
+### CLI usage
+
+```
+kittentts --output output.wav --text "This high quality TTS model works without a GPU"
 ```
 
 
