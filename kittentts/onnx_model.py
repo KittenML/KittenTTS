@@ -5,7 +5,7 @@ import soundfile as sf
 import onnxruntime as ort
 
 
-def basic_english_tokenize(text):
+def basic_english_tokenize(text: str) -> list:
     """Basic English tokenizer that splits on whitespace and punctuation."""
     import re
     tokens = re.findall(r"\w+|[^\w\s]", text)
@@ -27,14 +27,9 @@ class TextCleaner:
 
         self.word_index_dictionary = dicts
 
-    def __call__(self, text):
-        indexes = []
-        for char in text:
-            try:
-                indexes.append(self.word_index_dictionary[char])
-            except KeyError:
-                pass
-        return indexes
+    def __call__(self, text: str) -> list:
+        dicts = self.word_index_dictionary
+        return [dicts[char] for char in text if char in dicts]
 
 
 class KittenTTS_1_Onnx:
@@ -48,7 +43,6 @@ class KittenTTS_1_Onnx:
         self.model_path = model_path
         self.voices = np.load(voices_path)
         self.session = ort.InferenceSession(model_path)
-        
         self.phonemizer = phonemizer.backend.EspeakBackend(
             language="en-us", preserve_punctuation=True, with_stress=True
         )
@@ -124,7 +118,7 @@ class KittenTTS_1_Onnx:
 
 # Example usage
 if __name__ == "__main__":
-    tts = KittenTTS()
+    tts = KittenTTS_1_Onnx()
     
     text = """
     It begins with an "Ugh!" Another mysterious stain appears on a favorite shirt. Every trick has been tried, but the stain persists.
