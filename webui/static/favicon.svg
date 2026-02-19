@@ -1,16 +1,51 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
     <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#e8a87c;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#d4956a;stop-opacity:1" />
+      <stop offset="0%" style="stop-color:#e892a0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d67b8a;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="earGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0a0b0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e892a0;stop-opacity:1" />
     </linearGradient>
   </defs>
-  <circle cx="32" cy="32" r="30" fill="url(#grad)"/>
+  
+  <!-- Main circle -->
+  <circle cx="32" cy="34" r="26" fill="url(#grad)"/>
+  
+  <!-- Ears -->
+  <path d="M12 22 L18 6 L28 16 Z" fill="url(#earGrad)"/>
+  <path d="M52 22 L46 6 L36 16 Z" fill="url(#earGrad)"/>
+  
+  <!-- Inner ears -->
+  <path d="M16 18 L19 10 L24 16 Z" fill="#fce8eb"/>
+  <path d="M48 18 L45 10 L40 16 Z" fill="#fce8eb"/>
+  
+  <!-- Heart eyes -->
   <g fill="#fff">
-    <ellipse cx="22" cy="22" rx="6" ry="8"/>
-    <ellipse cx="42" cy="22" rx="6" ry="8"/>
-    <ellipse cx="16" cy="36" rx="5" ry="7"/>
-    <ellipse cx="48" cy="36" rx="5" ry="7"/>
-    <ellipse cx="32" cy="42" rx="10" ry="8"/>
+    <!-- Left heart eye -->
+    <path d="M20 28 C18 26, 14 26, 14 30 C14 33, 20 38, 20 38 C20 38, 26 33, 26 30 C26 26, 22 26, 20 28 Z"/>
+    <!-- Right heart eye -->
+    <path d="M44 28 C42 26, 38 26, 38 30 C38 33, 44 38, 44 38 C44 38, 50 33, 50 30 C50 26, 46 26, 44 28 Z"/>
   </g>
+  
+  <!-- Nose -->
+  <ellipse cx="32" cy="42" rx="4" ry="3" fill="#fce8eb"/>
+  
+  <!-- Mouth -->
+  <path d="M28 46 Q32 50 36 46" fill="none" stroke="#fce8eb" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Whiskers -->
+  <g stroke="#fce8eb" stroke-width="1.5" stroke-linecap="round" opacity="0.6">
+    <line x1="12" y1="40" x2="22" y2="42"/>
+    <line x1="10" y1="44" x2="22" y2="44"/>
+    <line x1="52" y1="40" x2="42" y2="42"/>
+    <line x1="54" y1="44" x2="42" y2="44"/>
+  </g>
+  
+  <!-- Paws peeking from bottom -->
+  <ellipse cx="18" cy="56" rx="6" ry="5" fill="url(#grad)"/>
+  <ellipse cx="46" cy="56" rx="6" ry="5" fill="url(#grad)"/>
+  <ellipse cx="18" cy="56" rx="3" ry="2" fill="#fce8eb"/>
+  <ellipse cx="46" cy="56" rx="3" ry="2" fill="#fce8eb"/>
 </svg>

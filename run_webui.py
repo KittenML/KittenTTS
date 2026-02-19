@@ -13,7 +13,7 @@ def main():
         "--host", type=str, default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)"
     )
     parser.add_argument(
-        "--port", type=int, default=7860, help="Port to bind to (default: 7860)"
+        "--port", type=int, default=7880, help="Port to bind to (default: 7880)"
     )
     args = parser.parse_args()
 

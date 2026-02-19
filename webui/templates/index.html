@@ -3,22 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="KittenTTS - A cute kitten-themed text-to-speech web interface">
-    <title>KittenTTS WebUI</title>
+    <meta name="description" content="KittenTTS - A cute kitten-themed text-to-speech web interface. For Kittens, By Kittens.">
+    <title>KittenTTS 🐱 Text to Speech</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css?v=4">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 </head>
 <body>
     <div class="container">
         <header>
             <div class="logo">
-                <div class="logo-icon">🐱</div>
+                <div class="logo-icon" title="Click me! 🐱">
+                    <img src="/static/icon.png" alt="KittenTTS" width="44" height="44">
+                </div>
                 <div class="logo-text">
                     <h1>KittenTTS</h1>
-                    <span>Text to Speech</span>
+                    <span class="tagline">For Kittens. By Kittens. 🐾</span>
                 </div>
             </div>
             <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
@@ -27,62 +29,161 @@
         </header>
 
         <main>
+            <!-- Settings Card -->
             <div class="card">
                 <div class="card-header">
+                    <div class="card-header-icon">⚙️</div>
                     <h2>Settings</h2>
                 </div>
+                
                 <div class="settings-row">
                     <div class="form-group">
-                        <label for="modelSelect">Model</label>
+                        <label for="modelSelect">
+                            <span class="label-icon">📦</span> Model
+                        </label>
                         <select id="modelSelect" class="model-select"></select>
+                        <div class="model-info" id="modelInfo"></div>
                     </div>
+                    
                     <div class="form-group">
-                        <label for="voiceSelect">Voice</label>
+                        <label for="voiceSelect">
+                            <span class="label-icon">🎙️</span> Voice
+                        </label>
                         <select id="voiceSelect" class="voice-select"></select>
+                        <div class="voice-description" id="voiceInfo"></div>
                     </div>
                 </div>
-                <div class="form-group">
+                
+                <div class="form-group" style="margin-bottom: 0;">
                     <div class="speed-container">
                         <div class="speed-header">
-                            <label for="speedSlider">Speed</label>
-                            <span id="speedValue" class="speed-value">1.0x</span>
+                            <label for="speedSlider">
+                                <span class="label-icon">⚡</span> Speed
+                            </label>
+                            <span id="speedValue" class="speed-value">1.0x <span id="speedEmoji">🐱</span></span>
                         </div>
                         <input type="range" id="speedSlider" min="0.5" max="2.0" step="0.1" value="1.0">
                     </div>
                 </div>
             </div>
 
+            <!-- Text Input Card -->
             <div class="card">
                 <div class="card-header">
+                    <div class="card-header-icon">✏️</div>
                     <h2>Text Input</h2>
                 </div>
+                
                 <div class="form-group">
-                    <textarea id="textInput" placeholder="Enter your text here... KittenTTS will transform it into natural-sounding speech. Try something like: 'Hello! I am KittenTTS, a lightweight text-to-speech model that runs entirely on your CPU.'"></textarea>
+                    <textarea id="textInput" placeholder="Enter your text here..."></textarea>
                 </div>
+                
                 <button id="generateBtn" class="generate-btn">
-                    <span id="btnText">🔊 Generate Speech</span>
+                    <span class="btn-icon">🔊</span>
+                    <span id="btnText">Generate Speech</span>
                     <span id="btnSpinner" class="spinner" style="display: none;"></span>
                 </button>
             </div>
 
+            <!-- Error Message -->
             <div id="errorMessage" class="error-message"></div>
 
+            <!-- Output Card -->
             <div id="outputSection" class="card output-section">
                 <div class="card-header">
-                    <h2>Output</h2>
+                    <div class="card-header-icon">🎵</div>
+                    <h2>Your Audio</h2>
                 </div>
                 <div class="audio-player">
                     <audio id="audioPlayer" controls></audio>
                     <div class="audio-info">
-                        <span id="audioDuration">Duration: 0s</span>
+                        <span id="audioDuration">⏱️ Duration: 0s</span>
                         <a id="downloadBtn" class="download-btn" href="#" download>
-                            ⬇ Download WAV
+                            💾 Download WAV
                         </a>
                     </div>
                 </div>
             </div>
 
+            <!-- Debug Panel -->
+            <div id="debugPanel" class="card debug-panel">
+                <div class="card-header debug-header" id="debugToggle">
+                    <div class="card-header-icon">🔧</div>
+                    <h2>Debug Stats</h2>
+                    <span class="debug-arrow">▼</span>
+                </div>
+                <div class="debug-content" id="debugContent" style="display: none;">
+                    <!-- Current Request Stats -->
+                    <div class="debug-section">
+                        <h3>Current Generation</h3>
+                        <div id="currentStats" class="debug-stats-grid">
+                            <div class="debug-stat">
+                                <span class="debug-label">Model Load</span>
+                                <span class="debug-value" id="statModelLoad">-</span>
+                            </div>
+                            <div class="debug-stat">
+                                <span class="debug-label">Generation</span>
+                                <span class="debug-value" id="statGenTime">-</span>
+                            </div>
+                            <div class="debug-stat">
+                                <span class="debug-label">Total Time</span>
+                                <span class="debug-value" id="statTotalTime">-</span>
+                            </div>
+                            <div class="debug-stat">
+                                <span class="debug-label">RTF</span>
+                                <span class="debug-value" id="statRTF">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Session Stats -->
+                    <div class="debug-section">
+                        <h3>Session Stats</h3>
+                        <div class="debug-stats-grid">
+                            <div class="debug-stat">
+                                <span class="debug-label">Total Requests</span>
+                                <span class="debug-value" id="sessionRequests">-</span>
+                            </div>
+                            <div class="debug-stat">
+                                <span class="debug-label">Avg Gen Time</span>
+                                <span class="debug-value" id="sessionAvgGen">-</span>
+                            </div>
+                            <div class="debug-stat">
+                                <span class="debug-label">Avg RTF</span>
+                                <span class="debug-value" id="sessionAvgRTF">-</span>
+                            </div>
+                            <div class="debug-stat">
+                                <span class="debug-label">Audio Generated</span>
+                                <span class="debug-value" id="sessionAudio">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Info -->
+                    <div class="debug-section">
+                        <h3>System Info</h3>
+                        <div class="debug-info-list" id="systemInfo">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Recent Requests -->
+                    <div class="debug-section">
+                        <h3>Recent Generations</h3>
+                        <div class="debug-requests" id="recentRequests">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <button id="refreshStatsBtn" class="debug-refresh-btn">
+                        🔄 Refresh Stats
+                    </button>
+                </div>
+            </div>
+
+            <!-- Paw Decoration -->
             <div class="paw-decoration">
+                <span>🐾</span>
                 <span>🐾</span>
                 <span>🐾</span>
                 <span>🐾</span>
@@ -91,12 +192,15 @@
 
         <footer>
             <p>
-                <a href="https://github.com/KittenML/KittenTTS" target="_blank" rel="noopener">KittenTTS</a> 
-                by <a href="https://github.com/KittenML" target="_blank" rel="noopener">KittenML</a>
+                Made with <span class="heart">💖</span> by 
+                <a href="https://github.com/KittenML" target="_blank" rel="noopener">KittenML</a>
+            </p>
+            <p style="margin-top: 0.5rem; font-size: 0.75rem;">
+                <a href="https://github.com/KittenML/KittenTTS" target="_blank" rel="noopener">⭐ Star on GitHub</a>
             </p>
         </footer>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=4"></script>
 </body>
 </html>

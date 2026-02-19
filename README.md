@@ -28,14 +28,16 @@ Email the creators with any questions : info@stellonlabs.com
 
 ## Models
 
-| Model | Params | Size | Link |
-|-------|--------|------|------|
-| kitten-tts-mini | 80M | 80MB | 🤗 [KittenML/kitten-tts-mini-0.8](https://huggingface.co/KittenML/kitten-tts-mini-0.8) |
-| kitten-tts-micro | 40M | 41MB | 🤗 [KittenML/kitten-tts-micro-0.8](https://huggingface.co/KittenML/kitten-tts-micro-0.8) |
-| kitten-tts-nano | 15M | 56MB | 🤗 [KittenML/kitten-tts-nano-0.8](https://huggingface.co/KittenML/kitten-tts-nano-0.8-fp32) |
-| kitten-tts-nano-int8 quantized | 15M | 19MB | 🤗 [KittenML/kitten-tts-nano-0.8-int8](https://huggingface.co/KittenML/kitten-tts-nano-0.8-int8) |
+| Model | Params | Size | Precision | Quality | Link |
+|-------|--------|------|-----------|---------|------|
+| **kitten-tts-nano** ⭐ | 15M | 56MB | FP32 | **Best** | 🤗 [KittenML/kitten-tts-nano-0.8-fp32](https://huggingface.co/KittenML/kitten-tts-nano-0.8-fp32) |
+| kitten-tts-mini | 80M | 80MB | INT8 | Good | 🤗 [KittenML/kitten-tts-mini-0.8](https://huggingface.co/KittenML/kitten-tts-mini-0.8) |
+| kitten-tts-micro | 40M | 41MB | INT8 | Good | 🤗 [KittenML/kitten-tts-micro-0.8](https://huggingface.co/KittenML/kitten-tts-micro-0.8) |
+| kitten-tts-nano-int8 | 15M | 19MB | INT8 | Basic | 🤗 [KittenML/kitten-tts-nano-0.8-int8](https://huggingface.co/KittenML/kitten-tts-nano-0.8-int8) |
 
-> Some users are facing minor issues with the kitten-tts-nano-int8  model. We are looking into it. Please report to us if you face any issues. 
+> **💡 Quality Tip:** The FP32 nano model (56MB) produces the best audio quality because it uses full 32-bit floating point precision. Larger models (mini, micro) use INT8 quantization which can introduce subtle artifacts. **For best results, use `kitten-tts-nano` (FP32).**
+
+> Some users are facing minor issues with the kitten-tts-nano-int8 model. We are looking into it. Please report to us if you face any issues. 
 
 ## Demo Video
 
@@ -58,7 +60,9 @@ pip install https://github.com/KittenML/KittenTTS/releases/download/0.8/kittentt
 
 ```
 from kittentts import KittenTTS
-m = KittenTTS("KittenML/kitten-tts-mini-0.8")
+
+# Use FP32 model for best quality (recommended)
+m = KittenTTS("KittenML/kitten-tts-nano-0.8-fp32")
 
 audio = m.generate("This high quality TTS model works without a GPU", voice='Jasper' )
 
@@ -76,7 +80,21 @@ sf.write('output.wav', audio, 24000)
 
 ## System Requirements
 
-Works literally everywhere. Needs python3.12. We recommend using conda. 
+Works literally everywhere. Needs python3.8+. We recommend using python3.12 with conda.
+
+### Audio Quality Note
+
+The model performance may vary based on your environment (OS, espeak-ng version, ONNX Runtime provider). For best results:
+
+```bash
+# Check your environment
+python check_environment.py
+
+# Test audio generation
+python test_tts.py
+```
+
+See [AUDIO_QUALITY.md](AUDIO_QUALITY.md) for detailed optimization guide. 
 
 
 
