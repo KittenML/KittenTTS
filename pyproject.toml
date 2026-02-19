@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kittentts"
-version = "0.1.0"
+version = "0.8.0"
 description = "Ultra-lightweight text-to-speech model with just 15 million parameters"
 readme = "README.md"
 requires-python = ">=3.8"
