@@ -1,6 +1,10 @@
 # Kitten TTS 😻
 
-> **🎉 ANNOUNCEMENT:** KittenTTS V1.0 is now available to try in our [Discord server](https://discord.com/invite/VJ86W4SURW)! Public model launch coming in ~10 days. ⏳
+<img width="607" height="255" alt="Screenshot 2026-02-18 at 8 33 04 PM" src="https://github.com/user-attachments/assets/f4646722-ba78-4b25-8a65-81bacee0d4f6" />
+
+
+
+> **🎉 ANNOUNCEMENT:** New version of KittenTTS  is now available to download!
 
 
 Kitten TTS is an open-source realistic text-to-speech model with just 15 million parameters, designed for lightweight deployment and high-quality voice synthesis.
@@ -22,13 +26,12 @@ Email the creators with any questions : info@stellonlabs.com
 - **Fast inference**: Optimized for real-time speech synthesis
 
 
-
 ## 🚀 Quick Start
 
 ### Installation
 
 ```
-pip install https://github.com/KittenML/KittenTTS/releases/download/0.1/kittentts-0.1.0-py3-none-any.whl
+pip install https://github.com/KittenML/KittenTTS/releases/download/0.8/kittentts-0.8.0-py3-none-any.whl
 ```
 
 
@@ -37,11 +40,11 @@ pip install https://github.com/KittenML/KittenTTS/releases/download/0.1/kittentt
 
 ```
 from kittentts import KittenTTS
-m = KittenTTS("KittenML/kitten-tts-nano-0.2")
+m = KittenTTS("KittenML/kitten-tts-mini-0.8")
 
-audio = m.generate("This high quality TTS model works without a GPU", voice='expr-voice-2-f' )
+audio = m.generate("This high quality TTS model works without a GPU", voice='Jasper' )
 
-# available_voices : [  'expr-voice-2-m', 'expr-voice-2-f', 'expr-voice-3-m', 'expr-voice-3-f',  'expr-voice-4-m', 'expr-voice-4-f', 'expr-voice-5-m', 'expr-voice-5-f' ]
+# available_voices : ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
 
 # Save the audio
 import soundfile as sf
@@ -55,7 +58,7 @@ sf.write('output.wav', audio, 24000)
 
 ## 💻 System Requirements
 
-Works literally everywhere
+Works literally everywhere. Needs python3.12 or higher.
 
 
 
