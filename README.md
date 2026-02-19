@@ -80,10 +80,91 @@ Works literally everywhere. Needs python3.12. We recommend using conda.
 
 
 
+## WebUI
+
+KittenTTS includes a cute kitten-themed web interface for easy text-to-speech generation.
+
+### Quick Start with Conda (Recommended)
+
+```bash
+# Create and activate a conda environment
+conda create -n kittentts python=3.12 -y
+conda activate kittentts
+
+# Install KittenTTS
+pip install https://github.com/KittenML/KittenTTS/releases/download/0.8/kittentts-0.8.0-py3-none-any.whl
+
+# Install additional WebUI dependencies
+pip install fastapi uvicorn python-multipart
+
+# Run the WebUI
+python run_webui.py
+```
+
+### Quick Start with pip
+
+```bash
+# Install additional dependencies
+pip install fastapi uvicorn python-multipart
+
+# Run the WebUI
+python run_webui.py
+```
+
+Open your browser and navigate to `http://localhost:7860`
+
+### Features
+
+- **4 Models**: Choose from Mini, Micro, Nano, and Nano INT8 variants
+- **8 Voices**: Select from Bella, Jasper, Luna, Bruno, Rosie, Hugo, Kiki, and Leo
+- **Speed Control**: Adjust speech speed from 0.5x to 2.0x
+- **Dark/Light Mode**: Toggle between themes with automatic system detection
+- **Audio Download**: Save generated audio as WAV files
+
+### Command Line Options
+
+```bash
+python run_webui.py --host 0.0.0.0 --port 7860
+```
+
+## Docker Usage
+
+Run KittenTTS WebUI in a containerized environment.
+
+### Build the Image
+
+```bash
+docker build -t kittentts-webui .
+```
+
+### Run the Container
+
+```bash
+docker run -d -p 7860:7860 -v ~/.cache/huggingface:/root/.cache/huggingface kittentts-webui
+```
+
+The `-v` flag mounts the Hugging Face cache directory to persist downloaded models between container restarts.
+
+### Access the WebUI
+
+Open `http://localhost:7860` in your browser.
+
+### Stop the Container
+
+```bash
+# List running containers to find the container ID
+docker ps
+
+# Stop the container
+docker stop <container_id>
+```
+
+Or if you ran without `-d` (detached mode), press `Ctrl+C` in the terminal to stop.
+
 ## Checklist 
 
 - [x] Release a preview model
 - [ ] Release the fully trained model weights
 - [ ] Release mobile SDK 
-- [ ] Release web version 
+- [ ] Release web version
 
