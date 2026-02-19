@@ -1,8 +1,20 @@
-num2words
-spacy
-espeakng_loader
+# Core TTS dependencies
+num2words>=0.5.13
+spacy>=3.7.0
+phonemizer>=3.3.0
+espeakng-loader>=0.1.0
 misaki[en]>=0.9.4
-onnxruntime
-soundfile
-numpy
-huggingface_hub
+
+# ML/Audio
+onnxruntime>=1.16.0
+soundfile>=0.12.0
+numpy>=1.24.0,<2.0.0
+
+# Model download
+huggingface-hub>=0.20.0
+
+# System monitoring
+psutil>=5.9.0
+
+# Optional: Better phonemization support
+# espeak-ng (system package - see README for installation)

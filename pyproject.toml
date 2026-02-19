@@ -18,14 +18,16 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "num2words",
-    "spacy",
-    "espeakng_loader",
+    "num2words>=0.5.13",
+    "spacy>=3.7.0",
+    "phonemizer>=3.3.0",
+    "espeakng-loader>=0.1.0",
     "misaki[en]>=0.9.4",
-    "onnxruntime",
-    "soundfile",
-    "numpy",
-    "huggingface_hub",
+    "onnxruntime>=1.16.0",
+    "soundfile>=0.12.0",
+    "numpy>=1.24.0,<2.0.0",
+    "huggingface-hub>=0.20.0",
+    "psutil>=5.9.0",
 ]
 
 [project.urls]
