@@ -75,7 +75,7 @@ def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=
     with open(config_path, 'r') as f:
         config = json.load(f)
 
-    if config.get("type") != "ONNX1":
+    if config.get("type") not in ["ONNX1", "ONNX2"]:
         raise ValueError("Unsupported model type.")
 
     # Download model and voices files based on config
@@ -92,7 +92,7 @@ def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=
     )
     
     # Instantiate and return model
-    model = KittenTTS_1_Onnx(model_path=model_path, voices_path=voices_path)
+    model = KittenTTS_1_Onnx(model_path=model_path, voices_path=voices_path, speed_priors=config.get("speed_priors", {}) , voice_aliases=config.get("voice_aliases", {}))
     
     return model
 
