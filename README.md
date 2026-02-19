@@ -73,7 +73,7 @@ sf.write('output.wav', audio, 24000)
 
 ## System Requirements
 
-Works literally everywhere. Needs python3.12 or higher.
+Works literally everywhere. Needs python3.12.
 
 
 
