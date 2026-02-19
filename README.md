@@ -18,15 +18,21 @@ Kitten TTS is an open-source realistic text-to-speech model with just 15 million
 Email the creators with any questions : info@stellonlabs.com
 
 
-## ✨ Features
+## Features
 
 - **Ultra-lightweight**: Model size less than 25MB
 - **CPU-optimized**: Runs without GPU on any device
 - **High-quality voices**: Several premium voice options available
 - **Fast inference**: Optimized for real-time speech synthesis
 
+## Demo  
 
-## 🚀 Quick Start
+
+https://github.com/user-attachments/assets/d80120f2-c751-407e-a166-068dd1dd9e8d
+
+
+
+## Quick Start
 
 ### Installation
 
@@ -56,7 +62,7 @@ sf.write('output.wav', audio, 24000)
 
 
 
-## 💻 System Requirements
+## System Requirements
 
 Works literally everywhere. Needs python3.12 or higher.
 
