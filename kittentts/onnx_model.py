@@ -1,4 +1,3 @@
-from misaki import en, espeak
 import numpy as np
 import phonemizer
 import soundfile as sf
