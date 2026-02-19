@@ -25,7 +25,16 @@ Email the creators with any questions : info@stellonlabs.com
 - **High-quality voices**: Several premium voice options available
 - **Fast inference**: Optimized for real-time speech synthesis
 
-## Demo  
+
+## Models
+
+| Model | Params | Size | Link |
+|-------|--------|------|------|
+| kitten-tts-mini | 80M | 80MB | 🤗 [KittenML/kitten-tts-mini-0.8](https://huggingface.co/KittenML/kitten-tts-mini-0.8) |
+| kitten-tts-micro | 40M | 41MB | 🤗 [KittenML/kitten-tts-micro-0.8](https://huggingface.co/KittenML/kitten-tts-micro-0.8) |
+| kitten-tts-nano | 15M | 19MB | 🤗 [KittenML/kitten-tts-nano-0.8](https://huggingface.co/KittenML/kitten-tts-nano-0.8) |
+
+## Demo Video
 
 
 https://github.com/user-attachments/assets/d80120f2-c751-407e-a166-068dd1dd9e8d
