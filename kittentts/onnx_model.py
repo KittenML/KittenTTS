@@ -281,3 +281,99 @@ class KittenTTS_1_Onnx:
         sf.write(output_path, audio, sample_rate, subtype=subtype)
         print(f"Audio saved to {output_path} ({len(audio)/sample_rate:.2f}s at {sample_rate}Hz)")
 
+
+class StreamingTTS:
+    """Sentence-level streaming TTS for real-time text-to-speech generation.
+    
+    Buffers incoming text and yields audio chunks as complete sentences are detected.
+    Ideal for use with streaming LLMs for conversational AI applications.
+    
+    Example:
+        >>> streamer = StreamingTTS(model)
+        >>> for token in llm_stream:
+        ...     for audio_chunk in streamer.add_text(token):
+        ...         play_audio(audio_chunk)
+        >>> # Don't forget to flush remaining text
+        >>> for audio_chunk in streamer.flush():
+        ...     play_audio(audio_chunk)
+    """
+    
+    # Sentence-ending punctuation that triggers audio generation
+    SENTENCE_ENDINGS = '.!?'
+    
+    def __init__(self, tts_model: KittenTTS_1_Onnx, voice: str = "expr-voice-5-m", 
+                 speed: float = 1.0, clean_text: bool = True):
+        """Initialize the streaming TTS.
+        
+        Args:
+            tts_model: An initialized KittenTTS_1_Onnx model instance
+            voice: Voice to use for synthesis
+            speed: Speech speed (1.0 = normal)
+            clean_text: Whether to preprocess text before synthesis
+        """
+        self.tts = tts_model
+        self.voice = voice
+        self.speed = speed
+        self.clean_text = clean_text
+        self._buffer = ""
+    
+    def add_text(self, text: str):
+        """Add text to the buffer and yield audio for any complete sentences.
+        
+        Args:
+            text: Text chunk to add (e.g., a token from an LLM stream)
+            
+        Yields:
+            numpy.ndarray: Audio chunks for complete sentences
+        """
+        self._buffer += text
+        
+        # Find complete sentences
+        while True:
+            # Find the earliest sentence ending
+            earliest_end = -1
+            for ending in self.SENTENCE_ENDINGS:
+                pos = self._buffer.find(ending)
+                if pos != -1 and (earliest_end == -1 or pos < earliest_end):
+                    earliest_end = pos
+            
+            if earliest_end == -1:
+                break
+            
+            # Extract the complete sentence (include the punctuation)
+            sentence = self._buffer[:earliest_end + 1].strip()
+            self._buffer = self._buffer[earliest_end + 1:].lstrip()
+            
+            if sentence:
+                audio = self.tts.generate_single_chunk(sentence, self.voice, self.speed)
+                yield audio
+    
+    def flush(self):
+        """Flush any remaining text in the buffer.
+        
+        Call this when the text stream is complete to synthesize
+        any remaining text that hasn't formed a complete sentence.
+        
+        Yields:
+            numpy.ndarray: Audio chunk for remaining text (if any)
+        """
+        if self._buffer.strip():
+            # Ensure the text ends with punctuation for natural prosody
+            text = self._buffer.strip()
+            if text[-1] not in self.SENTENCE_ENDINGS:
+                text += '.'
+            
+            audio = self.tts.generate_single_chunk(text, self.voice, self.speed)
+            yield audio
+        
+        self._buffer = ""
+    
+    def reset(self):
+        """Clear the buffer without generating audio."""
+        self._buffer = ""
+    
+    @property
+    def buffered_text(self) -> str:
+        """Return the current buffered text that hasn't been synthesized yet."""
+        return self._buffer
+

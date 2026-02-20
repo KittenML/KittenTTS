@@ -3,14 +3,16 @@ import base64
 import tempfile
 import time
 import os
-from typing import Optional, Dict, Any
+import uuid
+import json
+from typing import Optional, Dict, Any, Generator
 from pathlib import Path
 from datetime import datetime
 
 import numpy as np
 import soundfile as sf
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -121,6 +123,9 @@ MODEL_INFO = [
 loaded_models: Dict[str, Any] = {}
 model_load_times: Dict[str, float] = {}
 
+# Streaming session cache (session_id -> StreamingTTS instance)
+streaming_sessions: Dict[str, Any] = {}
+
 # Stats tracking
 class StatsTracker:
     def __init__(self):
@@ -173,6 +178,15 @@ class GenerateRequest(BaseModel):
     model: str = "kitten-tts-nano"  # Default to FP32 for best quality
     voice: str = "Bella"
     speed: float = 1.0
+
+
+class StreamChunkRequest(BaseModel):
+    """Request model for streaming TTS endpoint."""
+    text: str
+    model: str = "kitten-tts-nano"
+    voice: str = "Bella"
+    speed: float = 1.0
+    flush: bool = False  # Set True on final chunk to flush remaining text
 
 
 class GenerateResponse(BaseModel):
@@ -361,6 +375,107 @@ def create_app() -> FastAPI:
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/stream/start")
+    async def start_streaming_session(model: str = "kitten-tts-nano", voice: str = "Bella", speed: float = 1.0):
+        """Start a new streaming TTS session.
+        
+        Returns a session_id to use for subsequent streaming requests.
+        """
+        if speed < 0.25 or speed > 3.0:
+            raise HTTPException(status_code=400, detail="Speed must be between 0.25 and 3.0")
+        
+        try:
+            tts_model, _ = get_model(model)
+            from kittentts import StreamingTTS
+            
+            voice_id = VOICE_ALIASES.get(voice, voice)
+            streamer = tts_model.create_streamer(voice=voice_id, speed=speed)
+            
+            session_id = str(uuid.uuid4())
+            streaming_sessions[session_id] = {
+                "streamer": streamer,
+                "model": model,
+                "voice": voice,
+                "created_at": datetime.now().isoformat(),
+            }
+            
+            return {"session_id": session_id, "status": "created"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.post("/api/stream/chunk")
+    async def stream_chunk(request: StreamChunkRequest, session_id: str):
+        """Add text to a streaming session and get audio for complete sentences.
+        
+        Args:
+            session_id: The streaming session ID from /api/stream/start
+            request: Contains text chunk and flush flag
+            
+        Returns:
+            JSON with audio_base64 chunks for any complete sentences
+        """
+        if session_id not in streaming_sessions:
+            raise HTTPException(status_code=404, detail="Session not found. Start a new session with /api/stream/start")
+        
+        session = streaming_sessions[session_id]
+        streamer = session["streamer"]
+        
+        try:
+            audio_chunks = []
+            
+            # Process incoming text and get audio for complete sentences
+            for audio in streamer.add_text(request.text):
+                audio_chunks.append(audio)
+            
+            # If flush is True, also get any remaining buffered text
+            if request.flush:
+                for audio in streamer.flush():
+                    audio_chunks.append(audio)
+            
+            # Convert audio chunks to base64
+            sample_rate = 24000
+            audio_base64_chunks = []
+            
+            for audio in audio_chunks:
+                if isinstance(audio, np.ndarray):
+                    audio_array = audio
+                else:
+                    audio_array = np.array(audio)
+                
+                if audio_array.ndim > 1:
+                    audio_array = audio_array.squeeze()
+                
+                if audio_array.dtype != np.float32:
+                    audio_array = audio_array.astype(np.float32)
+                
+                # Normalize if needed
+                max_val = np.max(np.abs(audio_array))
+                if max_val > 0.99:
+                    audio_array = audio_array * (0.99 / max_val)
+                
+                buffer = io.BytesIO()
+                sf.write(buffer, audio_array, sample_rate, format="WAV", subtype='PCM_16')
+                buffer.seek(0)
+                audio_base64_chunks.append(base64.b64encode(buffer.read()).decode("utf-8"))
+            
+            return {
+                "audio_chunks": audio_base64_chunks,
+                "sample_rate": sample_rate,
+                "buffered_text": streamer.buffered_text,
+                "status": "flushed" if request.flush else "streaming",
+            }
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.delete("/api/stream/end/{session_id}")
+    async def end_streaming_session(session_id: str):
+        """End a streaming session and release resources."""
+        if session_id in streaming_sessions:
+            del streaming_sessions[session_id]
+            return {"status": "ended", "session_id": session_id}
+        raise HTTPException(status_code=404, detail="Session not found")
 
     @app.get("/favicon.ico")
     async def favicon():

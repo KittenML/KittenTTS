@@ -74,6 +74,88 @@ sf.write('output.wav', audio, 24000)
 
 ```
 
+## Streaming TTS (for LLM Integration)
+
+KittenTTS supports sentence-level streaming, ideal for real-time conversational AI applications. Audio generation starts as soon as complete sentences are detected from streaming text.
+
+### Python API
+
+```python
+from kittentts import KittenTTS
+import soundfile as sf
+
+# Initialize model
+model = KittenTTS("KittenML/kitten-tts-nano-0.8-fp32")
+
+# Create a streaming instance
+streamer = model.create_streamer(voice="Jasper", speed=1.0)
+
+# Simulate streaming from an LLM
+llm_tokens = ["Hello", " there", "! How", " are", " you", " today", "?"]
+
+for token in llm_tokens:
+    # add_text() yields audio chunks when complete sentences are detected
+    for audio_chunk in streamer.add_text(token):
+        sf.write("chunk.wav", audio_chunk, 24000)
+        # Or play immediately for real-time output
+
+# Don't forget to flush remaining buffered text
+for audio_chunk in streamer.flush():
+    sf.write("final_chunk.wav", audio_chunk, 24000)
+```
+
+### Web API
+
+For remote applications, use the streaming endpoints:
+
+```python
+import requests
+import base64
+import soundfile as sf
+import io
+
+BASE_URL = "http://localhost:7860"
+
+# Start a streaming session
+response = requests.post(
+    f"{BASE_URL}/api/stream/start",
+    params={"model": "kitten-tts-nano", "voice": "Jasper", "speed": 1.0}
+)
+session_id = response.json()["session_id"]
+
+# Stream text chunks (e.g., from an LLM)
+for token in ["Hello", " there", "! How", " are", " you", "?"]:
+    response = requests.post(
+        f"{BASE_URL}/api/stream/chunk?session_id={session_id}",
+        json={"text": token, "flush": False}
+    )
+    result = response.json()
+    
+    # Process audio chunks for complete sentences
+    for audio_base64 in result["audio_chunks"]:
+        audio_bytes = base64.b64decode(audio_base64)
+        audio, sr = sf.read(io.BytesIO(audio_bytes))
+        # Play or save audio
+
+# Flush remaining text and end session
+response = requests.post(
+    f"{BASE_URL}/api/stream/chunk?session_id={session_id}",
+    json={"text": "", "flush": True}
+)
+# Process final audio chunks...
+
+# Clean up
+requests.delete(f"{BASE_URL}/api/stream/end/{session_id}")
+```
+
+### Streaming API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/stream/start` | POST | Start a new streaming session |
+| `/api/stream/chunk?session_id={id}` | POST | Add text chunk, get audio for complete sentences |
+| `/api/stream/end/{session_id}` | DELETE | End session and release resources |
+
 
 
 

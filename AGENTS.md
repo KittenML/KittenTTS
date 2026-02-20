@@ -90,6 +90,12 @@ KittenTTS is an open-source, ultra-lightweight text-to-speech (TTS) model design
   - **TextCleaner** class: Maps phonemes to token IDs
   - **chunk_text()**: Splits long text at sentence/word boundaries (400 char limit)
   - Handles speed adjustments via voice-specific priors
+- **StreamingTTS** class: Sentence-level streaming for real-time TTS
+  - Buffers incoming text and yields audio when complete sentences are detected
+  - `add_text(text)`: Add text chunk, yields audio for complete sentences
+  - `flush()`: Synthesize any remaining buffered text
+  - `reset()`: Clear buffer without generating audio
+  - `buffered_text` property: View current buffered text
 
 ### 3. `kittentts/preprocess.py`
 - **TextPreprocessor** class: Comprehensive text normalization
@@ -110,7 +116,11 @@ KittenTTS is an open-source, ultra-lightweight text-to-speech (TTS) model design
   - `GET /api/voices` - Returns voice metadata
   - `POST /api/generate` - Generates speech (returns base64 WAV)
   - `GET /api/health` - Health check with loaded models
+  - `POST /api/stream/start` - Start a streaming TTS session
+  - `POST /api/stream/chunk` - Add text to streaming session, get audio for complete sentences
+  - `DELETE /api/stream/end/{session_id}` - End streaming session
 - **Model lazy-loading**: Models loaded on first request and cached
+- **Streaming sessions**: In-memory session cache for streaming TTS
 
 ## Build and Installation
 
@@ -147,6 +157,61 @@ sf.write("output.wav", audio, 24000)
 **WebUI:**
 ```bash
 python run_webui.py --host 0.0.0.0 --port 7860
+```
+
+**Streaming TTS (for LLM integration):**
+```python
+from kittentts import KittenTTS, StreamingTTS
+import soundfile as sf
+
+# Initialize model
+model = KittenTTS("KittenML/kitten-tts-mini-0.8")
+
+# Create a streaming instance
+streamer = model.create_streamer(voice="Jasper", speed=1.0)
+
+# Simulate streaming from an LLM
+llm_tokens = ["Hello", " there", "! How", " are", " you", " today", "?"]
+
+for token in llm_tokens:
+    # add_text() yields audio chunks when complete sentences are detected
+    for audio_chunk in streamer.add_text(token):
+        sf.write("chunk.wav", audio_chunk, 24000)
+        # Or play immediately for real-time output
+
+# Don't forget to flush remaining buffered text
+for audio_chunk in streamer.flush():
+    sf.write("final_chunk.wav", audio_chunk, 24000)
+```
+
+**Streaming via Web API:**
+```python
+import requests
+import json
+
+BASE_URL = "http://localhost:7860"
+
+# Start a streaming session
+response = requests.post(f"{BASE_URL}/api/stream/start?model=kitten-tts-nano&voice=Jasper&speed=1.0")
+session_id = response.json()["session_id"]
+
+# Stream text chunks
+for token in ["Hello", " there", "! How", " are", " you", "?"]:
+    response = requests.post(
+        f"{BASE_URL}/api/stream/chunk?session_id={session_id}",
+        json={"text": token, "flush": False}
+    )
+    result = response.json()
+    for audio_base64 in result["audio_chunks"]:
+        # Decode and play audio
+        pass
+
+# Flush remaining text and end session
+response = requests.post(
+    f"{BASE_URL}/api/stream/chunk?session_id={session_id}",
+    json={"text": "", "flush": True}
+)
+requests.delete(f"{BASE_URL}/api/stream/end/{session_id}")
 ```
 
 ## Development Conventions

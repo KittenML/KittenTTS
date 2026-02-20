@@ -1,7 +1,7 @@
 import json
 import os
 from huggingface_hub import hf_hub_download
-from .onnx_model import KittenTTS_1_Onnx
+from .onnx_model import KittenTTS_1_Onnx, StreamingTTS
 
 
 class KittenTTS:
@@ -52,6 +52,18 @@ class KittenTTS:
     def available_voices(self):
         """Get list of available voices."""
         return self.model.available_voices
+    
+    def create_streamer(self, voice="expr-voice-5-m", speed=1.0):
+        """Create a streaming TTS instance for real-time generation.
+        
+        Args:
+            voice: Voice to use for synthesis
+            speed: Speech speed (1.0 = normal)
+            
+        Returns:
+            StreamingTTS: A streaming TTS instance
+        """
+        return StreamingTTS(self.model, voice=voice, speed=speed)
 
 
 def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=None):
