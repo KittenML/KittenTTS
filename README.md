@@ -6,6 +6,9 @@
 
 > **🎉 ANNOUNCEMENT:** New version of KittenTTS  is now available to download!
 
+###  [Wanna hear samples? Try the model for free on Hugging Face Spaces by clicking this link](https://huggingface.co/spaces/KittenML/kitten-tts-demo)
+
+
 
 Kitten TTS is an open-source realistic text-to-speech model with just 15 million parameters, designed for lightweight deployment and high-quality voice synthesis.
 
