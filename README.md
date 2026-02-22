@@ -6,7 +6,7 @@
 
 > **🎉 ANNOUNCEMENT:** New version of KittenTTS  is now available to download!
 
-###  [Wanna hear samples? Try the model for free on Hugging Face Spaces by clicking this link](https://huggingface.co/spaces/KittenML/kitten-tts-demo)
+###  [Wanna hear samples? Try the model for free on Hugging Face Spaces by clicking this link](https://huggingface.co/spaces/KittenML/KittenTTS-Demo)
 
 
 
