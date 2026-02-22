@@ -61,7 +61,7 @@ pip install https://github.com/KittenML/KittenTTS/releases/download/0.8/kittentt
 
  ### Basic Usage 
 
-```
+```python
 from kittentts import KittenTTS
 m = KittenTTS("KittenML/kitten-tts-mini-0.8")
 
@@ -72,7 +72,6 @@ audio = m.generate("This high quality TTS model works without a GPU", voice='Jas
 # Save the audio
 import soundfile as sf
 sf.write('output.wav', audio, 24000)
-
 ```
 
 
