@@ -1,9 +1,0 @@
-include README.md
-include LICENSE
-include requirements.txt
-recursive-include kittentts *.py
-recursive-include kittentts *.json
-recursive-include kittentts *.txt
-recursive-include kittentts *.onnx
-global-exclude __pycache__
-global-exclude *.py[co]
