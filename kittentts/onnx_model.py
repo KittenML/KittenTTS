@@ -95,23 +95,42 @@ class KittenTTS_1_Onnx:
         self.text_cleaner = TextCleaner()
         self.speed_priors = speed_priors
         
-        # Available voices
-        self.available_voices = [
-            'expr-voice-2-m', 'expr-voice-2-f', 'expr-voice-3-m', 'expr-voice-3-f', 
-            'expr-voice-4-m', 'expr-voice-4-f', 'expr-voice-5-m', 'expr-voice-5-f'
-        ]
-        self.voice_aliases = voice_aliases
+        # Available voices dynamically loaded from the .npz file
+        self.available_voices = list(self.voices.keys())
+        
+        # Default fallback aliases, can be extended by config
+        default_aliases = {
+            'Bella': 'expr-voice-2-f',
+            'Jasper': 'expr-voice-2-m',
+            'Luna': 'expr-voice-3-f',
+            'Bruno': 'expr-voice-3-m',
+            'Rosie': 'expr-voice-4-f',
+            'Hugo': 'expr-voice-4-m',
+            'Kiki': 'expr-voice-5-f',
+            'Leo': 'expr-voice-5-m'
+        }
+        self.voice_aliases = default_aliases
+        self.voice_aliases.update(voice_aliases)
+
 
         self.preprocessor = TextPreprocessor()
     
     def _prepare_inputs(self, text: str, voice: str, speed: float = 1.0) -> dict:
         """Prepare ONNX model inputs from text and voice parameters."""
+        # Try to resolve alias if necessary
         if voice in self.voice_aliases:
             voice = self.voice_aliases[voice]
 
-        if voice not in self.available_voices:
-            raise ValueError(f"Voice '{voice}' not available. Choose from: {self.available_voices}")
-        
+        # Check if the requested voice exists in the dynamic voice dictionary
+        if voice not in self.voices:
+            fallback = list(self.aliases.keys())[0] if hasattr(self, 'aliases') and len(self.aliases) > 0 else (self.available_voices[0] if self.available_voices else None)
+            error_msg = f"\n❌ Voice '{voice}' not found."
+            error_msg += f"\n👉 Available native voices: {self.available_voices}"
+            error_msg += f"\n👉 Available voice aliases: {list(self.voice_aliases.keys())}"
+            if fallback:
+                error_msg += f"\nPlease try using a valid voice like '{fallback}'."
+            print(error_msg)
+            raise ValueError(f"Voice '{voice}' not available.")
         if voice in self.speed_priors:
             speed = speed * self.speed_priors[voice]
         

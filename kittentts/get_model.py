@@ -64,37 +64,46 @@ def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=
     Returns:
         KittenTTS_1_Onnx: Instantiated model ready for use
     """
-    # Download config file first
-    config_path = hf_hub_download(
-        repo_id=repo_id,
-        filename="config.json",
-        cache_dir=cache_dir
-    )
-    
-    # Load config
-    with open(config_path, 'r') as f:
-        config = json.load(f)
+    try:
+        # Download config file first
+        config_path = hf_hub_download(
+            repo_id=repo_id,
+            filename="config.json",
+            cache_dir=cache_dir
+        )
+        
+        # Load config
+        with open(config_path, 'r') as f:
+            config = json.load(f)
 
-    if config.get("type") not in ["ONNX1", "ONNX2"]:
-        raise ValueError("Unsupported model type.")
+        if config.get("type") not in ["ONNX1", "ONNX2"]:
+            print(f"Error: Unsupported model type '{config.get('type')}'.")
+            return None
 
-    # Download model and voices files based on config
-    model_path = hf_hub_download(
-        repo_id=repo_id,
-        filename=config["model_file"],
-        cache_dir=cache_dir
-    )
-    
-    voices_path = hf_hub_download(
-        repo_id=repo_id,
-        filename=config["voices"],
-        cache_dir=cache_dir
-    )
-    
-    # Instantiate and return model
-    model = KittenTTS_1_Onnx(model_path=model_path, voices_path=voices_path, speed_priors=config.get("speed_priors", {}) , voice_aliases=config.get("voice_aliases", {}))
-    
-    return model
+        # Download model and voices files based on config
+        model_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=config["model_file"],
+            cache_dir=cache_dir
+        )
+        
+        voices_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=config["voices"],
+            cache_dir=cache_dir
+        )
+        
+        # Instantiate and return model
+        model = KittenTTS_1_Onnx(model_path=model_path, voices_path=voices_path, speed_priors=config.get("speed_priors", {}) , voice_aliases=config.get("voice_aliases", {}))
+        
+        return model
+
+    except Exception as e:
+        print(f"\n❌ Failed to load model '{repo_id}'.")
+        print(f"Error details: {str(e)}")
+        print("Please check your internet connection or verify the model name is correct.")
+        print("Example valid models: 'KittenML/kitten-tts-nano-0.1', 'KittenML/kitten-tts-mini-0.8'\n")
+        return None
 
 
 def get_model(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=None):

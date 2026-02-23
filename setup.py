@@ -37,10 +37,17 @@ setup(
         "soundfile",
         "numpy",
         "huggingface_hub",
+        "customtkinter",
     ],
     keywords="text-to-speech, tts, speech-synthesis, neural-networks, onnx",
     project_urls={
         "Bug Reports": "https://github.com/kittenml/kittentts/issues",
         "Source": "https://github.com/kittenml/kittentts",
+    },
+    entry_points={
+        "console_scripts": [
+            "kittentts=kittentts.cli:main",
+            "kittentts-ui=kittentts.ui:main",
+        ],
     },
 )

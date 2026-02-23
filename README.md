@@ -12,6 +12,8 @@
 
 Kitten TTS is an open-source realistic text-to-speech model with just 15 million parameters, designed for lightweight deployment and high-quality voice synthesis.
 
+> **UI and enhancement made by Muhammad Umer**
+
 *Currently in developer preview*
 
 [Join our discord](https://discord.com/invite/VJ86W4SURW) 
@@ -59,7 +61,28 @@ pip install https://github.com/KittenML/KittenTTS/releases/download/0.8/kittentt
 
 
 
- ### Basic Usage 
+```
+
+### Graphical Interface (Windows)
+
+We have provided a native, modern UI designed specifically for Windows! 
+To use the UI:
+1. Double-click **`Run_KittenTTS.bat`** from your File Explorer.
+2. It will automatically build an environment if needed, and open the KittenTTS Desktop app.
+3. Type your text, select your voice and model, and click **Generate & Play ▶**!
+
+### Terminal CLI Usage
+
+You can also use KittenTTS directly from your terminal/command line!
+```bash
+# Generate immediate audio
+kittentts "Hello! I am speaking to you directly from the terminal" --voice Jasper --output out.wav
+
+# View all dynamically loaded voices
+kittentts --list-voices
+```
+
+ ### Basic Python Usage 
 
 ```
 from kittentts import KittenTTS
