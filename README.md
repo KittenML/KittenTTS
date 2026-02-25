@@ -1,3 +1,35 @@
+
+<div align="right">
+  <details>
+    <summary >🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=en">English</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=zh-CN">简体中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=zh-TW">繁體中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=ja">日本語</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=ko">한국어</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=hi">हिन्दी</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=th">ไทย</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=fr">Français</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=de">Deutsch</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=es">Español</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=it">Italiano</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=ru">Русский</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=pt">Português</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=nl">Nederlands</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=pl">Polski</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=ar">العربية</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=fa">فارسی</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=tr">Türkçe</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=vi">Tiếng Việt</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=id">Bahasa Indonesia</a>
+        | <a href="https://openaitx.github.io/view.html?user=KittenML&project=KittenTTS&lang=as">অসমীয়া</
+      </div>
+    </div>
+  </details>
+</div>
+
 # Kitten TTS 😻
 
 <img width="607" height="255" alt="Screenshot 2026-02-18 at 8 33 04 PM" src="https://github.com/user-attachments/assets/f4646722-ba78-4b25-8a65-81bacee0d4f6" />
