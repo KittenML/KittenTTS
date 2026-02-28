@@ -1,0 +1,7 @@
+/target/
+Cargo.lock
+espeak-ng.dll
+*.wav
+*.onnx
+*.npz
+.DS_Store
