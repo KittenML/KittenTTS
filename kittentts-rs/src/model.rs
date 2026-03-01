@@ -44,12 +44,11 @@ fn ensure_punctuation(text: &str) -> String {
 
 /// Split text into chunks for processing long texts.
 fn chunk_text(text: &str, max_len: usize) -> Vec<String> {
-    let re = Regex::new(r"[.!?]+").unwrap();
-    let sentences: Vec<&str> = re.split(text).collect();
+    let re = Regex::new(r"([^.!?]+[.!?]+)").unwrap();
     let mut chunks = Vec::new();
 
-    for sentence in sentences {
-        let sentence = sentence.trim();
+    for caps in re.captures_iter(text) {
+        let sentence = caps[1].trim();
         if sentence.is_empty() {
             continue;
         }
@@ -237,13 +236,7 @@ impl KittenTTSModel {
         let tokens_str = basic_english_tokenize(&phonemes_raw);
         let phonemes_joined = tokens_str.join(" ");
 
-        #[cfg(debug_assertions)]
-        println!("Phonemes: {}", phonemes_joined);
-
         let mut tokens = self.text_cleaner.encode(&phonemes_joined);
-
-        #[cfg(debug_assertions)]
-        println!("Tokens: {:?}", tokens);
 
         // Add start and end tokens
         tokens.insert(0, 0); // start token

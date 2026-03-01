@@ -1,6 +1,5 @@
 use espeak_ng_sys as espeak_ng;
 use std::ffi::{CStr, CString};
-use std::os::raw::c_void;
 use std::ptr;
 
 pub struct Espeak {
@@ -42,17 +41,40 @@ impl Espeak {
 
     pub fn text_to_phonemes(&self, text: &str) -> anyhow::Result<String> {
         let c_text = CString::new(text)?;
-        let mut text_ptr = c_text.as_ptr() as *const c_void;
+        let mut text_ptr = c_text.as_ptr() as *const std::os::raw::c_char;
+        let mut all_phonemes = String::new();
 
-        // textmode 1 = UTF8, phonememode 2 = IPA phonemes
-        let result_ptr = unsafe { espeak_ng::espeak_TextToPhonemes(&mut text_ptr, 1, 2) };
+        while !text_ptr.is_null() && unsafe { *text_ptr != 0 } {
+            let initial_ptr = text_ptr;
+            let mut current_ptr = text_ptr as *const std::os::raw::c_void;
 
-        if result_ptr.is_null() {
+            // textmode 1 = UTF8, phonememode 66 = IPA + Punctuation
+            let result_ptr = unsafe { espeak_ng::espeak_TextToPhonemes(&mut current_ptr, 1, 66) };
+
+            if !result_ptr.is_null() {
+                let c_str = unsafe { CStr::from_ptr(result_ptr) };
+                let phonemes = c_str.to_string_lossy();
+                if !all_phonemes.is_empty()
+                    && !all_phonemes.ends_with(' ')
+                    && !phonemes.starts_with(' ')
+                {
+                    all_phonemes.push(' ');
+                }
+                all_phonemes.push_str(&phonemes);
+            }
+
+            text_ptr = current_ptr as *const std::os::raw::c_char;
+
+            if text_ptr.is_null() || text_ptr == initial_ptr {
+                break;
+            }
+        }
+
+        if all_phonemes.is_empty() {
             anyhow::bail!("eSpeak failed to generate phonemes");
         }
 
-        let c_str = unsafe { CStr::from_ptr(result_ptr) };
-        Ok(c_str.to_string_lossy().into_owned())
+        Ok(all_phonemes)
     }
 }
 

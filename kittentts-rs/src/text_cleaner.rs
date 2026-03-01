@@ -14,11 +14,10 @@ impl TextCleaner {
         let punctuation = ";:,.!?¡¿—…\"«»\"\" ";
         let letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
         let letters_ipa = "ɑɐɒæɓʙβɔɕçɗɖðʤəɘɚɛɜɝɞɟʄɡɠɢʛɦɧħɥʜɨɪʝɭɬɫɮʟɱɯɰŋɳɲɴøɵɸθœɶʘɹɺɾɻʀʁɽʂʃʈʧʉʊʋⱱʌɣɤʍχʎʏʑʐʒʔʡʕʢǀǁǂǃˈˌːˑʼʴʰʱʲʷˠˤ˞↓↑→↗↘'̩'ᵻ";
+        let extra = "|‖";
 
-        let mut symbols: Vec<char> = Vec::new();
-        for c in pad.chars() {
-            symbols.push(c);
-        }
+        let mut symbols = Vec::new();
+        symbols.push(pad.chars().next().unwrap());
         for c in punctuation.chars() {
             symbols.push(c);
         }
@@ -26,6 +25,9 @@ impl TextCleaner {
             symbols.push(c);
         }
         for c in letters_ipa.chars() {
+            symbols.push(c);
+        }
+        for c in extra.chars() {
             symbols.push(c);
         }
 
