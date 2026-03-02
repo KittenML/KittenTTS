@@ -7,3 +7,4 @@ soundfile
 numpy
 huggingface_hub
 transformers
+torch
