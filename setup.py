@@ -40,6 +40,7 @@ setup(
         "huggingface_hub",
         "transformers",
         "torch",
+        "phonemizer-fork",
     ],
     keywords="text-to-speech, tts, speech-synthesis, neural-networks, onnx",
     project_urls={
