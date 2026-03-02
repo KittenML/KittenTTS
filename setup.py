@@ -39,6 +39,7 @@ setup(
         "numpy",
         "huggingface_hub",
         "transformers",
+        "torch",
     ],
     keywords="text-to-speech, tts, speech-synthesis, neural-networks, onnx",
     project_urls={
