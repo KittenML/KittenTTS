@@ -38,6 +38,7 @@ setup(
         "soundfile",
         "numpy",
         "huggingface_hub",
+        "transformers",
     ],
     keywords="text-to-speech, tts, speech-synthesis, neural-networks, onnx",
     project_urls={
