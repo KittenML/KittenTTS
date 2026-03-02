@@ -8,3 +8,4 @@ numpy
 huggingface_hub
 transformers
 torch
+phonemizer-fork
