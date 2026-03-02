@@ -27,7 +27,8 @@ dependencies = [
     "numpy",
     "huggingface_hub",
     "transformers",
-    "torch"
+    "torch",
+    "phonemizer-fork"
 ]
 
 [project.urls]
