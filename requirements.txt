@@ -1,7 +1,7 @@
 num2words
 spacy
 espeakng_loader
-misaki[en]
+git+https://github.com/hexgrad/misaki
 onnxruntime
 soundfile
 numpy
