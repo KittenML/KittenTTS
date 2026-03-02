@@ -26,7 +26,8 @@ dependencies = [
     "soundfile",
     "numpy",
     "huggingface_hub",
-    "transformers"
+    "transformers",
+    "torch"
 ]
 
 [project.urls]
