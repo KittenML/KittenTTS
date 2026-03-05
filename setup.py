@@ -33,7 +33,7 @@ setup(
         "num2words",
         "spacy",
         "espeakng_loader",
-        "misaki@git+https://github.com/createcandle/misaki",
+        #"misaki@git+https://github.com/createcandle/misaki",
         "onnxruntime",
         "soundfile",
         "numpy",
