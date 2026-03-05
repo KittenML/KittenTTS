@@ -31,7 +31,7 @@ setup(
     python_requires=">=3.8",
     install_requires=[
         "num2words",
-        "spacy",
+        #"spacy",
         "espeakng_loader",
         #"misaki@git+https://github.com/createcandle/misaki",
         "onnxruntime",
