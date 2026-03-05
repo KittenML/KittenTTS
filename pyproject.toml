@@ -19,7 +19,6 @@ classifiers = [
 ]
 dependencies = [
     "num2words",
-    "spacy",
     "espeakng_loader",
     "onnxruntime",
     "soundfile",
