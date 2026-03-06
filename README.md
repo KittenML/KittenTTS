@@ -1,5 +1,12 @@
 # Kitten TTS 😻
 
+THIS IS A MODIFIED VERSION
+- modified to be able to install on Python 3.13
+- modified to remove a dependency on Torch
+
+It was modified in order to explore using it in: 
+https://github.com/createcandle/voco
+
 <img width="607" height="255" alt="Screenshot 2026-02-18 at 8 33 04 PM" src="https://github.com/user-attachments/assets/f4646722-ba78-4b25-8a65-81bacee0d4f6" />
 
 

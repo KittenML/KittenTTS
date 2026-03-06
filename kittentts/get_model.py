@@ -34,7 +34,7 @@ class KittenTTS:
         Returns:
             Audio data as numpy array
         """
-        print(f"Generating audio for text: {text}")
+        #print(f"Generating audio for text: {text}")
         return self.model.generate(text, voice=voice, speed=speed, clean_text=clean_text)
     
     def generate_to_file(self, text, output_path, voice="expr-voice-5-m", speed=1.0, sample_rate=24000):
