@@ -195,6 +195,15 @@ _RE_DECADE   = re.compile(r"\b(\d{1,3})0s\b")
 # Leading decimal (no digit before the dot): .5, .75
 _RE_LEAD_DEC = re.compile(r"(?<!\d)\.([\d])")
 
+# Match standalone slash dates like D/M/YY or DD/MM/YYYY inside text (1–2 digit day/month; 2-digit or 4-digit year), guarded by non-digit boundaries.
+_RE_DATE_slash = re.compile(r"(?:(?<=^)|(?<=\D))(\d{1,2})/(\d{1,2})/(\d{2}|[1-9]\d{3})(?:(?=$)|(?=\D))")
+
+# Match standalone hyphen dates like D-M-YY or DD-MM-YYYY inside text (1–2 digit day/month; 2-digit or 4-digit year), guarded by non-digit boundaries.
+_RE_DATE_hyphen = re.compile(r"(?:(?<=^)|(?<=\D))(\d{1,2})-(\d{1,2})-(\d{2}|[1-9]\d{3})(?:(?=$)|(?=\D))")
+
+# Match standalone ISO dates like YYYY-M-D or YYYY-MM-DD inside text (4-digit year >=1000; 1–2 digit month/day), guarded by non-digit boundaries.
+_RE_DATE_ISO = re.compile(r"(?:(?<=^)|(?<=\D))([1-9]\d{3})-(\d{1,2})-(\d{1,2})(?:(?=$)|(?=\D))")
+
 
 # ─────────────────────────────────────────────
 # Expansion helpers
@@ -714,6 +723,111 @@ def remove_stopwords(text: str, stopwords: Optional[set] = None) -> str:
     return " ".join(t for t in tokens if t.lower() not in stopwords)
 
 
+def expand_dates(text: str) ->str:
+    
+    """
+    Expand numeric dates in text into spoken-word dates.
+
+    Handles:
+      - hyphen dates: DD/MM/YY, DD/MM/YYYY, MM/DD/YY, MM/DD/YYYY, 
+      - Slash dates: DD-MM-YY, DD-MM-YYYY, MM-DD-YY, MM-DD-YYYY
+      - ISO dates: YYYY-MM-DD
+
+    Ranges / defaults:
+      - Day: 1–31, Month: 1–12 (format-level validation only; no calendar validation like Feb 30)
+      - Year: 2 digits -> 2000–2099, 4 digits -> 1000–9999
+      - Ambiguous D/M vs M/D defaults to DD/MM unless one part > 12 (then that part is treated as day)
+
+    Output: "{ordinal_day} {MonthName} {year_in_words}" (e.g., 03/14/2022 -> 14th March twenty twenty-two).
+    
+    Examples:
+        03/14/2022 -> 14th March twenty twenty-two
+        2022-03-14 -> 14th March twenty twenty-two
+    """
+
+    day_mappings = {
+    1: '1st', 2: '2nd', 3: '3rd', 4: '4th', 5: '5th',
+    6: '6th', 7: '7th', 8: '8th', 9: '9th', 10: '10th',
+    11: '11th', 12: '12th', 13: '13th', 14: '14th', 15: '15th',
+    16: '16th', 17: '17th', 18: '18th', 19: '19th', 20: '20th',
+    21: '21st', 22: '22nd', 23: '23rd', 24: '24th', 25: '25th',
+    26: '26th', 27: '27th', 28: '28th', 29: '29th', 30: '30th',
+    31: '31st'
+    }
+    
+    month_mappings = month_mappings = {
+    1: "January",
+    2: "February",
+    3: "March",
+    4: "April",
+    5: "May",
+    6: "June",
+    7: "July",
+    8: "August",
+    9: "September",
+    10: "October",
+    11: "November",
+    12: "December",
+    }
+    
+    
+    def _replace_common(m: re.Match) -> str:
+        
+        final_arr = []
+        day = int(m.group(1))
+        month= int(m.group(2))
+        year = int(m.group(3))
+        
+        # validation
+        if(year<100):
+            year += 2000
+            
+        if (day ==0 ) or (month ==0 ):
+            return m.group(0)
+        
+        if  not( ( day<=31 and month<=12) or (month<=31 and day<=12)):
+            return m.group(0)    
+    
+        if(month>12):
+            temp = month 
+            month = day 
+            day = temp
+        
+        final_arr.append(day_mappings[day])
+        final_arr.append(month_mappings[month])
+        final_arr.append(number_to_words(year))
+
+        return " ".join(final_arr)
+
+    def _replace_iso(m: re.Match) -> str:
+        
+        final_arr = []
+        year = int(m.group(1))
+        month = int(m.group(2))
+        day = int(m.group(3))  
+        
+        if (day ==0 ) or (month ==0 ):
+            return m.group(0)
+        
+        if  not( ( day<=31 and month<=12) or (month<=31 and day<=12)):
+            return m.group(0)  
+
+        if(month>12):
+            temp = month 
+            month = day 
+            day = temp
+        
+        final_arr.append(day_mappings[day])
+        final_arr.append(month_mappings[month])
+        final_arr.append(number_to_words(year))
+        
+        return " ".join(final_arr)
+    
+    text = _RE_DATE_slash.sub(_replace_common, text)
+    text = _RE_DATE_hyphen.sub(_replace_common, text)
+    return _RE_DATE_ISO.sub(_replace_iso, text)
+
+
 # ─────────────────────────────────────────────
 # Pipeline helper
 # ─────────────────────────────────────────────
@@ -775,6 +889,8 @@ class TextPreprocessor:
 
     def process(self, text: str) -> str:
         cfg = self.config
+        
+        text = expand_dates(text)
 
         if cfg["normalize_unicode"]:
             text = normalize_unicode(text)
