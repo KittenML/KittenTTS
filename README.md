@@ -56,6 +56,10 @@ Kitten TTS is an open-source, lightweight text-to-speech library built on ONNX. 
 
 https://github.com/user-attachments/assets/d80120f2-c751-407e-a166-068dd1dd9e8d
 
+### Try it online
+
+Try Kitten TTS directly in your browser on [Hugging Face Spaces](https://huggingface.co/spaces/KittenML/KittenTTS-Demo).
+
 ## Quick Start
 
 ### Prerequisites
