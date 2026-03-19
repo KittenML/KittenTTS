@@ -4,10 +4,12 @@
   <img width="607" height="255" alt="Kitten TTS" src="https://github.com/user-attachments/assets/f4646722-ba78-4b25-8a65-81bacee0d4f6" />
 </p>
 
-[![Hugging Face Demo](https://img.shields.io/badge/Demo-Hugging%20Face%20Spaces-orange)](https://huggingface.co/spaces/KittenML/KittenTTS-Demo)
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.com/invite/VJ86W4SURW)
-[![Website](https://img.shields.io/badge/Website-kittenml.com-blue)](https://kittenml.com)
-[![License](https://img.shields.io/badge/License-Apache_2.0-green.svg)](LICENSE)
+<p align="center">
+  <a href="https://huggingface.co/spaces/KittenML/KittenTTS-Demo"><img src="https://img.shields.io/badge/Demo-Hugging%20Face%20Spaces-orange" alt="Hugging Face Demo"></a>
+  <a href="https://discord.com/invite/VJ86W4SURW"><img src="https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://kittenml.com"><img src="https://img.shields.io/badge/Website-kittenml.com-blue" alt="Website"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-green.svg" alt="License"></a>
+</p>
 
 > **New:** Kitten TTS v0.8 is out -- 15M, 40M, and 80M parameter models now available.
 
