@@ -1,5 +1,7 @@
 # Kitten TTS
 
+[English](README.md) | [中文版](README.zh.md)
+
 <p align="center">
   <img width="607" height="255" alt="Kitten TTS" src="https://github.com/user-attachments/assets/f4646722-ba78-4b25-8a65-81bacee0d4f6" />
 </p>
