@@ -78,7 +78,7 @@ class TextCleaner:
 
 
 class KittenTTS_1_Onnx:
-    def __init__(self, model_path="kitten_tts_nano_preview.onnx", voices_path="voices.npz", speed_priors={}, voice_aliases={}):
+    def __init__(self, model_path="kitten_tts_nano_preview.onnx", voices_path="voices.npz", speed_priors={}, voice_aliases={}, backend=None):
         """Initialize KittenTTS with model and voice data.
         
         Args:
@@ -87,7 +87,19 @@ class KittenTTS_1_Onnx:
         """
         self.model_path = model_path
         self.voices = np.load(voices_path) 
-        self.session = ort.InferenceSession(model_path)
+        providers = []
+        if backend == "cuda":
+            providers = ["CUDAExecutionProvider"]
+        elif backend == "amd_gpu":
+            providers = ["ROCMExecutionProvider"]
+        elif backend == "cpu":
+            providers = ["CPUExecutionProvider"]
+        elif backend is None:
+            providers = []
+        else:
+            raise ValueError("Unsupported backend")
+        
+        self.session = ort.InferenceSession(model_path, providers=providers)
         
         self.phonemizer = phonemizer.backend.EspeakBackend(
             language="en-us", preserve_punctuation=True, with_stress=True

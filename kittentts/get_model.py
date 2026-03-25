@@ -7,7 +7,7 @@ from .onnx_model import KittenTTS_1_Onnx
 class KittenTTS:
     """Main KittenTTS class for text-to-speech synthesis."""
     
-    def __init__(self, model_name="KittenML/kitten-tts-nano-0.8", cache_dir=None):
+    def __init__(self, model_name="KittenML/kitten-tts-nano-0.8", cache_dir=None, backend=None):
         """Initialize KittenTTS with a model from Hugging Face.
         
         Args:
@@ -21,7 +21,7 @@ class KittenTTS:
         else:
             repo_id = model_name
             
-        self.model = download_from_huggingface(repo_id=repo_id, cache_dir=cache_dir)
+        self.model = download_from_huggingface(repo_id=repo_id, cache_dir=cache_dir, backend=backend)
     
     def generate(self, text, voice="expr-voice-5-m", speed=1.0, clean_text=False):
         """Generate audio from text.
@@ -55,7 +55,7 @@ class KittenTTS:
         return self.model.all_voice_names
 
 
-def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=None):
+def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=None, backend=None):
     """Download model files from Hugging Face repository.
     
     Args:
@@ -93,11 +93,11 @@ def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=
     )
     
     # Instantiate and return model
-    model = KittenTTS_1_Onnx(model_path=model_path, voices_path=voices_path, speed_priors=config.get("speed_priors", {}) , voice_aliases=config.get("voice_aliases", {}))
+    model = KittenTTS_1_Onnx(model_path=model_path, voices_path=voices_path, speed_priors=config.get("speed_priors", {}) , voice_aliases=config.get("voice_aliases", {}), backend=backend)
     
     return model
 
 
-def get_model(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=None):
+def get_model(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=None, backend=None):
     """Get a KittenTTS model (legacy function for backward compatibility)."""
-    return KittenTTS(repo_id, cache_dir)
+    return KittenTTS(repo_id, cache_dir, backend=backend)
