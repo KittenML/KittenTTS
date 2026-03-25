@@ -25,6 +25,10 @@ Network Trash Folder
 Temporary Items
 .apdisk
 
+.claude/
+.venv*
+
+*.wav
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
