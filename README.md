@@ -102,7 +102,7 @@ print(model.available_voices)
 ### Using with GPU
 
 ```
-pip install -r requirements_gpu.txt
+pip install -e .[gpu,nvidia]
 ```
 
 ```python
