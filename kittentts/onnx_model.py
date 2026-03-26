@@ -169,6 +169,17 @@ class KittenTTS_1_Onnx:
             out_chunks.append(self.generate_single_chunk(text_chunk, voice, speed))
         return np.concatenate(out_chunks, axis=-1)
 
+    def generate_stream(self, text: str, voice: str = "expr-voice-5-m", speed: float = 1.0, clean_text: bool = True):
+        """Generate audio chunk-by-chunk as a generator.
+
+        Yields:
+            numpy.ndarray: Audio data for each text chunk.
+        """
+        if clean_text:
+            text = self.preprocessor(text)
+        for text_chunk in chunk_text(text):
+            yield self.generate_single_chunk(text_chunk, voice, speed)
+
     def generate_single_chunk(self, text: str, voice: str = "expr-voice-5-m", speed: float = 1.0) -> np.ndarray:
         """Synthesize speech from text.
         

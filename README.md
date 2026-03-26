@@ -99,6 +99,18 @@ print(model.available_voices)
 # ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
 ```
 
+### Using with GPU
+
+```
+pip install -r requirements_gpu.txt
+```
+
+```python
+m = KittenTTS("KittenML/kitten-tts-mini-0.8", backend="cuda")
+```
+
+Check out `example_cuda.py` 
+
 ## API Reference
 
 ### `KittenTTS(model_name, cache_dir=None)`

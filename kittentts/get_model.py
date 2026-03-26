@@ -37,7 +37,15 @@ class KittenTTS:
         """
         print(f"Generating audio for text: {text}")
         return self.model.generate(text, voice=voice, speed=speed, clean_text=clean_text)
-    
+
+    def generate_stream(self, text, voice="expr-voice-5-m", speed=1.0, clean_text=False):
+        """Generate audio as a stream of chunks.
+
+        Yields:
+            numpy.ndarray: Audio data for each text chunk.
+        """
+        yield from self.model.generate_stream(text, voice=voice, speed=speed, clean_text=clean_text)
+
     def generate_to_file(self, text, output_path, voice="expr-voice-5-m", speed=1.0, sample_rate=24000):
         """Generate audio from text and save to file.
         
@@ -102,6 +110,6 @@ def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=
     return model
 
 
-def get_model(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=None):
+def get_model(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=None, backend=None):
     """Get a KittenTTS model (legacy function for backward compatibility)."""
-    return KittenTTS(repo_id, cache_dir)
+    return KittenTTS(repo_id, cache_dir, backend=backend)
