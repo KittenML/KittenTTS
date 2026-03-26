@@ -7,12 +7,13 @@ from .onnx_model import KittenTTS_1_Onnx
 class KittenTTS:
     """Main KittenTTS class for text-to-speech synthesis."""
     
-    def __init__(self, model_name="KittenML/kitten-tts-nano-0.8", cache_dir=None):
+    def __init__(self, model_name="KittenML/kitten-tts-nano-0.8", cache_dir=None, language="en"):
         """Initialize KittenTTS with a model from Hugging Face.
-        
+
         Args:
             model_name: Hugging Face repository ID or model name
             cache_dir: Directory to cache downloaded files
+            language: Language code ("en" or "ko")
         """
         # Handle different model name formats
         if "/" not in model_name:
@@ -20,8 +21,8 @@ class KittenTTS:
             repo_id = f"KittenML/{model_name}"
         else:
             repo_id = model_name
-            
-        self.model = download_from_huggingface(repo_id=repo_id, cache_dir=cache_dir)
+
+        self.model = download_from_huggingface(repo_id=repo_id, cache_dir=cache_dir, language=language)
     
     def generate(self, text, voice="expr-voice-5-m", speed=1.0, clean_text=False):
         """Generate audio from text.
@@ -55,7 +56,7 @@ class KittenTTS:
         return self.model.all_voice_names
 
 
-def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=None):
+def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=None, language=None):
     """Download model files from Hugging Face repository.
     
     Args:
@@ -92,8 +93,11 @@ def download_from_huggingface(repo_id="KittenML/kitten-tts-nano-0.1", cache_dir=
         cache_dir=cache_dir
     )
     
+    # language: explicit arg > config.json field > default "en"
+    resolved_language = language or config.get("language", "en")
+
     # Instantiate and return model
-    model = KittenTTS_1_Onnx(model_path=model_path, voices_path=voices_path, speed_priors=config.get("speed_priors", {}) , voice_aliases=config.get("voice_aliases", {}))
+    model = KittenTTS_1_Onnx(model_path=model_path, voices_path=voices_path, speed_priors=config.get("speed_priors", {}), voice_aliases=config.get("voice_aliases", {}), language=resolved_language)
     
     return model
 

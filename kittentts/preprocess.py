@@ -846,6 +846,102 @@ class TextPreprocessor:
 # Quick demo
 # ─────────────────────────────────────────────
 
+class KoreanTextPreprocessor:
+    """Korean text normalizer: expands numbers, currency, units before phonemization."""
+
+    # Sino-Korean digit units
+    _SINO = ['', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구']
+    _SINO_UNIT = ['', '십', '백', '천']
+    _SINO_LARGE = ['', '만', '억', '조']
+
+    # Native Korean digits (used for counters / small numbers when needed)
+    _NATIVE = ['', '하나', '둘', '셋', '넷', '다섯', '여섯', '일곱', '여덟', '아홉']
+
+    _CURRENCY_KO = {'₩': '원', '$': '달러', '€': '유로', '£': '파운드', '¥': '엔'}
+
+    _UNITS_KO = {
+        'km': '킬로미터', 'm': '미터', 'cm': '센티미터', 'mm': '밀리미터',
+        'kg': '킬로그램', 'g': '그램', 'mg': '밀리그램',
+        'L': '리터', 'ml': '밀리리터',
+        'GHz': '기가헤르츠', 'MHz': '메가헤르츠', 'Hz': '헤르츠',
+        'GB': '기가바이트', 'MB': '메가바이트', 'KB': '킬로바이트',
+        'ms': '밀리초', 's': '초',
+        '°C': '도', '°F': '도', '%': '퍼센트',
+    }
+
+    def __call__(self, text: str) -> str:
+        import re, unicodedata
+        text = unicodedata.normalize('NFC', text)
+        text = re.sub(r'<[^>]+>', '', text)                      # strip HTML
+        text = re.sub(r'https?://\S+', '', text)                 # strip URLs
+        text = self._expand_currency(text)
+        text = self._expand_units(text)
+        text = self._expand_numbers(text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+
+    def _int_to_korean(self, n: int) -> str:
+        """Convert non-negative integer to Sino-Korean reading."""
+        if n == 0:
+            return '영'
+        result = ''
+        n = abs(n)
+        large_idx = 0
+        while n > 0:
+            chunk = n % 10000
+            if chunk:
+                chunk_str = ''
+                for pos in range(3, -1, -1):
+                    d = (chunk // (10 ** pos)) % 10
+                    if d:
+                        digit = '' if (d == 1 and pos > 0) else self._SINO[d]
+                        chunk_str += digit + self._SINO_UNIT[pos]
+                result = chunk_str + self._SINO_LARGE[large_idx] + result
+            large_idx += 1
+            n //= 10000
+        return result
+
+    def _expand_currency(self, text: str) -> str:
+        import re
+        for sym, name in self._CURRENCY_KO.items():
+            pattern = re.escape(sym) + r'([\d,]+)(?:\.([\d]+))?'
+            def repl(m, name=name):
+                integer = int(m.group(1).replace(',', ''))
+                frac = m.group(2)
+                s = self._int_to_korean(integer) + ' ' + name
+                if frac:
+                    s += ' ' + self._int_to_korean(int(frac)) + ' 전'
+                return s
+            text = re.sub(pattern, repl, text)
+        return text
+
+    def _expand_units(self, text: str) -> str:
+        import re
+        # Sort by length desc to match longer units first (e.g. GHz before Hz)
+        for unit, name in sorted(self._UNITS_KO.items(), key=lambda x: -len(x[0])):
+            pattern = r'([\d,]+(?:\.\d+)?)' + re.escape(unit) + r'(?=\s|$|[,.])'
+            def repl(m, name=name):
+                num_str = m.group(1).replace(',', '')
+                try:
+                    n = int(num_str)
+                    num_ko = self._int_to_korean(n)
+                except ValueError:
+                    num_ko = num_str
+                return num_ko + ' ' + name
+            text = re.sub(pattern, repl, text)
+        return text
+
+    def _expand_numbers(self, text: str) -> str:
+        import re
+        def repl(m):
+            num_str = m.group(0).replace(',', '')
+            try:
+                return self._int_to_korean(int(num_str))
+            except ValueError:
+                return num_str
+        return re.sub(r'\d[\d,]*', repl, text)
+
+
 if __name__ == "__main__":
     pp = TextPreprocessor()
 

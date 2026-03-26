@@ -3,7 +3,7 @@ import numpy as np
 import phonemizer
 import soundfile as sf
 import onnxruntime as ort
-from .preprocess import TextPreprocessor
+from .preprocess import TextPreprocessor, KoreanTextPreprocessor
 
 def basic_english_tokenize(text):
     """Basic English tokenizer that splits on whitespace and punctuation."""
@@ -78,33 +78,55 @@ class TextCleaner:
 
 
 class KittenTTS_1_Onnx:
-    def __init__(self, model_path="kitten_tts_nano_preview.onnx", voices_path="voices.npz", speed_priors={}, voice_aliases={}):
+    def __init__(self, model_path="kitten_tts_nano_preview.onnx", voices_path="voices.npz", speed_priors={}, voice_aliases={}, language="en"):
         """Initialize KittenTTS with model and voice data.
-        
+
         Args:
             model_path: Path to the ONNX model file
             voices_path: Path to the voices NPZ file
+            language: Language code ("en" or "ko")
         """
         self.model_path = model_path
-        self.voices = np.load(voices_path) 
+        self.language = language
+        self.voices = np.load(voices_path)
         self.session = ort.InferenceSession(model_path)
-        
-        self.phonemizer = phonemizer.backend.EspeakBackend(
-            language="en-us", preserve_punctuation=True, with_stress=True
-        )
+
+        if language == "ko":
+            from g2pk import G2p
+            self._g2p = G2p()
+            self.phonemizer = phonemizer.backend.EspeakBackend(
+                language="ko", preserve_punctuation=True, with_stress=False
+            )
+            self._phonemize = self._phonemize_ko
+            self.preprocessor = KoreanTextPreprocessor()
+        else:
+            self._g2p = None
+            self.phonemizer = phonemizer.backend.EspeakBackend(
+                language="en-us", preserve_punctuation=True, with_stress=True
+            )
+            self._phonemize = self._phonemize_en
+            self.preprocessor = TextPreprocessor(remove_punctuation=False)
+
         self.text_cleaner = TextCleaner()
         self.speed_priors = speed_priors
-        
+
         # Available voices
         self.available_voices = [
-            'expr-voice-2-m', 'expr-voice-2-f', 'expr-voice-3-m', 'expr-voice-3-f', 
+            'expr-voice-2-m', 'expr-voice-2-f', 'expr-voice-3-m', 'expr-voice-3-f',
             'expr-voice-4-m', 'expr-voice-4-f', 'expr-voice-5-m', 'expr-voice-5-f'
         ]
         self.all_voice_names = ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
         self.voice_aliases = voice_aliases
-
-        self.preprocessor = TextPreprocessor(remove_punctuation=False)
     
+    def _phonemize_en(self, text: str) -> str:
+        """Convert English text to IPA via espeak."""
+        return self.phonemizer.phonemize([text])[0]
+
+    def _phonemize_ko(self, text: str) -> str:
+        """Convert Korean text to IPA via g2pk (phonological normalization) + espeak ko."""
+        normalized = self._g2p(text)
+        return self.phonemizer.phonemize([normalized])[0]
+
     def _prepare_inputs(self, text: str, voice: str, speed: float = 1.0) -> dict:
         """Prepare ONNX model inputs from text and voice parameters."""
         if voice in self.voice_aliases:
@@ -112,12 +134,12 @@ class KittenTTS_1_Onnx:
 
         if voice not in self.available_voices:
             raise ValueError(f"Voice '{voice}' not available. Choose from: {self.available_voices}")
-        
+
         if voice in self.speed_priors:
             speed = speed * self.speed_priors[voice]
-        
+
         # Phonemize the input text
-        phonemes_list = self.phonemizer.phonemize([text])
+        phonemes_list = [self._phonemize(text)]
         
         # Process phonemes to get token IDs
         phonemes = basic_english_tokenize(phonemes_list[0])
