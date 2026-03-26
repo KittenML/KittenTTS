@@ -32,7 +32,7 @@ setup(
         "num2words",
         "spacy",
         "espeakng_loader",
-        "misaki[en]>=0.9.4",
+        "phonemizer",
         "onnxruntime",
         "soundfile",
         "numpy",

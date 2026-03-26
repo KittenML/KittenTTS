@@ -1,4 +1,8 @@
-from misaki import en, espeak
+import os
+import espeakng_loader
+from phonemizer.backend.espeak.wrapper import EspeakWrapper
+EspeakWrapper.set_library(espeakng_loader.get_library_path())
+os.environ['ESPEAK_DATA_PATH'] = espeakng_loader.get_data_path()
 import numpy as np
 import phonemizer
 import soundfile as sf
