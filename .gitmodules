@@ -1,0 +1,3 @@
+[submodule "kittentts-rs/crates/espeak-ng-sys/espeak-ng"]
+	path = kittentts-rs/crates/espeak-ng-sys/espeak-ng
+	url = https://github.com/espeak-ng/espeak-ng
