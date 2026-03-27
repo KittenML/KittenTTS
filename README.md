@@ -73,7 +73,7 @@ Try Kitten TTS directly in your browser on [Hugging Face Spaces](https://hugging
 pip install https://github.com/KittenML/KittenTTS/releases/download/0.8.1/kittentts-0.8.1-py3-none-any.whl
 ```
 
-### Basic Usage
+### API Usage
 
 ```python
 from kittentts import KittenTTS
@@ -83,6 +83,12 @@ audio = model.generate("This high-quality TTS model runs without a GPU.", voice=
 
 import soundfile as sf
 sf.write("output.wav", audio, 24000)
+```
+
+### CLI usage
+
+```
+kittentts --output output.wav --text "This high quality TTS model works without a GPU"
 ```
 
 ### Advanced Usage
