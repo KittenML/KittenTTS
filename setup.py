@@ -29,7 +29,6 @@ setup(
     ],
     python_requires=">=3.8",
     install_requires=[
-        "num2words",
         "espeakng_loader",
         "phonemizer",
         "onnxruntime",

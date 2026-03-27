@@ -18,7 +18,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "num2words",
     "espeakng_loader",
     "phonemizer",
     "onnxruntime",

@@ -1,4 +1,3 @@
-num2words
 espeakng_loader
 phonemizer
 onnxruntime-gpu
