@@ -1,5 +1,4 @@
 num2words
-spacy
 espeakng_loader
 phonemizer
 onnxruntime
