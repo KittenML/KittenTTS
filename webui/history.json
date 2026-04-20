@@ -1,0 +1,47 @@
+[
+  {
+    "id": "ac570fca-72f7-4aa9-9f24-f5801b45a4df",
+    "text": "This is a batch test message. It will be added to the task queue and processed in the background.",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 2.0,
+    "status": "completed",
+    "audio_file": "ac570fca-72f7-4aa9-9f24-f5801b45a4df.wav",
+    "created_at": "2026-04-20T18:30:33.216799",
+    "completed_at": "2026-04-20T18:30:33.216799"
+  },
+  {
+    "id": "45e127e1-25be-4411-89ca-8ab228cb2810",
+    "text": "This is a batch test message. It will be added to the task queue and processed in the background.",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 1.4,
+    "status": "completed",
+    "audio_file": "45e127e1-25be-4411-89ca-8ab228cb2810.wav",
+    "created_at": "2026-04-20T18:30:20.507877",
+    "completed_at": "2026-04-20T18:30:20.507877"
+  },
+  {
+    "id": "cbc3ff0f-c2b2-4a27-98c4-28ac87187485",
+    "text": "This is a batch test message. It will be added to the task queue and processed in the background.",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "clean_text": true,
+    "status": "completed",
+    "created_at": "2026-04-20T18:27:37.313439",
+    "audio_file": "cbc3ff0f-c2b2-4a27-98c4-28ac87187485.wav",
+    "completed_at": "2026-04-20T18:27:44.202011"
+  },
+  {
+    "id": "641a77d3-231f-410d-bca6-8f6705e43ee1",
+    "text": "Hello, this is a test of KittenTTS WebUI. The quick brown fox jumps over the lazy dog.",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "641a77d3-231f-410d-bca6-8f6705e43ee1.wav",
+    "created_at": "2026-04-20T18:27:19.889696",
+    "completed_at": "2026-04-20T18:27:19.889696"
+  }
+]
