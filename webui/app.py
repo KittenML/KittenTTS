@@ -9,6 +9,18 @@ from kittentts import KittenTTS
 
 app = Flask(__name__)
 
+# 禁用模板缓存，确保每次都加载最新的模板
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
+# 确保模板不会被缓存
+@app.after_request
+def add_header(response):
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 AUDIO_DIR = os.path.join(BASE_DIR, 'static', 'audio')
 HISTORY_FILE = os.path.join(BASE_DIR, 'history.json')

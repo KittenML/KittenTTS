@@ -11,11 +11,50 @@
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-card: #ffffff;
+            --text-primary: #333333;
+            --text-secondary: #555555;
+            --text-tertiary: #888888;
+            --border-color: #e0e0e0;
+            --input-bg: #fafafa;
+            --input-focus-bg: #ffffff;
+            --card-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            --tab-bg: #f0f0f0;
+            --tab-active-bg: #ffffff;
+            --stat-bg: #f8f9ff;
+            --audio-player-bg: #f8f9ff;
+            --range-bg: #e0e0e0;
+            --checkbox-text: #555555;
+            --header-text: #ffffff;
+        }
+
+        body.dark-mode {
+            --bg-primary: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            --bg-card: #1e1e2f;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --text-tertiary: #888888;
+            --border-color: #3a3a4a;
+            --input-bg: #2a2a3a;
+            --input-focus-bg: #3a3a4a;
+            --card-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            --tab-bg: #2a2a3a;
+            --tab-active-bg: #3a3a4a;
+            --stat-bg: #2a2a3a;
+            --audio-player-bg: #2a2a3a;
+            --range-bg: #3a3a4a;
+            --checkbox-text: #b0b0b0;
+            --header-text: #e0e0e0;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg-primary);
             min-height: 100vh;
-            color: #333;
+            color: var(--text-primary);
+            transition: background 0.3s ease;
         }
 
         .container {
@@ -26,8 +65,9 @@
 
         header {
             text-align: center;
-            color: white;
+            color: var(--header-text);
             margin-bottom: 30px;
+            transition: color 0.3s ease;
         }
 
         header h1 {
@@ -48,22 +88,24 @@
         }
 
         .card {
-            background: white;
+            background: var(--bg-card);
             border-radius: 16px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            box-shadow: var(--card-shadow);
             padding: 24px;
             margin-bottom: 20px;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
         }
 
         .card h2 {
             font-size: 1.3rem;
-            color: #333;
+            color: var(--text-primary);
             margin-bottom: 20px;
             padding-bottom: 10px;
-            border-bottom: 2px solid #f0f0f0;
+            border-bottom: 2px solid var(--border-color);
             display: flex;
             align-items: center;
             gap: 10px;
+            transition: color 0.3s ease, border-color 0.3s ease;
         }
 
         .card h2 span {
@@ -78,7 +120,8 @@
             display: block;
             font-weight: 600;
             margin-bottom: 8px;
-            color: #555;
+            color: var(--text-secondary);
+            transition: color 0.3s ease;
         }
 
         .form-group input[type="text"],
@@ -87,11 +130,12 @@
         .form-group textarea {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--border-color);
             border-radius: 8px;
             font-size: 1rem;
-            transition: border-color 0.3s, box-shadow 0.3s;
-            background: #fafafa;
+            transition: border-color 0.3s, box-shadow 0.3s, background 0.3s ease, color 0.3s ease;
+            background: var(--input-bg);
+            color: var(--text-primary);
         }
 
         .form-group input[type="text"]:focus,
@@ -101,7 +145,7 @@
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-            background: white;
+            background: var(--input-focus-bg);
         }
 
         .form-group textarea {
@@ -126,9 +170,10 @@
             flex: 1;
             height: 8px;
             border-radius: 4px;
-            background: #e0e0e0;
+            background: var(--range-bg);
             outline: none;
             -webkit-appearance: none;
+            transition: background 0.3s ease;
         }
 
         .range-container input[type="range"]::-webkit-slider-thumb {
@@ -149,6 +194,12 @@
             background: #f0f2ff;
             padding: 4px 8px;
             border-radius: 4px;
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        body.dark-mode .range-value {
+            background: #2a2a4a;
+            color: #8a9aff;
         }
 
         .btn {
@@ -175,12 +226,13 @@
         }
 
         .btn-secondary {
-            background: #f0f0f0;
-            color: #555;
+            background: var(--tab-bg);
+            color: var(--text-secondary);
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
         .btn-secondary:hover:not(:disabled) {
-            background: #e0e0e0;
+            background: var(--border-color);
         }
 
         .btn:disabled {
@@ -197,9 +249,10 @@
         .audio-player {
             margin-top: 20px;
             padding: 20px;
-            background: #f8f9ff;
+            background: var(--audio-player-bg);
             border-radius: 12px;
             display: none;
+            transition: background 0.3s ease;
         }
 
         .audio-player.show {
@@ -216,7 +269,8 @@
             justify-content: space-between;
             align-items: center;
             font-size: 0.9rem;
-            color: #666;
+            color: var(--text-tertiary);
+            transition: color 0.3s ease;
         }
 
         .status-badge {
@@ -249,10 +303,11 @@
 
         .task-item {
             padding: 16px;
-            background: #fafafa;
+            background: var(--input-bg);
             border-radius: 8px;
             margin-bottom: 10px;
             border-left: 4px solid #667eea;
+            transition: background 0.3s ease;
         }
 
         .task-item:last-child {
@@ -268,7 +323,7 @@
 
         .task-text {
             font-size: 0.9rem;
-            color: #555;
+            color: var(--text-secondary);
             margin-bottom: 8px;
             line-height: 1.4;
             overflow: hidden;
@@ -276,13 +331,21 @@
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
+            transition: color 0.3s ease;
         }
 
         .task-meta {
             display: flex;
             gap: 15px;
             font-size: 0.8rem;
-            color: #888;
+            color: var(--text-tertiary);
+            transition: color 0.3s ease;
+        }
+
+        .task-time {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            transition: color 0.3s ease;
         }
 
         .task-actions {
@@ -299,7 +362,8 @@
         .empty-state {
             text-align: center;
             padding: 40px 20px;
-            color: #999;
+            color: var(--text-tertiary);
+            transition: color 0.3s ease;
         }
 
         .empty-state-icon {
@@ -310,9 +374,10 @@
         .tabs {
             display: flex;
             margin-bottom: 20px;
-            background: #f0f0f0;
+            background: var(--tab-bg);
             border-radius: 8px;
             padding: 4px;
+            transition: background 0.3s ease;
         }
 
         .tab {
@@ -323,13 +388,14 @@
             cursor: pointer;
             font-weight: 500;
             transition: all 0.3s;
-            color: #666;
+            color: var(--text-tertiary);
         }
 
         .tab.active {
-            background: white;
+            background: var(--tab-active-bg);
             color: #667eea;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: background 0.3s ease, color 0.3s ease;
         }
 
         .tab-content {
@@ -392,43 +458,46 @@
 
         .voice-option {
             padding: 12px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid var(--border-color);
             border-radius: 8px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s;
-            background: #fafafa;
+            background: var(--input-bg);
         }
 
         .voice-option:hover {
             border-color: #667eea;
-            background: #f8f9ff;
+            background: var(--audio-player-bg);
         }
 
         .voice-option.selected {
             border-color: #667eea;
-            background: #f0f2ff;
+            background: var(--stat-bg);
             box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
         }
 
         .voice-name {
             font-weight: 600;
-            color: #333;
+            color: var(--text-primary);
             margin-bottom: 4px;
+            transition: color 0.3s ease;
         }
 
         .voice-desc {
             font-size: 0.8rem;
-            color: #888;
+            color: var(--text-tertiary);
+            transition: color 0.3s ease;
         }
 
         .stats-bar {
             display: flex;
             gap: 20px;
             padding: 15px;
-            background: #f8f9ff;
+            background: var(--stat-bg);
             border-radius: 8px;
             margin-bottom: 20px;
+            transition: background 0.3s ease;
         }
 
         .stat-item {
@@ -440,11 +509,17 @@
             font-size: 1.5rem;
             font-weight: 700;
             color: #667eea;
+            transition: color 0.3s ease;
+        }
+
+        body.dark-mode .stat-value {
+            color: #8a9aff;
         }
 
         .stat-label {
             font-size: 0.85rem;
-            color: #888;
+            color: var(--text-tertiary);
+            transition: color 0.3s ease;
         }
 
         .checkbox-group {
@@ -457,6 +532,124 @@
             width: 18px;
             height: 18px;
             cursor: pointer;
+        }
+
+        .checkbox-group label {
+            color: var(--checkbox-text);
+            transition: color 0.3s ease;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+            box-shadow: var(--card-shadow);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            border-color: #667eea;
+        }
+
+        .progress-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--audio-player-bg);
+            border-radius: 12px;
+            display: none;
+            transition: background 0.3s ease;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: var(--range-bg);
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            transition: background 0.3s ease;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 6px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            transition: color 0.3s ease;
+        }
+
+        .file-upload-container {
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--audio-player-bg);
+            border-radius: 12px;
+            border: 2px dashed var(--border-color);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload-container:hover,
+        .file-upload-container.dragover {
+            border-color: #667eea;
+            background: var(--stat-bg);
+        }
+
+        .file-upload-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .file-upload-text {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            transition: color 0.3s ease;
+        }
+
+        .file-upload-input {
+            display: none;
+        }
+
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: var(--input-bg);
+            border-radius: 8px;
+            display: none;
+            transition: background 0.3s ease;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        .file-info-text {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            transition: color 0.3s ease;
         }
 
         @media (max-width: 900px) {
@@ -475,6 +668,8 @@
     </style>
 </head>
 <body>
+    <button class="theme-toggle" id="themeToggle" title="切换主题">🌙</button>
+    
     <div class="container">
         <header>
             <h1>🐱 KittenTTS WebUI</h1>
@@ -521,6 +716,23 @@
                     <div class="form-group">
                         <label for="textInput">输入文本</label>
                         <textarea id="textInput" placeholder="请输入要转换为语音的文本..."></textarea>
+                    </div>
+
+                    <div class="file-upload-container" id="fileUploadContainer">
+                        <div class="file-upload-icon">📁</div>
+                        <div class="file-upload-text">点击或拖拽 .txt 文件到此处上传</div>
+                        <input type="file" id="fileUploadInput" class="file-upload-input" accept=".txt">
+                    </div>
+
+                    <div class="file-info" id="fileInfo">
+                        <div class="file-info-text" id="fileInfoText"></div>
+                    </div>
+
+                    <div class="progress-container" id="progressContainer">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">准备中...</div>
                     </div>
 
                     <div class="btn-group">
@@ -606,10 +818,133 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        // 全局变量
         let currentAudioUrl = null;
         let selectedVoice = 'Bruno';
         let statusUpdateInterval = null;
+        let isDarkMode = false;
 
+        // 主题切换功能
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            isDarkMode = savedTheme === 'dark';
+            updateTheme();
+        }
+
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+            updateTheme();
+        }
+
+        function updateTheme() {
+            const body = document.body;
+            const themeToggle = document.getElementById('themeToggle');
+            
+            if (isDarkMode) {
+                body.classList.add('dark-mode');
+                themeToggle.textContent = '☀️';
+                themeToggle.title = '切换到浅色模式';
+            } else {
+                body.classList.remove('dark-mode');
+                themeToggle.textContent = '🌙';
+                themeToggle.title = '切换到深色模式';
+            }
+        }
+
+        // 进度条功能
+        function showProgress(progress, text) {
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            progressContainer.classList.add('show');
+            progressFill.style.width = progress + '%';
+            progressText.textContent = text;
+        }
+
+        function hideProgress() {
+            const progressContainer = document.getElementById('progressContainer');
+            progressContainer.classList.remove('show');
+        }
+
+        function updateProgress(progress, text) {
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            
+            progressFill.style.width = progress + '%';
+            progressText.textContent = text;
+        }
+
+        // 文件上传功能
+        function initFileUpload() {
+            const uploadContainer = document.getElementById('fileUploadContainer');
+            const fileInput = document.getElementById('fileUploadInput');
+            const fileInfo = document.getElementById('fileInfo');
+            const fileInfoText = document.getElementById('fileInfoText');
+
+            uploadContainer.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', function(e) {
+                handleFileSelect(e.target.files[0]);
+            });
+
+            uploadContainer.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadContainer.classList.add('dragover');
+            });
+
+            uploadContainer.addEventListener('dragleave', function() {
+                uploadContainer.classList.remove('dragover');
+            });
+
+            uploadContainer.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadContainer.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileSelect(files[0]);
+                }
+            });
+        }
+
+        function handleFileSelect(file) {
+            const fileInfo = document.getElementById('fileInfo');
+            const fileInfoText = document.getElementById('fileInfoText');
+            const textInput = document.getElementById('textInput');
+
+            if (!file) {
+                return;
+            }
+
+            if (!file.name.toLowerCase().endsWith('.txt')) {
+                showToast('请上传 .txt 格式的文本文件', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const content = e.target.result;
+                textInput.value = content;
+                
+                fileInfoText.textContent = '已加载文件: ' + file.name + ' (' + file.size + ' 字节)';
+                fileInfo.classList.add('show');
+                
+                showToast('文件加载成功！文本已填入输入框', 'success');
+            };
+
+            reader.onerror = function() {
+                showToast('文件读取失败', 'error');
+            };
+
+            reader.readAsText(file);
+        }
+
+        // 语音选项
         const voices = [
             { id: 'Bella', name: 'Bella', desc: '女声' },
             { id: 'Jasper', name: 'Jasper', desc: '男声' },
@@ -623,37 +958,45 @@
 
         function initVoiceGrid() {
             const grid = document.getElementById('voiceGrid');
-            grid.innerHTML = voices.map(voice => `
-                <div class="voice-option ${voice.id === selectedVoice ? 'selected' : ''}" 
-                     data-voice="${voice.id}">
-                    <div class="voice-name">${voice.name}</div>
-                    <div class="voice-desc">${voice.desc}</div>
-                </div>
-            `).join('');
+            grid.innerHTML = voices.map(function(voice) {
+                return `
+                    <div class="voice-option ${voice.id === selectedVoice ? 'selected' : ''}" 
+                         data-voice="${voice.id}">
+                        <div class="voice-name">${voice.name}</div>
+                        <div class="voice-desc">${voice.desc}</div>
+                    </div>
+                `;
+            }).join('');
 
-            grid.querySelectorAll('.voice-option').forEach(opt => {
-                opt.addEventListener('click', () => {
-                    grid.querySelectorAll('.voice-option').forEach(o => o.classList.remove('selected'));
+            grid.querySelectorAll('.voice-option').forEach(function(opt) {
+                opt.addEventListener('click', function() {
+                    grid.querySelectorAll('.voice-option').forEach(function(o) {
+                        o.classList.remove('selected');
+                    });
                     opt.classList.add('selected');
                     selectedVoice = opt.dataset.voice;
                 });
             });
         }
 
-        function showToast(message, type = 'success') {
+        // Toast提示
+        function showToast(message, type) {
+            if (type === undefined) type = 'success';
             const toast = document.getElementById('toast');
             toast.textContent = message;
-            toast.className = `toast ${type} show`;
-            setTimeout(() => {
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(function() {
                 toast.classList.remove('show');
             }, 3000);
         }
 
+        // 时间格式化
         function formatTime(isoString) {
             const date = new Date(isoString);
             return date.toLocaleString('zh-CN');
         }
 
+        // 状态徽章类
         function getStatusBadgeClass(status) {
             const map = {
                 'pending': 'status-pending',
@@ -674,6 +1017,7 @@
             return map[status] || status;
         }
 
+        // 生成音频
         async function generateAudio() {
             const text = document.getElementById('textInput').value.trim();
             if (!text) {
@@ -686,7 +1030,30 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="loading-spinner"></span> 生成中...';
 
+            let progressInterval = null;
+            let currentProgress = 0;
+
             try {
+                showProgress(5, '正在准备生成...');
+                
+                progressInterval = setInterval(function() {
+                    currentProgress += Math.random() * 10;
+                    if (currentProgress > 80) {
+                        currentProgress = 80;
+                    }
+                    let statusText = '';
+                    if (currentProgress < 20) {
+                        statusText = '正在加载模型...';
+                    } else if (currentProgress < 40) {
+                        statusText = '正在处理文本...';
+                    } else if (currentProgress < 60) {
+                        statusText = '正在生成语音...';
+                    } else if (currentProgress < 80) {
+                        statusText = '正在处理音频...';
+                    }
+                    updateProgress(currentProgress, statusText);
+                }, 500);
+
                 const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -701,15 +1068,22 @@
 
                 const data = await response.json();
 
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                }
+
+                updateProgress(100, '生成完成！');
+
                 if (response.ok) {
-                    const audioUrl = `/api/audio/${data.task.audio_file}`;
+                    const audioUrl = '/api/audio/' + data.task.audio_file;
                     const audioElement = document.getElementById('audioElement');
                     audioElement.src = audioUrl;
                     currentAudioUrl = audioUrl;
 
                     document.getElementById('audioPlayer').classList.add('show');
                     document.getElementById('audioInfoText').textContent = 
-                        `语音: ${data.task.voice} | 语速: ${data.task.speed}x | 生成时间: ${formatTime(data.task.completed_at)}`;
+                        '语音: ' + data.task.voice + ' | 语速: ' + data.task.speed + 'x | 生成时间: ' + formatTime(data.task.completed_at);
 
                     showToast('音频生成成功！');
                     updateStatus();
@@ -718,13 +1092,22 @@
                     throw new Error(data.error || '生成失败');
                 }
             } catch (error) {
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                }
                 showToast('生成失败: ' + error.message, 'error');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
+                
+                setTimeout(function() {
+                    hideProgress();
+                }, 1500);
             }
         }
 
+        // 添加到队列
         async function addToQueue() {
             const text = document.getElementById('textInput').value.trim();
             if (!text) {
@@ -760,6 +1143,7 @@
             }
         }
 
+        // 加载队列
         async function loadQueue() {
             try {
                 const response = await fetch('/api/tasks');
@@ -777,23 +1161,10 @@
                     return;
                 }
 
-                container.innerHTML = tasks.map(task => `
-                    <div class="task-item">
-                        <div class="task-header">
-                            <span class="status-badge ${getStatusBadgeClass(task.status)}">
-                                ${getStatusText(task.status)}
-                            </span>
-                            <span style="font-size: 0.8rem; color: #888;">
-                                ${formatTime(task.created_at)}
-                            </span>
-                        </div>
-                        <div class="task-text">${task.text}</div>
-                        <div class="task-meta">
-                            <span>语音: ${task.voice}</span>
-                            <span>语速: ${task.speed}x</span>
-                            <span>模型: ${task.model_id.split('/')[1]}</span>
-                        </div>
-                        ${task.status === 'completed' ? `
+                container.innerHTML = tasks.map(function(task) {
+                    let actionsHtml = '';
+                    if (task.status === 'completed') {
+                        actionsHtml = `
                             <div class="task-actions">
                                 <button class="btn btn-secondary" onclick="playTaskAudio('${task.audio_file}')">
                                     ▶️ 播放
@@ -802,19 +1173,45 @@
                                     ⬇️ 下载
                                 </button>
                             </div>
-                        ` : ''}
-                        ${task.status === 'failed' ? `
+                        `;
+                    }
+
+                    let errorHtml = '';
+                    if (task.status === 'failed') {
+                        errorHtml = `
                             <div style="margin-top: 8px; padding: 8px; background: #f8d7da; border-radius: 4px; font-size: 0.85rem; color: #721c24;">
                                 错误: ${task.error}
                             </div>
-                        ` : ''}
-                    </div>
-                `).join('');
+                        `;
+                    }
+
+                    return `
+                        <div class="task-item">
+                            <div class="task-header">
+                                <span class="status-badge ${getStatusBadgeClass(task.status)}">
+                                    ${getStatusText(task.status)}
+                                </span>
+                                <span class="task-time">
+                                    ${formatTime(task.created_at)}
+                                </span>
+                            </div>
+                            <div class="task-text">${task.text}</div>
+                            <div class="task-meta">
+                                <span>语音: ${task.voice}</span>
+                                <span>语速: ${task.speed}x</span>
+                                <span>模型: ${task.model_id.split('/')[1]}</span>
+                            </div>
+                            ${actionsHtml}
+                            ${errorHtml}
+                        </div>
+                    `;
+                }).join('');
             } catch (error) {
                 console.error('加载队列失败:', error);
             }
         }
 
+        // 加载历史
         async function loadHistory() {
             try {
                 const response = await fetch('/api/history');
@@ -832,39 +1229,42 @@
                     return;
                 }
 
-                container.innerHTML = history.map(item => `
-                    <div class="task-item">
-                        <div class="task-header">
-                            <span class="status-badge status-completed">已完成</span>
-                            <button class="btn btn-secondary" 
-                                    style="padding: 4px 8px; font-size: 0.75rem;"
-                                    onclick="deleteHistoryItem('${item.id}')">
-                                🗑️
-                            </button>
+                container.innerHTML = history.map(function(item) {
+                    return `
+                        <div class="task-item">
+                            <div class="task-header">
+                                <span class="status-badge status-completed">已完成</span>
+                                <button class="btn btn-secondary" 
+                                        style="padding: 4px 8px; font-size: 0.75rem;"
+                                        onclick="deleteHistoryItem('${item.id}')">
+                                    🗑️
+                                </button>
+                            </div>
+                            <div class="task-text">${item.text}</div>
+                            <div class="task-meta">
+                                <span>语音: ${item.voice}</span>
+                                <span>语速: ${item.speed}x</span>
+                            </div>
+                            <div class="task-time" style="margin-top: 8px;">
+                                ${formatTime(item.completed_at)}
+                            </div>
+                            <div class="task-actions">
+                                <button class="btn btn-secondary" onclick="playTaskAudio('${item.audio_file}')">
+                                    ▶️ 播放
+                                </button>
+                                <button class="btn btn-secondary" onclick="downloadTaskAudio('${item.audio_file}')">
+                                    ⬇️ 下载
+                                </button>
+                            </div>
                         </div>
-                        <div class="task-text">${item.text}</div>
-                        <div class="task-meta">
-                            <span>语音: ${item.voice}</span>
-                            <span>语速: ${item.speed}x</span>
-                        </div>
-                        <div style="font-size: 0.75rem; color: #888; margin-top: 8px;">
-                            ${formatTime(item.completed_at)}
-                        </div>
-                        <div class="task-actions">
-                            <button class="btn btn-secondary" onclick="playTaskAudio('${item.audio_file}')">
-                                ▶️ 播放
-                            </button>
-                            <button class="btn btn-secondary" onclick="downloadTaskAudio('${item.audio_file}')">
-                                ⬇️ 下载
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             } catch (error) {
                 console.error('加载历史失败:', error);
             }
         }
 
+        // 更新状态
         async function updateStatus() {
             try {
                 const response = await fetch('/api/status');
@@ -879,8 +1279,9 @@
             }
         }
 
+        // 播放任务音频
         function playTaskAudio(filename) {
-            const audioUrl = `/api/audio/${filename}`;
+            const audioUrl = '/api/audio/' + filename;
             const audioElement = document.getElementById('audioElement');
             audioElement.src = audioUrl;
             currentAudioUrl = audioUrl;
@@ -889,19 +1290,21 @@
             showToast('正在播放...');
         }
 
+        // 下载任务音频
         function downloadTaskAudio(filename) {
             const link = document.createElement('a');
-            link.href = `/api/audio/${filename}`;
-            link.download = `kittentts_${Date.now()}.wav`;
+            link.href = '/api/audio/' + filename;
+            link.download = 'kittentts_' + Date.now() + '.wav';
             link.click();
             showToast('开始下载...');
         }
 
+        // 删除历史项
         async function deleteHistoryItem(id) {
             if (!confirm('确定要删除这条记录吗？')) return;
             
             try {
-                const response = await fetch(`/api/history/${id}`, { method: 'DELETE' });
+                const response = await fetch('/api/history/' + id, { method: 'DELETE' });
                 if (response.ok) {
                     showToast('已删除');
                     loadHistory();
@@ -912,6 +1315,7 @@
             }
         }
 
+        // 清空历史
         async function clearHistory() {
             if (!confirm('确定要清空所有历史记录吗？这将同时删除所有音频文件。')) return;
             
@@ -927,20 +1331,26 @@
             }
         }
 
+        // 下载当前音频
         function downloadCurrentAudio() {
             if (!currentAudioUrl) return;
             const link = document.createElement('a');
             link.href = currentAudioUrl;
-            link.download = `kittentts_${Date.now()}.wav`;
+            link.download = 'kittentts_' + Date.now() + '.wav';
             link.click();
             showToast('开始下载...');
         }
 
+        // 初始化标签页
         function initTabs() {
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', () => {
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(function(tab) {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(function(t) {
+                        t.classList.remove('active');
+                    });
+                    document.querySelectorAll('.tab-content').forEach(function(c) {
+                        c.classList.remove('active');
+                    });
                     
                     tab.classList.add('active');
                     document.getElementById(tab.dataset.tab + 'Tab').classList.add('active');
@@ -948,26 +1358,31 @@
             });
         }
 
+        // 初始化语速滑块
         function initSpeedRange() {
             const range = document.getElementById('speedRange');
             const valueDisplay = document.getElementById('speedValue');
             
-            range.addEventListener('input', () => {
+            range.addEventListener('input', function() {
                 valueDisplay.textContent = range.value + 'x';
             });
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initTheme();
             initVoiceGrid();
             initTabs();
             initSpeedRange();
+            initFileUpload();
 
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
             document.getElementById('generateBtn').addEventListener('click', generateAudio);
             document.getElementById('addToQueueBtn').addEventListener('click', addToQueue);
             document.getElementById('downloadBtn').addEventListener('click', downloadCurrentAudio);
             document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
 
-            document.getElementById('textInput').addEventListener('keydown', (e) => {
+            document.getElementById('textInput').addEventListener('keydown', function(e) {
                 if (e.ctrlKey && e.key === 'Enter') {
                     generateAudio();
                 }
@@ -977,7 +1392,7 @@
             loadQueue();
             loadHistory();
 
-            statusUpdateInterval = setInterval(() => {
+            statusUpdateInterval = setInterval(function() {
                 updateStatus();
                 loadQueue();
             }, 3000);

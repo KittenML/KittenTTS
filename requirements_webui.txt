@@ -1,7 +1,0 @@
-flask
-espeakng_loader
-phonemizer
-onnxruntime
-soundfile
-numpy
-huggingface_hub
