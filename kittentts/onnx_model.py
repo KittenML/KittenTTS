@@ -26,19 +26,29 @@ def ensure_punctuation(text):
 
 
 def chunk_text(text, max_len=400):
-    """Split text into chunks for processing long texts."""
+    """Split text into chunks for processing long texts.
+
+    Splits on sentence boundaries while preserving the original punctuation
+    (periods, exclamation marks, question marks, etc.) so the TTS model can
+    use them for correct prosody and intonation.
+    """
     import re
-    
-    sentences = re.split(r'[.!?]+', text)
+
+    # Split into sentences while keeping the delimiter attached to the
+    # preceding text.  e.g. "Hello world. How are you?" →
+    # ["Hello world.", " How are you?"]
+    sentences = re.split(r'(?<=[.!?])\s+', text)
     chunks = []
-    
+
     for sentence in sentences:
         sentence = sentence.strip()
         if not sentence:
             continue
-        
+
+        sentence = ensure_punctuation(sentence)
+
         if len(sentence) <= max_len:
-            chunks.append(ensure_punctuation(sentence))
+            chunks.append(sentence)
         else:
             # Split long sentences by words
             words = sentence.split()
@@ -52,7 +62,7 @@ def chunk_text(text, max_len=400):
                     temp_chunk = word
             if temp_chunk:
                 chunks.append(ensure_punctuation(temp_chunk.strip()))
-    
+
     return chunks
 
 
