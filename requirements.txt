@@ -4,3 +4,5 @@ onnxruntime
 soundfile
 numpy
 huggingface_hub
+pypinyin
+cn2an
