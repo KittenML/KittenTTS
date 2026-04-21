@@ -9,11 +9,9 @@ from kittentts import KittenTTS
 
 app = Flask(__name__)
 
-# 禁用模板缓存，确保每次都加载最新的模板
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
-# 确保模板不会被缓存
 @app.after_request
 def add_header(response):
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0'
@@ -76,7 +74,8 @@ def process_task(task):
     try:
         task['status'] = 'processing'
         model = load_model(task['model_id'])
-        audio = model.generate(
+        
+        audio, subtitle_info = model.generate_with_subtitles(
             text=task['text'],
             voice=task['voice'],
             speed=task['speed'],
@@ -91,6 +90,7 @@ def process_task(task):
         task['status'] = 'completed'
         task['audio_file'] = audio_filename
         task['completed_at'] = datetime.now().isoformat()
+        task['subtitle_info'] = subtitle_info
         
         with TASK_QUEUE_LOCK:
             for i, t in enumerate(TASK_QUEUE):
@@ -169,7 +169,7 @@ def generate():
             return jsonify({'error': '文本不能为空'}), 400
         
         model = load_model(model_id)
-        audio = model.generate(
+        audio, subtitle_info = model.generate_with_subtitles(
             text=text,
             voice=voice,
             speed=speed,
@@ -185,6 +185,7 @@ def generate():
         task = {
             'id': task_id,
             'text': text[:100] + ('...' if len(text) > 100 else ''),
+            'original_text': text,
             'model_id': model_id,
             'voice': voice,
             'speed': speed,
@@ -192,6 +193,7 @@ def generate():
             'audio_file': audio_filename,
             'created_at': datetime.now().isoformat(),
             'completed_at': datetime.now().isoformat(),
+            'subtitle_info': subtitle_info,
         }
         
         add_to_history(task)
@@ -199,9 +201,12 @@ def generate():
         return jsonify({
             'success': True,
             'task': task,
-            'audio_url': f'/api/audio/{audio_filename}'
+            'audio_url': f'/api/audio/{audio_filename}',
+            'subtitle_info': subtitle_info
         })
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/tasks', methods=['POST'])
@@ -221,6 +226,7 @@ def add_task():
         task = {
             'id': task_id,
             'text': text,
+            'original_text': text,
             'model_id': model_id,
             'voice': voice,
             'speed': speed,
@@ -285,6 +291,28 @@ def get_audio(filename):
     if os.path.exists(audio_path):
         return send_file(audio_path, mimetype='audio/wav')
     return jsonify({'error': '音频文件不存在'}), 404
+
+@app.route('/api/subtitle/<task_id>', methods=['GET'])
+def get_subtitle(task_id):
+    with HISTORY_LOCK:
+        for item in HISTORY:
+            if item['id'] == task_id:
+                subtitle_info = item.get('subtitle_info', {})
+                return jsonify({
+                    'success': True,
+                    'subtitle_info': subtitle_info
+                })
+    
+    with TASK_QUEUE_LOCK:
+        for task in TASK_QUEUE:
+            if task['id'] == task_id:
+                subtitle_info = task.get('subtitle_info', {})
+                return jsonify({
+                    'success': True,
+                    'subtitle_info': subtitle_info
+                })
+    
+    return jsonify({'error': '任务不存在'}), 404
 
 @app.route('/api/status', methods=['GET'])
 def get_status():

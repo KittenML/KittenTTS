@@ -652,6 +652,107 @@
             transition: color 0.3s ease;
         }
 
+        .subtitle-container {
+            margin-top: 15px;
+            padding: 15px;
+            background: var(--stat-bg);
+            border-radius: 12px;
+            display: none;
+            transition: background 0.3s ease;
+        }
+
+        .subtitle-container.show {
+            display: block;
+        }
+
+        .subtitle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .subtitle-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: color 0.3s ease;
+        }
+
+        .subtitle-toggle {
+            display: flex;
+            gap: 5px;
+        }
+
+        .subtitle-toggle-btn {
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .subtitle-toggle-btn:hover {
+            border-color: #667eea;
+        }
+
+        .subtitle-toggle-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .subtitle-content {
+            padding: 12px;
+            background: var(--input-bg);
+            border-radius: 8px;
+            min-height: 50px;
+            transition: background 0.3s ease;
+        }
+
+        .subtitle-original {
+            color: var(--text-primary);
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 8px;
+            transition: color 0.3s ease;
+        }
+
+        .subtitle-pinyin {
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            font-style: italic;
+            transition: color 0.3s ease;
+        }
+
+        .subtitle-language-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .lang-chinese {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .lang-english {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .lang-mixed {
+            background: #d4edda;
+            color: #155724;
+        }
+
         @media (max-width: 900px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -753,6 +854,24 @@
                             </button>
                         </div>
                     </div>
+
+                    <div class="subtitle-container" id="subtitleContainer">
+                        <div class="subtitle-header">
+                            <div class="subtitle-title">
+                                📝 字幕
+                                <span class="subtitle-language-badge" id="languageBadge"></span>
+                            </div>
+                            <div class="subtitle-toggle" id="subtitleToggle" style="display: none;">
+                                <button class="subtitle-toggle-btn active" data-mode="original">原文</button>
+                                <button class="subtitle-toggle-btn" data-mode="pinyin">拼音</button>
+                                <button class="subtitle-toggle-btn" data-mode="both">全部</button>
+                            </div>
+                        </div>
+                        <div class="subtitle-content">
+                            <div class="subtitle-original" id="subtitleOriginal"></div>
+                            <div class="subtitle-pinyin" id="subtitlePinyin"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="card">
@@ -823,6 +942,8 @@
         let selectedVoice = 'Bruno';
         let statusUpdateInterval = null;
         let isDarkMode = false;
+        let currentSubtitleInfo = null;
+        let currentSubtitleMode = 'original';
 
         // 主题切换功能
         function initTheme() {
@@ -1017,6 +1138,103 @@
             return map[status] || status;
         }
 
+        // 字幕显示功能
+        function showSubtitle(subtitleInfo) {
+            currentSubtitleInfo = subtitleInfo;
+            
+            const subtitleContainer = document.getElementById('subtitleContainer');
+            const subtitleOriginal = document.getElementById('subtitleOriginal');
+            const subtitlePinyin = document.getElementById('subtitlePinyin');
+            const languageBadge = document.getElementById('languageBadge');
+            const subtitleToggle = document.getElementById('subtitleToggle');
+            
+            subtitleContainer.classList.add('show');
+            
+            if (subtitleInfo.original) {
+                subtitleOriginal.textContent = subtitleInfo.original;
+            }
+            
+            if (subtitleInfo.pinyin && subtitleInfo.pinyin.trim()) {
+                subtitlePinyin.textContent = subtitleInfo.pinyin;
+                subtitlePinyin.style.display = 'block';
+            } else {
+                subtitlePinyin.style.display = 'none';
+            }
+            
+            if (subtitleInfo.language) {
+                let langText = '';
+                let langClass = '';
+                
+                if (subtitleInfo.language === 'chinese') {
+                    langText = '中文';
+                    langClass = 'lang-chinese';
+                } else if (subtitleInfo.language === 'english') {
+                    langText = '英文';
+                    langClass = 'lang-english';
+                } else {
+                    langText = '混合';
+                    langClass = 'lang-mixed';
+                }
+                
+                languageBadge.textContent = langText;
+                languageBadge.className = 'subtitle-language-badge ' + langClass;
+                languageBadge.style.display = 'inline-block';
+            } else {
+                languageBadge.style.display = 'none';
+            }
+            
+            if (subtitleInfo.pinyin && subtitleInfo.pinyin.trim()) {
+                subtitleToggle.style.display = 'flex';
+                initSubtitleToggle();
+            } else {
+                subtitleToggle.style.display = 'none';
+            }
+            
+            updateSubtitleDisplay();
+        }
+
+        function hideSubtitle() {
+            const subtitleContainer = document.getElementById('subtitleContainer');
+            subtitleContainer.classList.remove('show');
+            currentSubtitleInfo = null;
+        }
+
+        function initSubtitleToggle() {
+            const toggleBtns = document.querySelectorAll('.subtitle-toggle-btn');
+            toggleBtns.forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    toggleBtns.forEach(function(b) {
+                        b.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    currentSubtitleMode = this.dataset.mode;
+                    updateSubtitleDisplay();
+                });
+            });
+        }
+
+        function updateSubtitleDisplay() {
+            if (!currentSubtitleInfo) return;
+            
+            const subtitleOriginal = document.getElementById('subtitleOriginal');
+            const subtitlePinyin = document.getElementById('subtitlePinyin');
+            
+            switch (currentSubtitleMode) {
+                case 'original':
+                    subtitleOriginal.style.display = 'block';
+                    subtitlePinyin.style.display = 'none';
+                    break;
+                case 'pinyin':
+                    subtitleOriginal.style.display = 'none';
+                    subtitlePinyin.style.display = 'block';
+                    break;
+                case 'both':
+                    subtitleOriginal.style.display = 'block';
+                    subtitlePinyin.style.display = 'block';
+                    break;
+            }
+        }
+
         // 生成音频
         async function generateAudio() {
             const text = document.getElementById('textInput').value.trim();
@@ -1084,6 +1302,10 @@
                     document.getElementById('audioPlayer').classList.add('show');
                     document.getElementById('audioInfoText').textContent = 
                         '语音: ' + data.task.voice + ' | 语速: ' + data.task.speed + 'x | 生成时间: ' + formatTime(data.task.completed_at);
+
+                    if (data.subtitle_info) {
+                        showSubtitle(data.subtitle_info);
+                    }
 
                     showToast('音频生成成功！');
                     updateStatus();
@@ -1249,7 +1471,7 @@
                                 ${formatTime(item.completed_at)}
                             </div>
                             <div class="task-actions">
-                                <button class="btn btn-secondary" onclick="playTaskAudio('${item.audio_file}')">
+                                <button class="btn btn-secondary" onclick="playTaskAudioWithId('${item.audio_file}', '${item.id}')">
                                     ▶️ 播放
                                 </button>
                                 <button class="btn btn-secondary" onclick="downloadTaskAudio('${item.audio_file}')">
@@ -1286,6 +1508,30 @@
             audioElement.src = audioUrl;
             currentAudioUrl = audioUrl;
             document.getElementById('audioPlayer').classList.add('show');
+            audioElement.play();
+            showToast('正在播放...');
+        }
+
+        // 播放任务音频并显示字幕
+        async function playTaskAudioWithId(filename, taskId) {
+            const audioUrl = '/api/audio/' + filename;
+            const audioElement = document.getElementById('audioElement');
+            audioElement.src = audioUrl;
+            currentAudioUrl = audioUrl;
+            document.getElementById('audioPlayer').classList.add('show');
+            
+            if (taskId) {
+                try {
+                    const response = await fetch('/api/subtitle/' + taskId);
+                    const data = await response.json();
+                    if (data.success && data.subtitle_info) {
+                        showSubtitle(data.subtitle_info);
+                    }
+                } catch (error) {
+                    console.error('加载字幕失败:', error);
+                }
+            }
+            
             audioElement.play();
             showToast('正在播放...');
         }

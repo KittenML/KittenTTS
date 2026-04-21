@@ -7,7 +7,15 @@ import numpy as np
 import phonemizer
 import soundfile as sf
 import onnxruntime as ort
+from typing import Optional, Dict, Any, Tuple
 from .preprocess import TextPreprocessor
+
+try:
+    from .chinese_processor import ChineseTextProcessor, has_chinese, extract_subtitle_info
+    CHINESE_PROCESSOR_AVAILABLE = True
+except ImportError:
+    CHINESE_PROCESSOR_AVAILABLE = False
+
 
 def basic_english_tokenize(text):
     """Basic English tokenizer that splits on whitespace and punctuation."""
@@ -40,7 +48,6 @@ def chunk_text(text, max_len=400):
         if len(sentence) <= max_len:
             chunks.append(ensure_punctuation(sentence))
         else:
-            # Split long sentences by words
             words = sentence.split()
             temp_chunk = ""
             for word in words:
@@ -111,7 +118,6 @@ class KittenTTS_1_Onnx:
         self.text_cleaner = TextCleaner()
         self.speed_priors = speed_priors
         
-        # Available voices
         self.available_voices = [
             'expr-voice-2-m', 'expr-voice-2-f', 'expr-voice-3-m', 'expr-voice-3-f', 
             'expr-voice-4-m', 'expr-voice-4-f', 'expr-voice-5-m', 'expr-voice-5-f'
@@ -120,6 +126,33 @@ class KittenTTS_1_Onnx:
         self.voice_aliases = voice_aliases
 
         self.preprocessor = TextPreprocessor(remove_punctuation=False)
+        
+        self.chinese_processor = None
+        if CHINESE_PROCESSOR_AVAILABLE:
+            self.chinese_processor = ChineseTextProcessor()
+    
+    def _detect_language(self, text: str) -> str:
+        """Detect if text contains Chinese characters.
+        
+        Returns:
+            'chinese' if contains Chinese, 'english' otherwise
+        """
+        if CHINESE_PROCESSOR_AVAILABLE and self.chinese_processor:
+            if self.chinese_processor.has_chinese(text):
+                return 'chinese'
+        return 'english'
+    
+    def _process_chinese_text(self, text: str) -> Tuple[str, Dict[str, Any]]:
+        """Process Chinese text for synthesis.
+        
+        Returns:
+            Tuple of (processed_text, subtitle_info)
+        """
+        if not CHINESE_PROCESSOR_AVAILABLE or not self.chinese_processor:
+            return text, {'original': text, 'pinyin': text, 'segments': []}
+        
+        processed_text, subtitle_info = self.chinese_processor.process(text, convert_pinyin=True)
+        return processed_text, subtitle_info
     
     def _prepare_inputs(self, text: str, voice: str, speed: float = 1.0) -> dict:
         """Prepare ONNX model inputs from text and voice parameters."""
@@ -132,15 +165,12 @@ class KittenTTS_1_Onnx:
         if voice in self.speed_priors:
             speed = speed * self.speed_priors[voice]
         
-        # Phonemize the input text
         phonemes_list = self.phonemizer.phonemize([text])
         
-        # Process phonemes to get token IDs
         phonemes = basic_english_tokenize(phonemes_list[0])
         phonemes = ' '.join(phonemes)
         tokens = self.text_cleaner(phonemes)
         
-        # Add start and end tokens
         tokens.insert(0, 0)
         tokens.append(10)
         tokens.append(0)
@@ -156,12 +186,88 @@ class KittenTTS_1_Onnx:
         }
     
     def generate(self, text: str, voice: str = "expr-voice-5-m", speed: float = 1.0, clean_text: bool=True) -> np.ndarray:
-        out_chunks = []
+        """Generate audio from text.
+        
+        Args:
+            text: Input text to synthesize
+            voice: Voice to use for synthesis
+            speed: Speech speed (1.0 = normal)
+            clean_text: If true, preprocess text
+        
+        Returns:
+            Audio data as numpy array
+        """
+        original_text = text
+        
+        language = self._detect_language(text)
+        
+        subtitle_info = {'original': original_text, 'pinyin': '', 'segments': []}
+        
+        if language == 'chinese':
+            text, subtitle_info = self._process_chinese_text(text)
+            clean_text = False
+        
         if clean_text:
             text = self.preprocessor(text)
+        
+        out_chunks = []
         for text_chunk in chunk_text(text):
             out_chunks.append(self.generate_single_chunk(text_chunk, voice, speed))
+        
         return np.concatenate(out_chunks, axis=-1)
+    
+    def generate_with_subtitles(self, text: str, voice: str = "expr-voice-5-m", speed: float = 1.0, clean_text: bool=True) -> Tuple[np.ndarray, Dict[str, Any]]:
+        """Generate audio with subtitle information.
+        
+        Args:
+            text: Input text to synthesize
+            voice: Voice to use for synthesis
+            speed: Speech speed (1.0 = normal)
+            clean_text: If true, preprocess text
+        
+        Returns:
+            Tuple of (audio_data, subtitle_info)
+            subtitle_info contains:
+                - original: Original text
+                - pinyin: Pinyin transcription (if Chinese)
+                - processed: Processed text used for synthesis
+                - language: Detected language ('chinese' or 'english')
+                - segments: Detailed segment information
+        """
+        original_text = text
+        
+        language = self._detect_language(text)
+        
+        processed_text = text
+        subtitle_info = {
+            'original': original_text,
+            'pinyin': '',
+            'processed': '',
+            'language': language,
+            'segments': []
+        }
+        
+        if language == 'chinese':
+            processed_text, chinese_subtitle = self._process_chinese_text(text)
+            subtitle_info['pinyin'] = chinese_subtitle.get('pinyin', '')
+            subtitle_info['segments'] = chinese_subtitle.get('segments', [])
+            clean_text = False
+        else:
+            if CHINESE_PROCESSOR_AVAILABLE:
+                subtitle_info['segments'] = extract_subtitle_info(text).get('segments', [])
+        
+        if clean_text:
+            processed_text = self.preprocessor(processed_text)
+        
+        subtitle_info['processed'] = processed_text
+        
+        out_chunks = []
+        for text_chunk in chunk_text(processed_text):
+            out_chunks.append(self.generate_single_chunk(text_chunk, voice, speed))
+        
+        audio = np.concatenate(out_chunks, axis=-1)
+        
+        return audio, subtitle_info
 
     def generate_stream(self, text: str, voice: str = "expr-voice-5-m", speed: float = 1.0, clean_text: bool = True):
         """Generate audio chunk-by-chunk as a generator.
@@ -169,8 +275,15 @@ class KittenTTS_1_Onnx:
         Yields:
             numpy.ndarray: Audio data for each text chunk.
         """
+        language = self._detect_language(text)
+        
+        if language == 'chinese':
+            text, _ = self._process_chinese_text(text)
+            clean_text = False
+        
         if clean_text:
             text = self.preprocessor(text)
+        
         for text_chunk in chunk_text(text):
             yield self.generate_single_chunk(text_chunk, voice, speed)
 
@@ -189,13 +302,12 @@ class KittenTTS_1_Onnx:
         
         outputs = self.session.run(None, onnx_inputs)
         
-        # Trim audio
         audio = outputs[0][..., :-5000]
 
         return audio
     
     def generate_to_file(self, text: str, output_path: str, voice: str = "expr-voice-5-m", 
-                          speed: float = 1.0, sample_rate: int = 24000, clean_text: bool=True) -> None:
+                          speed: float = 1.0, sample_rate: int = 24000, clean_text: bool=True) -> Dict[str, Any]:
         """Synthesize speech and save to file.
         
         Args:
@@ -205,8 +317,11 @@ class KittenTTS_1_Onnx:
             speed: Speech speed (1.0 = normal)
             sample_rate: Audio sample rate
             clean_text: If true, it will cleanup the text. Eg. replace numbers with words.
+        
+        Returns:
+            Dictionary containing subtitle information
         """
-        audio = self.generate(text, voice, speed, clean_text=clean_text)
+        audio, subtitle_info = self.generate_with_subtitles(text, voice, speed, clean_text=clean_text)
         sf.write(output_path, audio, sample_rate)
         print(f"Audio saved to {output_path}")
-
+        return subtitle_info
