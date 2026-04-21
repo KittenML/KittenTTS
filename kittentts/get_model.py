@@ -23,21 +23,21 @@ class KittenTTS:
             
         self.model = download_from_huggingface(repo_id=repo_id, cache_dir=cache_dir, backend=backend)
     
-    def generate(self, text, voice="expr-voice-5-m", speed=1.0, clean_text=False):
+    def generate(self, text, voice="expr-voice-5-m", speed=1.0, clean_text=True):
         """Generate audio from text.
         
         Args:
             text: Input text to synthesize
             voice: Voice to use for synthesis
             speed: Speech speed (1.0 = normal)
+            clean_text: If True, preprocess text (expand numbers, etc.)
             
         Returns:
             Audio data as numpy array
         """
-        print(f"Generating audio for text: {text}")
         return self.model.generate(text, voice=voice, speed=speed, clean_text=clean_text)
 
-    def generate_stream(self, text, voice="expr-voice-5-m", speed=1.0, clean_text=False):
+    def generate_stream(self, text, voice="expr-voice-5-m", speed=1.0, clean_text=True):
         """Generate audio as a stream of chunks.
 
         Yields:
@@ -45,7 +45,7 @@ class KittenTTS:
         """
         yield from self.model.generate_stream(text, voice=voice, speed=speed, clean_text=clean_text)
 
-    def generate_to_file(self, text, output_path, voice="expr-voice-5-m", speed=1.0, sample_rate=24000):
+    def generate_to_file(self, text, output_path, voice="expr-voice-5-m", speed=1.0, sample_rate=24000, clean_text=True):
         """Generate audio from text and save to file.
         
         Args:
@@ -54,8 +54,9 @@ class KittenTTS:
             voice: Voice to use for synthesis
             speed: Speech speed (1.0 = normal)
             sample_rate: Audio sample rate
+            clean_text: If True, preprocess text (expand numbers, etc.)
         """
-        return self.model.generate_to_file(text, output_path, voice=voice, speed=speed, sample_rate=sample_rate)
+        return self.model.generate_to_file(text, output_path, voice=voice, speed=speed, sample_rate=sample_rate, clean_text=clean_text)
     
     @property
     def available_voices(self):
