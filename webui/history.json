@@ -1,0 +1,815 @@
+[
+  {
+    "id": "1063c1f3-ef80-4913-8130-83ae531be3dc",
+    "text": "123456789",
+    "original_text": "123456789",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "1063c1f3-ef80-4913-8130-83ae531be3dc.wav",
+    "created_at": "2026-04-21T08:48:27.852373",
+    "completed_at": "2026-04-21T08:48:27.852373",
+    "subtitle_info": {
+      "original": "123456789",
+      "pinyin": "",
+      "processed": "123456789",
+      "language": "english",
+      "segments": [
+        {
+          "content": "123456789",
+          "type": "english",
+          "pinyin": "123456789"
+        }
+      ]
+    }
+  },
+  {
+    "id": "5746a994-586b-45b2-a64b-6a46430b07be",
+    "text": "123456789",
+    "original_text": "123456789",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "5746a994-586b-45b2-a64b-6a46430b07be.wav",
+    "created_at": "2026-04-21T08:48:08.911053",
+    "completed_at": "2026-04-21T08:48:08.911053",
+    "subtitle_info": {
+      "original": "123456789",
+      "pinyin": "",
+      "processed": "123456789",
+      "language": "english",
+      "segments": [
+        {
+          "content": "123456789",
+          "type": "english",
+          "pinyin": "123456789"
+        }
+      ]
+    }
+  },
+  {
+    "id": "fabfa69c-80fe-43c4-95e5-4ce55299f398",
+    "text": "你好，今天weather真好一二。",
+    "original_text": "你好，今天weather真好一二。",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "fabfa69c-80fe-43c4-95e5-4ce55299f398.wav",
+    "created_at": "2026-04-21T08:46:07.628555",
+    "completed_at": "2026-04-21T08:46:07.628555",
+    "subtitle_info": {
+      "original": "你好，今天weather真好一二。",
+      "pinyin": "nǐ hǎo，jīn tiānweatherzhēn hǎo yī èr。",
+      "processed": "ni hao , jin tian weather zhen hao yi er .",
+      "language": "chinese",
+      "segments": [
+        {
+          "content": "你好",
+          "type": "chinese",
+          "pinyin": "nǐ hǎo"
+        },
+        {
+          "content": "，",
+          "type": "punctuation",
+          "pinyin": "，"
+        },
+        {
+          "content": "今天",
+          "type": "chinese",
+          "pinyin": "jīn tiān"
+        },
+        {
+          "content": "weather",
+          "type": "english",
+          "pinyin": "weather"
+        },
+        {
+          "content": "真好一二",
+          "type": "chinese",
+          "pinyin": "zhēn hǎo yī èr"
+        },
+        {
+          "content": "。",
+          "type": "punctuation",
+          "pinyin": "。"
+        }
+      ]
+    }
+  },
+  {
+    "id": "01a192ce-919a-4d49-82a2-878625da416a",
+    "text": "你好，今天weather真好123456。",
+    "original_text": "你好，今天weather真好123456。",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "01a192ce-919a-4d49-82a2-878625da416a.wav",
+    "created_at": "2026-04-21T08:45:16.555794",
+    "completed_at": "2026-04-21T08:45:16.555794",
+    "subtitle_info": {
+      "original": "你好，今天weather真好123456。",
+      "pinyin": "nǐ hǎo，jīn tiānweatherzhēn hǎo123456。",
+      "processed": "ni hao , jin tian weather zhen hao 123456 .",
+      "language": "chinese",
+      "segments": [
+        {
+          "content": "你好",
+          "type": "chinese",
+          "pinyin": "nǐ hǎo"
+        },
+        {
+          "content": "，",
+          "type": "punctuation",
+          "pinyin": "，"
+        },
+        {
+          "content": "今天",
+          "type": "chinese",
+          "pinyin": "jīn tiān"
+        },
+        {
+          "content": "weather",
+          "type": "english",
+          "pinyin": "weather"
+        },
+        {
+          "content": "真好",
+          "type": "chinese",
+          "pinyin": "zhēn hǎo"
+        },
+        {
+          "content": "123456",
+          "type": "english",
+          "pinyin": "123456"
+        },
+        {
+          "content": "。",
+          "type": "punctuation",
+          "pinyin": "。"
+        }
+      ]
+    }
+  },
+  {
+    "id": "dae8085d-9b91-492b-8018-f78adfd52289",
+    "text": "你好，今天weather真好123456。",
+    "original_text": "你好，今天weather真好123456。",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 1.4,
+    "status": "completed",
+    "audio_file": "dae8085d-9b91-492b-8018-f78adfd52289.wav",
+    "created_at": "2026-04-21T08:44:54.012219",
+    "completed_at": "2026-04-21T08:44:54.012219",
+    "subtitle_info": {
+      "original": "你好，今天weather真好123456。",
+      "pinyin": "nǐ hǎo，jīn tiānweatherzhēn hǎo123456。",
+      "processed": "ni hao , jin tian weather zhen hao 123456 .",
+      "language": "chinese",
+      "segments": [
+        {
+          "content": "你好",
+          "type": "chinese",
+          "pinyin": "nǐ hǎo"
+        },
+        {
+          "content": "，",
+          "type": "punctuation",
+          "pinyin": "，"
+        },
+        {
+          "content": "今天",
+          "type": "chinese",
+          "pinyin": "jīn tiān"
+        },
+        {
+          "content": "weather",
+          "type": "english",
+          "pinyin": "weather"
+        },
+        {
+          "content": "真好",
+          "type": "chinese",
+          "pinyin": "zhēn hǎo"
+        },
+        {
+          "content": "123456",
+          "type": "english",
+          "pinyin": "123456"
+        },
+        {
+          "content": "。",
+          "type": "punctuation",
+          "pinyin": "。"
+        }
+      ]
+    }
+  },
+  {
+    "id": "b84b4017-53dd-4365-87c3-6ae112f2dc87",
+    "text": "你好，今天weather真好123456。",
+    "original_text": "你好，今天weather真好123456。",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Kiki",
+    "speed": 1.4,
+    "status": "completed",
+    "audio_file": "b84b4017-53dd-4365-87c3-6ae112f2dc87.wav",
+    "created_at": "2026-04-21T08:44:33.685091",
+    "completed_at": "2026-04-21T08:44:33.685091",
+    "subtitle_info": {
+      "original": "你好，今天weather真好123456。",
+      "pinyin": "nǐ hǎo，jīn tiānweatherzhēn hǎo123456。",
+      "processed": "ni hao , jin tian weather zhen hao 123456 .",
+      "language": "chinese",
+      "segments": [
+        {
+          "content": "你好",
+          "type": "chinese",
+          "pinyin": "nǐ hǎo"
+        },
+        {
+          "content": "，",
+          "type": "punctuation",
+          "pinyin": "，"
+        },
+        {
+          "content": "今天",
+          "type": "chinese",
+          "pinyin": "jīn tiān"
+        },
+        {
+          "content": "weather",
+          "type": "english",
+          "pinyin": "weather"
+        },
+        {
+          "content": "真好",
+          "type": "chinese",
+          "pinyin": "zhēn hǎo"
+        },
+        {
+          "content": "123456",
+          "type": "english",
+          "pinyin": "123456"
+        },
+        {
+          "content": "。",
+          "type": "punctuation",
+          "pinyin": "。"
+        }
+      ]
+    }
+  },
+  {
+    "id": "d6f3ac86-321e-4187-ad79-760dc8aa1302",
+    "text": "你好，今天weather真好。",
+    "original_text": "你好，今天weather真好。",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "d6f3ac86-321e-4187-ad79-760dc8aa1302.wav",
+    "created_at": "2026-04-21T08:44:09.801733",
+    "completed_at": "2026-04-21T08:44:09.801733",
+    "subtitle_info": {
+      "original": "你好，今天weather真好。",
+      "pinyin": "nǐ hǎo，jīn tiānweatherzhēn hǎo。",
+      "processed": "ni hao , jin tian weather zhen hao .",
+      "language": "chinese",
+      "segments": [
+        {
+          "content": "你好",
+          "type": "chinese",
+          "pinyin": "nǐ hǎo"
+        },
+        {
+          "content": "，",
+          "type": "punctuation",
+          "pinyin": "，"
+        },
+        {
+          "content": "今天",
+          "type": "chinese",
+          "pinyin": "jīn tiān"
+        },
+        {
+          "content": "weather",
+          "type": "english",
+          "pinyin": "weather"
+        },
+        {
+          "content": "真好",
+          "type": "chinese",
+          "pinyin": "zhēn hǎo"
+        },
+        {
+          "content": "。",
+          "type": "punctuation",
+          "pinyin": "。"
+        }
+      ]
+    }
+  },
+  {
+    "id": "5acfdef9-e5c7-446d-a28e-5cea8a2b75f7",
+    "text": "你好，今天天气真好。",
+    "original_text": "你好，今天天气真好。",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "5acfdef9-e5c7-446d-a28e-5cea8a2b75f7.wav",
+    "created_at": "2026-04-21T08:43:36.618520",
+    "completed_at": "2026-04-21T08:43:36.618520",
+    "subtitle_info": {
+      "original": "你好，今天天气真好。",
+      "pinyin": "nǐ hǎo，jīn tiān tiān qì zhēn hǎo。",
+      "processed": "ni hao , jin tian tian qi zhen hao .",
+      "language": "chinese",
+      "segments": [
+        {
+          "content": "你好",
+          "type": "chinese",
+          "pinyin": "nǐ hǎo"
+        },
+        {
+          "content": "，",
+          "type": "punctuation",
+          "pinyin": "，"
+        },
+        {
+          "content": "今天天气真好",
+          "type": "chinese",
+          "pinyin": "jīn tiān tiān qì zhēn hǎo"
+        },
+        {
+          "content": "。",
+          "type": "punctuation",
+          "pinyin": "。"
+        }
+      ]
+    }
+  },
+  {
+    "id": "61cbca56-38ac-43ad-9ae2-673d690ccc15",
+    "text": "This is a batch test message. It will be added to the task queue and processed in the background.",
+    "original_text": "This is a batch test message. It will be added to the task queue and processed in the background.",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "61cbca56-38ac-43ad-9ae2-673d690ccc15.wav",
+    "created_at": "2026-04-21T08:43:20.898309",
+    "completed_at": "2026-04-21T08:43:20.898309",
+    "subtitle_info": {
+      "original": "This is a batch test message. It will be added to the task queue and processed in the background.",
+      "pinyin": "",
+      "processed": "this is a batch test message. it will be added to the task queue and processed in the background.",
+      "language": "english",
+      "segments": [
+        {
+          "content": "This",
+          "type": "english",
+          "pinyin": "This"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "is",
+          "type": "english",
+          "pinyin": "is"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "a",
+          "type": "english",
+          "pinyin": "a"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "batch",
+          "type": "english",
+          "pinyin": "batch"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "test",
+          "type": "english",
+          "pinyin": "test"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "message",
+          "type": "english",
+          "pinyin": "message"
+        },
+        {
+          "content": ".",
+          "type": "punctuation",
+          "pinyin": "."
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "It",
+          "type": "english",
+          "pinyin": "It"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "will",
+          "type": "english",
+          "pinyin": "will"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "be",
+          "type": "english",
+          "pinyin": "be"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "added",
+          "type": "english",
+          "pinyin": "added"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "to",
+          "type": "english",
+          "pinyin": "to"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "the",
+          "type": "english",
+          "pinyin": "the"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "task",
+          "type": "english",
+          "pinyin": "task"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "queue",
+          "type": "english",
+          "pinyin": "queue"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "and",
+          "type": "english",
+          "pinyin": "and"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "processed",
+          "type": "english",
+          "pinyin": "processed"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "in",
+          "type": "english",
+          "pinyin": "in"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "the",
+          "type": "english",
+          "pinyin": "the"
+        },
+        {
+          "content": " ",
+          "type": "punctuation",
+          "pinyin": " "
+        },
+        {
+          "content": "background",
+          "type": "english",
+          "pinyin": "background"
+        },
+        {
+          "content": ".",
+          "type": "punctuation",
+          "pinyin": "."
+        }
+      ]
+    }
+  },
+  {
+    "id": "ba4c33d0-34c3-49c4-ac0e-00ca25cdf831",
+    "text": "This is a batch test message. It will be added to the task queue and processed in the background.",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "ba4c33d0-34c3-49c4-ac0e-00ca25cdf831.wav",
+    "created_at": "2026-04-21T08:38:49.294495",
+    "completed_at": "2026-04-21T08:38:49.294495"
+  },
+  {
+    "id": "0c61edbe-bb38-4006-9323-cb9dd885427d",
+    "text": "你好，今天天气真好。",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Jasper",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "0c61edbe-bb38-4006-9323-cb9dd885427d.wav",
+    "created_at": "2026-04-21T08:36:16.149054",
+    "completed_at": "2026-04-21T08:36:16.149054"
+  },
+  {
+    "id": "5b5cca93-a7f7-4a76-909d-c139a7b331c9",
+    "text": "This is a batch test message. It will be added to the task queue and processed in the background.",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "5b5cca93-a7f7-4a76-909d-c139a7b331c9.wav",
+    "created_at": "2026-04-20T22:55:17.883639",
+    "completed_at": "2026-04-20T22:55:17.883639"
+  },
+  {
+    "id": "f70f2b26-ad41-4080-83f9-c9eaa830a0a5",
+    "text": "你好，今天天气很好",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "f70f2b26-ad41-4080-83f9-c9eaa830a0a5.wav",
+    "created_at": "2026-04-20T21:43:45.706054",
+    "completed_at": "2026-04-20T21:43:45.706054"
+  },
+  {
+    "id": "8010e719-c785-4f8d-8afa-28832806e9da",
+    "text": "你好，今天天气很好",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "8010e719-c785-4f8d-8afa-28832806e9da.wav",
+    "created_at": "2026-04-20T21:29:38.009820",
+    "completed_at": "2026-04-20T21:29:38.009820"
+  },
+  {
+    "id": "30d8c0f2-0d73-4abd-8b34-4e4a0587c50e",
+    "text": "nihao，jintian1tianqizhenhao",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Kiki",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "30d8c0f2-0d73-4abd-8b34-4e4a0587c50e.wav",
+    "created_at": "2026-04-20T21:24:30.137704",
+    "completed_at": "2026-04-20T21:24:30.137704"
+  },
+  {
+    "id": "d6493c0e-29ab-46bc-9910-725257ec81a5",
+    "text": "nihao，jintiantianqizhenhao",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "d6493c0e-29ab-46bc-9910-725257ec81a5.wav",
+    "created_at": "2026-04-20T21:24:16.382444",
+    "completed_at": "2026-04-20T21:24:16.382444"
+  },
+  {
+    "id": "e1defdf8-1ee6-4346-b750-45e04c50ac8c",
+    "text": "你好，今天天气很好",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "e1defdf8-1ee6-4346-b750-45e04c50ac8c.wav",
+    "created_at": "2026-04-20T21:23:51.344488",
+    "completed_at": "2026-04-20T21:23:51.344488"
+  },
+  {
+    "id": "ba33a85b-331d-463d-a2ff-85d8e20dd98e",
+    "text": "你好，今天天气很好",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "ba33a85b-331d-463d-a2ff-85d8e20dd98e.wav",
+    "created_at": "2026-04-20T21:11:16.181978",
+    "completed_at": "2026-04-20T21:11:16.181978"
+  },
+  {
+    "id": "26f16480-4b7a-454a-b126-e70f7140cf45",
+    "text": "你好，今天天气很好",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "26f16480-4b7a-454a-b126-e70f7140cf45.wav",
+    "created_at": "2026-04-20T21:10:22.895003",
+    "completed_at": "2026-04-20T21:10:22.895003"
+  },
+  {
+    "id": "c3ffe2a5-5a3a-4e60-a8c2-f2ca3de87f60",
+    "text": "你好，今天天气很好",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "c3ffe2a5-5a3a-4e60-a8c2-f2ca3de87f60.wav",
+    "created_at": "2026-04-20T21:10:06.347052",
+    "completed_at": "2026-04-20T21:10:06.347052"
+  },
+  {
+    "id": "52477581-60d6-4866-9342-504c9b3b290e",
+    "text": "你好，今天天气真好  123456",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "52477581-60d6-4866-9342-504c9b3b290e.wav",
+    "created_at": "2026-04-20T20:59:55.116738",
+    "completed_at": "2026-04-20T20:59:55.116738"
+  },
+  {
+    "id": "c0745271-a973-441a-a5e4-2452a0568a5f",
+    "text": "你好，今天天气真好",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "c0745271-a973-441a-a5e4-2452a0568a5f.wav",
+    "created_at": "2026-04-20T20:59:37.065451",
+    "completed_at": "2026-04-20T20:59:37.065451"
+  },
+  {
+    "id": "07dee5c3-24bc-4171-ba40-8fb1fed7c5e1",
+    "text": "nihao，jintiantianqizhenhao",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 1.1,
+    "status": "completed",
+    "audio_file": "07dee5c3-24bc-4171-ba40-8fb1fed7c5e1.wav",
+    "created_at": "2026-04-20T20:47:21.492144",
+    "completed_at": "2026-04-20T20:47:21.492144"
+  },
+  {
+    "id": "bb747839-676d-4a9d-8b0e-be382c5e9bf7",
+    "text": "nihao,jintiantianqizhenhao",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 1.1,
+    "status": "completed",
+    "audio_file": "bb747839-676d-4a9d-8b0e-be382c5e9bf7.wav",
+    "created_at": "2026-04-20T20:47:07.928849",
+    "completed_at": "2026-04-20T20:47:07.928849"
+  },
+  {
+    "id": "5894b1ec-37a0-4495-85bf-3b079fcaf0fc",
+    "text": "你好，今天天气真好123456 water",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 1.1,
+    "status": "completed",
+    "audio_file": "5894b1ec-37a0-4495-85bf-3b079fcaf0fc.wav",
+    "created_at": "2026-04-20T20:45:54.819700",
+    "completed_at": "2026-04-20T20:45:54.819700"
+  },
+  {
+    "id": "ca0f3b5f-dd4a-4bf9-86c2-82bbfeb1b812",
+    "text": "你好，今天天气真好",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 1.4,
+    "status": "completed",
+    "audio_file": "ca0f3b5f-dd4a-4bf9-86c2-82bbfeb1b812.wav",
+    "created_at": "2026-04-20T20:45:23.964411",
+    "completed_at": "2026-04-20T20:45:23.964411"
+  },
+  {
+    "id": "d282569b-064b-4fe6-9c54-d1bed69aee2d",
+    "text": "你好，今天天气真好",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Kiki",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "d282569b-064b-4fe6-9c54-d1bed69aee2d.wav",
+    "created_at": "2026-04-20T20:44:33.396728",
+    "completed_at": "2026-04-20T20:44:33.396728"
+  },
+  {
+    "id": "ac570fca-72f7-4aa9-9f24-f5801b45a4df",
+    "text": "This is a batch test message. It will be added to the task queue and processed in the background.",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 2.0,
+    "status": "completed",
+    "audio_file": "ac570fca-72f7-4aa9-9f24-f5801b45a4df.wav",
+    "created_at": "2026-04-20T18:30:33.216799",
+    "completed_at": "2026-04-20T18:30:33.216799"
+  },
+  {
+    "id": "45e127e1-25be-4411-89ca-8ab228cb2810",
+    "text": "This is a batch test message. It will be added to the task queue and processed in the background.",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bella",
+    "speed": 1.4,
+    "status": "completed",
+    "audio_file": "45e127e1-25be-4411-89ca-8ab228cb2810.wav",
+    "created_at": "2026-04-20T18:30:20.507877",
+    "completed_at": "2026-04-20T18:30:20.507877"
+  },
+  {
+    "id": "cbc3ff0f-c2b2-4a27-98c4-28ac87187485",
+    "text": "This is a batch test message. It will be added to the task queue and processed in the background.",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "clean_text": true,
+    "status": "completed",
+    "created_at": "2026-04-20T18:27:37.313439",
+    "audio_file": "cbc3ff0f-c2b2-4a27-98c4-28ac87187485.wav",
+    "completed_at": "2026-04-20T18:27:44.202011"
+  },
+  {
+    "id": "641a77d3-231f-410d-bca6-8f6705e43ee1",
+    "text": "Hello, this is a test of KittenTTS WebUI. The quick brown fox jumps over the lazy dog.",
+    "model_id": "KittenML/kitten-tts-mini-0.8",
+    "voice": "Bruno",
+    "speed": 1.0,
+    "status": "completed",
+    "audio_file": "641a77d3-231f-410d-bca6-8f6705e43ee1.wav",
+    "created_at": "2026-04-20T18:27:19.889696",
+    "completed_at": "2026-04-20T18:27:19.889696"
+  }
+]
