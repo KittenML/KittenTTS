@@ -119,7 +119,7 @@ class AnalyticsClient:
             payload["sdk_error_code"] = sdk_error_code
 
         if self._async_delivery:
-            thread = threading.Thread(target=self._send, args=(payload,), daemon=True)
+            thread = threading.Thread(target=self._send, args=(payload,), daemon=False)
             thread.start()
         else:
             self._send(payload)
@@ -133,10 +133,15 @@ class AnalyticsClient:
 
 def post_json_request(endpoint: str, payload: Dict[str, str], timeout_seconds: float) -> None:
     body = json.dumps(payload).encode("utf-8")
+    sdk_version = str(payload.get("sdk_version") or "unknown").replace("\n", " ").replace("\r", " ")
     req = request.Request(
         endpoint,
         data=body,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": f"KittenTTS-Python/{sdk_version}",
+        },
         method="POST",
     )
     with request.urlopen(req, timeout=timeout_seconds) as response:

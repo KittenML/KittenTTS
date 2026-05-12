@@ -1,8 +1,9 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from kittentts.analytics import AnalyticsClient, error_code, parse_model_name
+from kittentts.analytics import AnalyticsClient, error_code, parse_model_name, post_json_request
 from kittentts.get_model import KittenTTS
 
 
@@ -75,6 +76,48 @@ class AnalyticsTests(unittest.TestCase):
 
         client = self.make_client(failing_post)
         client.track_generation(selected_voice="Jasper", generation="wav")
+
+    def test_async_delivery_uses_non_daemon_thread(self):
+        client = AnalyticsClient(
+            sdk_version="0.8.1",
+            selected_model="kitten-tts-nano",
+            model_version="0.8",
+            asset_source="cache",
+            post_json=lambda *args: None,
+            async_delivery=True,
+        )
+
+        with patch("kittentts.analytics.threading.Thread") as thread_class:
+            client.track_generation(selected_voice="Jasper", generation="wav")
+
+        self.assertFalse(thread_class.call_args.kwargs["daemon"])
+        thread_class.return_value.start.assert_called_once()
+
+    def test_post_request_uses_sdk_user_agent(self):
+        captured = []
+
+        class DummyResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, traceback):
+                return False
+
+            def read(self):
+                return b"{}"
+
+        def fake_urlopen(req, timeout):
+            captured.append((req, timeout))
+            return DummyResponse()
+
+        payload = {"sdk_version": "0.8.1"}
+
+        with patch("kittentts.analytics.request.urlopen", fake_urlopen):
+            post_json_request("https://example.com/v1/track", payload, 3.0)
+
+        req, timeout = captured[0]
+        self.assertEqual(timeout, 3.0)
+        self.assertEqual(req.get_header("User-agent"), "KittenTTS-Python/0.8.1")
 
     def test_model_metadata_parses_variant_version(self):
         self.assertEqual(
