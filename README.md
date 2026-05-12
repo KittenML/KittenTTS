@@ -99,6 +99,18 @@ print(model.available_voices)
 # ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
 ```
 
+### Analytics
+
+Kitten TTS sends anonymous generation analytics to the KittenTTS ingest API. The SDK does not include PostHog or any analytics-provider SDK.
+
+Analytics can be disabled at model creation:
+
+```python
+model = KittenTTS("KittenML/kitten-tts-mini-0.8", analytics=False)
+```
+
+The SDK generates a persistent anonymous install ID and sends generation metadata such as SDK version, platform, runtime version, selected model, selected voice, generation type, and asset source. Analytics runs in the background with a short timeout and never blocks or fails TTS generation.
+
 ### Using with GPU
 
 ```
