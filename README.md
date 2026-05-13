@@ -101,7 +101,7 @@ print(model.available_voices)
 
 ### Analytics
 
-Kitten TTS sends anonymous generation analytics to the KittenTTS ingest API. The SDK does not include PostHog or any analytics-provider SDK.
+Kitten TTS sends anonymous generation analytics to the KittenTTS ingest API at `https://kittenmlanalytics.com/v1/track`. The SDK does not include PostHog or any analytics-provider SDK.
 
 Analytics can be disabled at model creation:
 

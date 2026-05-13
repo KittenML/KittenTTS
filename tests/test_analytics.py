@@ -36,7 +36,7 @@ class AnalyticsTests(unittest.TestCase):
 
         self.assertEqual(len(calls), 1)
         endpoint, payload, timeout = calls[0]
-        self.assertEqual(endpoint, "https://kittentts-analytics.dewana-sl.workers.dev/v1/track")
+        self.assertEqual(endpoint, "https://kittenmlanalytics.com/v1/track")
         self.assertEqual(timeout, 3.0)
         for key in [
             "anonymous_id",

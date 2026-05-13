@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Callable, Dict, Optional
 from urllib import request
 
-ANALYTICS_ENDPOINT = "https://kittentts-analytics.dewana-sl.workers.dev/v1/track"
+ANALYTICS_ENDPOINT = "https://kittenmlanalytics.com/v1/track"
 SDK_TYPE = "python"
 DEFAULT_TIMEOUT_SECONDS = 3.0
 
