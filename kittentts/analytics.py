@@ -98,6 +98,17 @@ class AnalyticsClient:
         generation: str,
         sdk_error_code: Optional[str] = None,
     ) -> None:
+        try:
+            self._track_generation(selected_voice, generation, sdk_error_code=sdk_error_code)
+        except Exception:
+            return
+
+    def _track_generation(
+        self,
+        selected_voice: str,
+        generation: str,
+        sdk_error_code: Optional[str] = None,
+    ) -> None:
         if not self.enabled:
             return
 
@@ -152,7 +163,10 @@ def default_anonymous_id_path() -> Path:
     configured_home = os.environ.get("KITTENTTS_ANALYTICS_HOME")
     if configured_home:
         return Path(configured_home).expanduser() / "anonymous_id"
-    return Path.home() / ".kittentts" / "analytics_id"
+    try:
+        return Path.home() / ".kittentts" / "analytics_id"
+    except RuntimeError:
+        return Path(os.environ.get("TMPDIR", "/tmp")) / "kittentts" / "analytics_id"
 
 
 def load_or_create_anonymous_id(path: Path) -> str:

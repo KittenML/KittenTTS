@@ -77,6 +77,26 @@ class AnalyticsTests(unittest.TestCase):
         client = self.make_client(failing_post)
         client.track_generation(selected_voice="Jasper", generation="wav")
 
+    def test_payload_error_does_not_raise(self):
+        client = self.make_client(lambda *args: None)
+
+        with patch("kittentts.analytics.uuid.uuid4", side_effect=RuntimeError("uuid failed")):
+            client.track_generation(selected_voice="Jasper", generation="wav")
+
+    def test_thread_start_error_does_not_raise(self):
+        client = AnalyticsClient(
+            sdk_version="0.8.1",
+            selected_model="kitten-tts-nano",
+            model_version="0.8",
+            asset_source="cache",
+            post_json=lambda *args: None,
+            async_delivery=True,
+        )
+
+        with patch("kittentts.analytics.threading.Thread") as thread_class:
+            thread_class.return_value.start.side_effect = RuntimeError("thread failed")
+            client.track_generation(selected_voice="Jasper", generation="wav")
+
     def test_async_delivery_uses_non_daemon_thread(self):
         client = AnalyticsClient(
             sdk_version="0.8.1",
@@ -149,6 +169,13 @@ class AnalyticsTests(unittest.TestCase):
             [{"selected_voice": "Jasper", "generation": "wav", "sdk_error_code": "VALUE_ERROR"}],
         )
 
+    def test_generate_ignores_analytics_failure(self):
+        model = KittenTTS.__new__(KittenTTS)
+        model.model = DummyModel()
+        model.analytics = FailingAnalytics()
+
+        self.assertEqual(model.generate("hello", voice="Jasper"), "audio")
+
     def test_anonymous_id_is_stable_across_clients(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "analytics_id"
@@ -186,6 +213,11 @@ class RecordingAnalytics:
             "generation": generation,
             "sdk_error_code": sdk_error_code,
         })
+
+
+class FailingAnalytics:
+    def track_generation(self, selected_voice, generation, sdk_error_code=None):
+        raise RuntimeError("analytics failed")
 
 
 if __name__ == "__main__":
