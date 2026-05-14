@@ -3,6 +3,7 @@ import os
 from importlib import metadata
 
 from .analytics import AnalyticsClient, error_code, parse_model_name
+from .preprocess import normalize_text
 
 
 class KittenTTS:
@@ -33,6 +34,10 @@ class KittenTTS:
             enabled=analytics,
         )
     
+    def normalize_text(self, text, locale="en-US", return_spans=False):
+        """Normalize text for TTS without generating audio."""
+        return normalize_text(text, locale=locale, return_spans=return_spans)
+
     def generate(self, text, voice="expr-voice-5-m", speed=1.0, clean_text=False):
         """Generate audio from text.
         

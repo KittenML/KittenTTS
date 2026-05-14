@@ -7,54 +7,13 @@ import numpy as np
 import phonemizer
 import soundfile as sf
 import onnxruntime as ort
-from .preprocess import TextPreprocessor
+from .preprocess import TextPreprocessor, chunk_text, normalize_text
 
 def basic_english_tokenize(text):
     """Basic English tokenizer that splits on whitespace and punctuation."""
     import re
     tokens = re.findall(r"\w+|[^\w\s]", text)
     return tokens
-
-def ensure_punctuation(text):
-    """Ensure text ends with punctuation. If not, add a comma."""
-    text = text.strip()
-    if not text:
-        return text
-    if text[-1] not in '.!?,;:':
-        text = text + ','
-    return text
-
-
-def chunk_text(text, max_len=400):
-    """Split text into chunks for processing long texts."""
-    import re
-    
-    sentences = re.split(r'[.!?]+', text)
-    chunks = []
-    
-    for sentence in sentences:
-        sentence = sentence.strip()
-        if not sentence:
-            continue
-        
-        if len(sentence) <= max_len:
-            chunks.append(ensure_punctuation(sentence))
-        else:
-            # Split long sentences by words
-            words = sentence.split()
-            temp_chunk = ""
-            for word in words:
-                if len(temp_chunk) + len(word) + 1 <= max_len:
-                    temp_chunk += " " + word if temp_chunk else word
-                else:
-                    if temp_chunk:
-                        chunks.append(ensure_punctuation(temp_chunk.strip()))
-                    temp_chunk = word
-            if temp_chunk:
-                chunks.append(ensure_punctuation(temp_chunk.strip()))
-    
-    return chunks
-
 
 class TextCleaner:
     def __init__(self, dummy=None):
@@ -155,6 +114,9 @@ class KittenTTS_1_Onnx:
             "speed": np.array([speed], dtype=np.float32),
         }
     
+    def normalize_text(self, text: str, locale: str = "en-US", return_spans: bool = False):
+        return normalize_text(text, locale=locale, return_spans=return_spans)
+
     def generate(self, text: str, voice: str = "expr-voice-5-m", speed: float = 1.0, clean_text: bool=True) -> np.ndarray:
         out_chunks = []
         if clean_text:
@@ -209,4 +171,3 @@ class KittenTTS_1_Onnx:
         audio = self.generate(text, voice, speed, clean_text=clean_text)
         sf.write(output_path, audio, sample_rate)
         print(f"Audio saved to {output_path}")
-

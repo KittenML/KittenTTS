@@ -1,8 +1,17 @@
+from kittentts.preprocess import NormalizedSpan, NormalizedTextResult, normalize_text, normalize_text_result
+
 __version__ = "0.1.0"
 __author__ = "KittenML"
 __description__ = "Ultra-lightweight text-to-speech model with just 15 million parameters"
 
-__all__ = ["get_model", "KittenTTS"]
+__all__ = [
+    "get_model",
+    "KittenTTS",
+    "normalize_text",
+    "normalize_text_result",
+    "NormalizedSpan",
+    "NormalizedTextResult",
+]
 
 
 def __getattr__(name):

@@ -5,7 +5,8 @@ A comprehensive text preprocessing library for NLP pipelines.
 
 import re
 import unicodedata
-from typing import Optional
+from dataclasses import dataclass
+from typing import Callable, List, Optional, Pattern, Tuple, Union
 
 
 # ─────────────────────────────────────────────
@@ -194,6 +195,53 @@ _RE_DECADE   = re.compile(r"\b(\d{1,3})0s\b")
 
 # Leading decimal (no digit before the dot): .5, .75
 _RE_LEAD_DEC = re.compile(r"(?<!\d)\.([\d])")
+
+_MONTHS = {
+    "jan": "January", "january": "January",
+    "feb": "February", "february": "February",
+    "mar": "March", "march": "March",
+    "apr": "April", "april": "April",
+    "may": "May",
+    "jun": "June", "june": "June",
+    "jul": "July", "july": "July",
+    "aug": "August", "august": "August",
+    "sep": "September", "sept": "September", "september": "September",
+    "oct": "October", "october": "October",
+    "nov": "November", "november": "November",
+    "dec": "December", "december": "December",
+}
+
+_COMMON_ABBREVIATIONS = {
+    "dr": "Doctor",
+    "prof": "Professor",
+    "mr": "Mister",
+    "mrs": "Misses",
+    "ms": "Ms",
+    "fig": "Figure",
+    "figs": "Figures",
+    "pp": "pages",
+    "p": "page",
+    "ch": "chapter",
+    "sec": "section",
+}
+
+_DIGIT_WORDS = {
+    "0": "zero", "1": "one", "2": "two", "3": "three", "4": "four",
+    "5": "five", "6": "six", "7": "seven", "8": "eight", "9": "nine",
+}
+
+_SPAN_REASONS = {
+    "abbreviation",
+    "currency",
+    "number",
+    "date",
+    "time",
+    "ordinal",
+    "citation",
+    "url",
+    "punctuation",
+    "other",
+}
 
 
 # ─────────────────────────────────────────────
@@ -587,6 +635,377 @@ def expand_phone_numbers(text: str) -> str:
     text = re.sub(r"(?<!\d-)\b(\d{3})-(\d{4})\b(?!-\d)",
                   lambda m: _join(*m.groups()), text)
     return text
+
+
+@dataclass
+class NormalizedSpan:
+    """Mapping from an original text span to its normalized replacement."""
+
+    originalStartChar: int
+    originalEndChar: int
+    normalizedStartChar: int
+    normalizedEndChar: int
+    reason: str
+
+
+@dataclass
+class NormalizedTextResult:
+    """Normalized text plus optional original-to-normalized spans."""
+
+    text: str
+    spans: List[NormalizedSpan]
+
+
+@dataclass
+class _Replacement:
+    start: int
+    end: int
+    text: str
+    reason: str
+
+
+def _year_to_words(year: int) -> str:
+    if 1900 <= year <= 1999:
+        rest = year % 100
+        return f"nineteen {number_to_words(rest)}" if rest else "nineteen hundred"
+    if 2000 <= year <= 2009:
+        return f"two thousand {number_to_words(year % 100)}" if year % 100 else "two thousand"
+    if 2010 <= year <= 2099:
+        rest = year % 100
+        return f"twenty {number_to_words(rest)}" if rest else "twenty hundred"
+    return number_to_words(year)
+
+
+def _number_or_year_to_words(raw: str) -> str:
+    cleaned = raw.replace(",", "")
+    if "." in cleaned:
+        return float_to_words(cleaned)
+    value = int(cleaned)
+    if 1900 <= value <= 2099:
+        return _year_to_words(value)
+    return number_to_words(value)
+
+
+def _spell_characters(text: str) -> str:
+    parts = []
+    for char in text:
+        lower = char.lower()
+        if lower.isalpha():
+            parts.append(lower)
+        elif char.isdigit():
+            parts.append(_DIGIT_WORDS[char])
+        elif char == ".":
+            parts.append("dot")
+        elif char in "-_":
+            parts.append("dash" if char == "-" else "underscore")
+        elif char == "@":
+            parts.append("at")
+        elif char == "/":
+            parts.append("slash")
+        elif char == "?":
+            parts.append("question mark")
+        elif char == "&":
+            parts.append("and")
+        elif char == "=":
+            parts.append("equals")
+    return " ".join(parts)
+
+
+def _url_to_words(raw: str) -> str:
+    text = re.sub(r"^https?://", "", raw, flags=re.IGNORECASE)
+    text = re.sub(r"^www\.", "www dot ", text, flags=re.IGNORECASE)
+    return _spell_characters(text)
+
+
+def _email_to_words(raw: str) -> str:
+    local, domain = raw.split("@", 1)
+    return f"{_spell_characters(local)} at {_spell_characters(domain)}"
+
+
+def _version_to_words(raw: str) -> str:
+    prefix = ""
+    version = raw
+    if raw[0].lower() == "v":
+        prefix = "v "
+        version = raw[1:]
+    return prefix + " point ".join(number_to_words(int(part)) for part in version.split("."))
+
+
+def _month_name(raw: str) -> str:
+    return _MONTHS[raw.rstrip(".").lower()]
+
+
+def _replace_read_aloud_time(match: re.Match) -> str:
+    h = int(match.group(1))
+    mins = int(match.group(2))
+    seconds = match.group(3)
+    suffix_raw = match.group(4)
+    suffix = ""
+    if suffix_raw:
+        suffix_letter = suffix_raw.lower()[0]
+        suffix = " a m" if suffix_letter == "a" else " p m"
+
+    if suffix_raw and h > 12:
+        h -= 12
+    h_words = number_to_words(h)
+    if mins == 0:
+        result = h_words
+    elif mins < 10:
+        result = f"{h_words} oh {number_to_words(mins)}"
+    else:
+        result = f"{h_words} {number_to_words(mins)}"
+    if seconds:
+        sec = int(seconds)
+        result += f" and {number_to_words(sec)} seconds"
+    return result + suffix
+
+
+def _replace_read_aloud_range(match: re.Match) -> str:
+    left = int(match.group(1))
+    right = int(match.group(2))
+    if 1900 <= left <= 2099 and 1900 <= right <= 2099:
+        return f"{_year_to_words(left)} to {_year_to_words(right)}"
+    return f"{number_to_words(left)} to {number_to_words(right)}"
+
+
+def _replace_read_aloud_number(match: re.Match) -> str:
+    return _number_or_year_to_words(match.group(0))
+
+
+_NON_BOUNDARY_ABBREVIATIONS = {
+    "dr", "prof", "mr", "mrs", "ms", "fig", "figs", "pp", "p", "ch", "sec",
+    "jan", "feb", "mar", "apr", "jun", "jul", "aug", "sep", "sept", "oct",
+    "nov", "dec", "al",
+}
+
+
+def ensure_punctuation(text: str) -> str:
+    """Ensure a chunk ends with prosodic punctuation."""
+    text = text.strip()
+    if not text:
+        return text
+    if text[-1] not in ".!?,;:":
+        text = text + ","
+    return text
+
+
+def _is_sentence_boundary(text: str, index: int) -> bool:
+    char = text[index]
+    if char not in ".!?":
+        return False
+    if char == ".":
+        if 0 < index < len(text) - 1 and text[index - 1].isdigit() and text[index + 1].isdigit():
+            return False
+        before = text[:index]
+        token_match = re.search(r"([A-Za-z]+)$", before)
+        token = token_match.group(1).lower() if token_match else ""
+        if token in _NON_BOUNDARY_ABBREVIATIONS:
+            return False
+        if token in {"a", "p"} and index + 1 < len(text) and text[index + 1].lower() == "m":
+            return False
+        if token == "m" and re.search(r"\b[ap]\.m$", before, re.IGNORECASE):
+            next_text = text[index + 1:].strip()
+            return not next_text or next_text[:1].isupper()
+    next_text = text[index + 1:]
+    return not next_text or next_text[:1].isspace()
+
+
+def chunk_text(text: str, max_len: int = 400) -> List[str]:
+    """Split text into chunks without treating common abbreviations as sentences."""
+    sentences = []
+    start = 0
+    for index, _ in enumerate(text):
+        if _is_sentence_boundary(text, index):
+            sentences.append(text[start:index + 1])
+            start = index + 1
+    if start < len(text):
+        sentences.append(text[start:])
+
+    chunks = []
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+
+        if len(sentence) <= max_len:
+            chunks.append(ensure_punctuation(sentence))
+        else:
+            words = sentence.split()
+            temp_chunk = ""
+            for word in words:
+                if len(temp_chunk) + len(word) + 1 <= max_len:
+                    temp_chunk += " " + word if temp_chunk else word
+                else:
+                    if temp_chunk:
+                        chunks.append(ensure_punctuation(temp_chunk.strip()))
+                    temp_chunk = word
+            if temp_chunk:
+                chunks.append(ensure_punctuation(temp_chunk.strip()))
+
+    return chunks
+
+
+def _sub_with_spans(
+    text: str,
+    origins: List[Optional[int]],
+    spans: List[NormalizedSpan],
+    pattern: Pattern,
+    replace: Callable[[re.Match], str],
+    reason: str,
+) -> Tuple[str, List[Optional[int]]]:
+    matches = list(pattern.finditer(text))
+    if not matches:
+        return text, origins
+
+    replacements = []
+    for match in matches:
+        replacement = replace(match)
+        if replacement != match.group(0):
+            replacements.append(_Replacement(match.start(), match.end(), replacement, reason))
+    if not replacements:
+        return text, origins
+
+    def map_pos(pos: int) -> int:
+        shift = 0
+        for repl in replacements:
+            delta = len(repl.text) - (repl.end - repl.start)
+            if pos >= repl.end:
+                shift += delta
+            elif repl.start < pos < repl.end:
+                return repl.start + shift + len(repl.text)
+            else:
+                break
+        return pos + shift
+
+    for span in spans:
+        span.normalizedStartChar = map_pos(span.normalizedStartChar)
+        span.normalizedEndChar = map_pos(span.normalizedEndChar)
+
+    output = []
+    new_origins = []
+    cursor = 0
+    shift = 0
+    for repl in replacements:
+        output.append(text[cursor:repl.start])
+        new_origins.extend(origins[cursor:repl.start])
+
+        normalized_start = repl.start + shift
+        normalized_end = normalized_start + len(repl.text)
+        source_positions = [pos for pos in origins[repl.start:repl.end] if pos is not None]
+        if source_positions and repl.reason in _SPAN_REASONS:
+            spans.append(
+                NormalizedSpan(
+                    originalStartChar=min(source_positions),
+                    originalEndChar=max(source_positions) + 1,
+                    normalizedStartChar=normalized_start,
+                    normalizedEndChar=normalized_end,
+                    reason=repl.reason,
+                )
+            )
+
+        output.append(repl.text)
+        new_origins.extend([None] * len(repl.text))
+        shift += len(repl.text) - (repl.end - repl.start)
+        cursor = repl.end
+
+    output.append(text[cursor:])
+    new_origins.extend(origins[cursor:])
+    return "".join(output), new_origins
+
+
+def normalize_text(
+    text: str,
+    locale: str = "en-US",
+    return_spans: bool = False,
+) -> Union[str, NormalizedTextResult]:
+    """Normalize English text for TTS use cases.
+
+    Args:
+        text: Input text to normalize.
+        locale: Currently only "en-US" is supported.
+        return_spans: When true, return NormalizedTextResult instead of text.
+    """
+    result = normalize_text_result(text, locale=locale)
+    return result if return_spans else result.text
+
+
+def normalize_text_result(
+    text: str,
+    locale: str = "en-US",
+) -> NormalizedTextResult:
+    """Normalize English text and return span metadata for changed segments."""
+    if locale.lower() not in {"en-us", "en"}:
+        raise ValueError("Only en-US text normalization is currently supported")
+
+    text = normalize_unicode(text)
+    origins = list(range(len(text)))
+    spans: List[NormalizedSpan] = []
+
+    substitutions = [
+        (_RE_HTML, lambda m: " ", "other"),
+        (_RE_URL, lambda m: _url_to_words(m.group(0)), "url"),
+        (_RE_EMAIL, lambda m: _email_to_words(m.group(0)), "url"),
+        (
+            re.compile(
+                r"\b("
+                r"Jan\.?|January|Feb\.?|February|Mar\.?|March|Apr\.?|April|May|"
+                r"Jun\.?|June|Jul\.?|July|Aug\.?|August|Sep\.?|Sept\.?|September|"
+                r"Oct\.?|October|Nov\.?|November|Dec\.?|December"
+                r")\s+(\d{1,2})(?:st|nd|rd|th)?(?:,)?\s+(\d{4})\b",
+                re.IGNORECASE,
+            ),
+            lambda m: f"{_month_name(m.group(1))} {_ordinal_suffix(int(m.group(2)))}, {_year_to_words(int(m.group(3)))}",
+            "date",
+        ),
+        (
+            re.compile(
+                r"\b("
+                r"Jan\.?|January|Feb\.?|February|Mar\.?|March|Apr\.?|April|May|"
+                r"Jun\.?|June|Jul\.?|July|Aug\.?|August|Sep\.?|Sept\.?|September|"
+                r"Oct\.?|October|Nov\.?|November|Dec\.?|December"
+                r")\s+(\d{4})\b",
+                re.IGNORECASE,
+            ),
+            lambda m: f"{_month_name(m.group(1))} {_year_to_words(int(m.group(2)))}",
+            "date",
+        ),
+        (re.compile(r"\b(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\b", re.IGNORECASE), _replace_read_aloud_time, "time"),
+        (_RE_CURRENCY, lambda m: expand_currency(m.group(0)), "currency"),
+        (_RE_PERCENT, lambda m: expand_percentages(m.group(0)), "number"),
+        (_RE_ORDINAL, lambda m: _ordinal_suffix(int(m.group(1))), "ordinal"),
+        (re.compile(r"\bet\s+al\.", re.IGNORECASE), lambda m: "et al", "citation"),
+        (re.compile(r"\b(Dr|Prof|Mr|Mrs|Ms|Fig|Figs|pp|p|ch|sec)\.", re.IGNORECASE), lambda m: _COMMON_ABBREVIATIONS[m.group(1).lower()], "abbreviation"),
+        (re.compile(r"\b[vV]?\d+(?:\.\d+){2,}\b"), lambda m: _version_to_words(m.group(0)), "number"),
+        (_RE_RANGE, _replace_read_aloud_range, "number"),
+        (_RE_MODEL_VER, lambda m: f"{m.group(1)} {_version_to_words(m.group(2))}", "number"),
+        (_RE_NUMBER, _replace_read_aloud_number, "number"),
+    ]
+
+    for pattern, replace, reason in substitutions:
+        text, origins = _sub_with_spans(text, origins, spans, pattern, replace, reason)
+
+    text, origins = _sub_with_spans(
+        text,
+        origins,
+        spans,
+        re.compile(r"[^\w\s.,?!;:\-\u2014\u2013\u2026]"),
+        lambda m: " ",
+        "punctuation",
+    )
+    text, origins = _sub_with_spans(text, origins, spans, re.compile(r"\s+"), lambda m: " ", "internal")
+    leading = len(text) - len(text.lstrip())
+    trailing_text = text.rstrip()
+    if leading:
+        for span in spans:
+            span.normalizedStartChar = max(0, span.normalizedStartChar - leading)
+            span.normalizedEndChar = max(0, span.normalizedEndChar - leading)
+        origins = origins[leading:]
+    text = trailing_text.lstrip()
+    if len(origins) > len(text):
+        origins = origins[:len(text)]
+
+    spans.sort(key=lambda span: (span.originalStartChar, span.originalEndChar, span.reason))
+    return NormalizedTextResult(text=text, spans=spans)
 
 
 # ─────────────────────────────────────────────
