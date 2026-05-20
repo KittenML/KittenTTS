@@ -176,6 +176,30 @@ class AnalyticsTests(unittest.TestCase):
 
         self.assertEqual(model.generate("hello", voice="Jasper"), "audio")
 
+    def test_generate_stream_tracks_one_success_event(self):
+        model = KittenTTS.__new__(KittenTTS)
+        model.model = DummyStreamModel()
+        model.analytics = RecordingAnalytics()
+
+        self.assertEqual(list(model.generate_stream("hello", voice="Jasper")), ["chunk-1", "chunk-2"])
+        self.assertEqual(
+            model.analytics.events,
+            [{"selected_voice": "Jasper", "generation": "stream", "sdk_error_code": None}],
+        )
+
+    def test_generate_stream_tracks_failure_and_reraises(self):
+        model = KittenTTS.__new__(KittenTTS)
+        model.model = FailingStreamModel()
+        model.analytics = RecordingAnalytics()
+
+        with self.assertRaises(ValueError):
+            list(model.generate_stream("hello", voice="Jasper"))
+
+        self.assertEqual(
+            model.analytics.events,
+            [{"selected_voice": "Jasper", "generation": "stream", "sdk_error_code": "VALUE_ERROR"}],
+        )
+
     def test_anonymous_id_is_stable_across_clients(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "analytics_id"
@@ -198,9 +222,21 @@ class DummyModel:
         return "audio"
 
 
+class DummyStreamModel:
+    def generate_stream(self, text, voice="expr-voice-5-m", speed=1.0, clean_text=False):
+        yield "chunk-1"
+        yield "chunk-2"
+
+
 class FailingModel:
     def generate(self, text, voice="expr-voice-5-m", speed=1.0, clean_text=False):
         raise ValueError("bad voice")
+
+
+class FailingStreamModel:
+    def generate_stream(self, text, voice="expr-voice-5-m", speed=1.0, clean_text=False):
+        raise ValueError("bad stream")
+        yield
 
 
 class RecordingAnalytics:

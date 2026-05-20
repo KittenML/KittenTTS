@@ -5,9 +5,12 @@ Kitten TTS sends anonymous generation analytics to the KittenTTS ingest API at
 any analytics-provider SDK, and it does not send input text or generated audio.
 
 Events include SDK version, SDK type, platform, runtime version, selected model,
-model version, selected/default voice, generation type, asset source, and SDK
-error code for failed calls. IP address and location are added server-side by
-Cloudflare.
+model version, selected/default voice, generation type (`wav`, `speak`, or
+`stream`), asset source, and SDK error code for failed calls. IP address and
+location are added server-side by Cloudflare.
+
+Streaming calls send one `stream` analytics event per stream invocation, not one
+event per generated chunk.
 
 Disable analytics at model creation:
 

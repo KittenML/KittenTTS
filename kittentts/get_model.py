@@ -67,9 +67,9 @@ class KittenTTS:
         try:
             yield from self.model.generate_stream(text, voice=voice, speed=speed, clean_text=clean_text)
         except Exception as exc:
-            self._track_generation(voice, generation="speak", sdk_error_code=error_code(exc))
+            self._track_generation(voice, generation="stream", sdk_error_code=error_code(exc))
             raise
-        self._track_generation(voice, generation="speak")
+        self._track_generation(voice, generation="stream")
 
     def generate_to_file(self, text, output_path, voice="expr-voice-5-m", speed=1.0, sample_rate=24000):
         """Generate audio from text and save to file.
