@@ -99,6 +99,15 @@ print(model.available_voices)
 # ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
 ```
 
+### Loading local model files
+
+If you already downloaded a model repository, pass the local directory that
+contains `config.json`, the ONNX model file, and the voices file:
+
+```python
+model = KittenTTS("/path/to/kitten-tts-mini-0.8")
+```
+
 ### Using with GPU
 
 ```
@@ -119,7 +128,7 @@ Load a model from Hugging Face Hub.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `model_name` | `str` | `"KittenML/kitten-tts-nano-0.8"` | Hugging Face repository ID |
+| `model_name` | `str` | `"KittenML/kitten-tts-nano-0.8"` | Hugging Face repository ID, model name, or local model directory |
 | `cache_dir` | `str` | `None` | Local directory for caching downloaded model files |
 
 ### `model.generate(text, voice, speed, clean_text)`
