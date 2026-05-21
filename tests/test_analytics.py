@@ -97,7 +97,7 @@ class AnalyticsTests(unittest.TestCase):
             thread_class.return_value.start.side_effect = RuntimeError("thread failed")
             client.track_generation(selected_voice="Jasper", generation="wav")
 
-    def test_async_delivery_uses_non_daemon_thread(self):
+    def test_async_delivery_uses_daemon_thread(self):
         client = AnalyticsClient(
             sdk_version="0.8.1",
             selected_model="kitten-tts-nano",
@@ -110,7 +110,7 @@ class AnalyticsTests(unittest.TestCase):
         with patch("kittentts.analytics.threading.Thread") as thread_class:
             client.track_generation(selected_voice="Jasper", generation="wav")
 
-        self.assertFalse(thread_class.call_args.kwargs["daemon"])
+        self.assertTrue(thread_class.call_args.kwargs["daemon"])
         thread_class.return_value.start.assert_called_once()
 
     def test_post_request_uses_sdk_user_agent(self):

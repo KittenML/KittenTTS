@@ -130,7 +130,7 @@ class AnalyticsClient:
             payload["sdk_error_code"] = sdk_error_code
 
         if self._async_delivery:
-            thread = threading.Thread(target=self._send, args=(payload,), daemon=False)
+            thread = threading.Thread(target=self._send, args=(payload,), daemon=True)
             thread.start()
         else:
             self._send(payload)
