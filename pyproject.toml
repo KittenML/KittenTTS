@@ -36,4 +36,4 @@ where = ["."]
 include = ["kittentts*"]
 
 [tool.setuptools.package-data]
-kittentts = ["*.json", "*.txt", "*.onnx"]
+kittentts = ["*.json", "*.txt", "*.onnx", "native_phonemizer/*.h", "native_phonemizer/*.cpp"]

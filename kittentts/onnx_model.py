@@ -1,12 +1,7 @@
-import os
-import espeakng_loader
-from phonemizer.backend.espeak.wrapper import EspeakWrapper
-EspeakWrapper.set_library(espeakng_loader.get_library_path())
-os.environ['ESPEAK_DATA_PATH'] = espeakng_loader.get_data_path()
 import numpy as np
-import phonemizer
 import soundfile as sf
 import onnxruntime as ort
+from .ephonemizer import EPhonemizerBackend
 from .preprocess import TextPreprocessor, chunk_text, normalize_text
 
 def basic_english_tokenize(text):
@@ -64,9 +59,7 @@ class KittenTTS_1_Onnx:
         
         self.session = ort.InferenceSession(model_path, providers=providers)
         
-        self.phonemizer = phonemizer.backend.EspeakBackend(
-            language="en-us", preserve_punctuation=True, with_stress=True
-        )
+        self.phonemizer = EPhonemizerBackend()
         self.text_cleaner = TextCleaner()
         self.speed_priors = speed_priors
         
