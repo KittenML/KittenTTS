@@ -1,0 +1,483 @@
+name: Build and test KittenTTS wheel
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/package.yml"
+      - "kittentts/**"
+      - "tests/**"
+      - "README.md"
+      - "MANIFEST.in"
+      - "pyproject.toml"
+      - "setup.py"
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  KITTEN_INFERENCE_VERSION: "0.1.1"
+  HF_HUB_DISABLE_TELEMETRY: "1"
+
+jobs:
+  unit-tests:
+    name: Unit tests Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package without native runtime deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . --no-deps
+
+      - name: Run tests
+        run: python -m unittest discover -s tests
+
+  build:
+    name: Build py3-none-any wheel and sdist
+    needs: unit-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Build distribution
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+          python -m build
+          python -m twine check dist/*
+
+      - name: Verify wheel tag
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          wheels = sorted(Path("dist").glob("kittentts-*.whl"))
+          assert len(wheels) == 1, wheels
+          wheel = wheels[0]
+          print(wheel)
+          assert wheel.name.endswith("-py3-none-any.whl"), wheel.name
+          PY
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: kittentts-dist
+          path: dist/*
+
+  linux-wheel-audio-smoke:
+    name: ${{ matrix.platform }} ${{ matrix.wheel-platform }} Python ${{ matrix.python-version }} audio
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.8"
+            python-tag: cp38
+            wheel-platform: manylinux2014_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.9"
+            python-tag: cp39
+            wheel-platform: manylinux2014_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.10"
+            python-tag: cp310
+            wheel-platform: manylinux2014_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.11"
+            python-tag: cp311
+            wheel-platform: manylinux2014_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.12"
+            python-tag: cp312
+            wheel-platform: manylinux2014_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.13"
+            python-tag: cp313
+            wheel-platform: manylinux2014_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.14"
+            python-tag: cp314
+            wheel-platform: manylinux2014_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.8"
+            python-tag: cp38
+            wheel-platform: manylinux_2_28_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.9"
+            python-tag: cp39
+            wheel-platform: manylinux_2_28_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.10"
+            python-tag: cp310
+            wheel-platform: manylinux_2_28_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.11"
+            python-tag: cp311
+            wheel-platform: manylinux_2_28_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.12"
+            python-tag: cp312
+            wheel-platform: manylinux_2_28_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.13"
+            python-tag: cp313
+            wheel-platform: manylinux_2_28_x86_64
+          - platform: Linux x86_64
+            os: ubuntu-latest
+            python-version: "3.14"
+            python-tag: cp314
+            wheel-platform: manylinux_2_28_x86_64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.8"
+            python-tag: cp38
+            wheel-platform: manylinux2014_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.9"
+            python-tag: cp39
+            wheel-platform: manylinux2014_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.10"
+            python-tag: cp310
+            wheel-platform: manylinux2014_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.11"
+            python-tag: cp311
+            wheel-platform: manylinux2014_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.12"
+            python-tag: cp312
+            wheel-platform: manylinux2014_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.13"
+            python-tag: cp313
+            wheel-platform: manylinux2014_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.14"
+            python-tag: cp314
+            wheel-platform: manylinux2014_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.8"
+            python-tag: cp38
+            wheel-platform: manylinux_2_28_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.9"
+            python-tag: cp39
+            wheel-platform: manylinux_2_28_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.10"
+            python-tag: cp310
+            wheel-platform: manylinux_2_28_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.11"
+            python-tag: cp311
+            wheel-platform: manylinux_2_28_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.12"
+            python-tag: cp312
+            wheel-platform: manylinux_2_28_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.13"
+            python-tag: cp313
+            wheel-platform: manylinux_2_28_aarch64
+          - platform: Linux ARM64
+            os: ubuntu-24.04-arm
+            python-version: "3.14"
+            python-tag: cp314
+            wheel-platform: manylinux_2_28_aarch64
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: kittentts-dist
+          path: dist
+
+      - name: Install built KittenTTS wheel without native deps
+        run: |
+          python -m pip install --upgrade pip
+          python -c "from pathlib import Path; import subprocess, sys; wheel = next(Path('dist').glob('kittentts-*-py3-none-any.whl')); subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--no-deps', str(wheel)])"
+          python -m pip install numpy soundfile phonemizer espeakng_loader huggingface_hub
+
+      - name: Install exact PyPI native wheel
+        run: |
+          python -m pip download --dest native-wheel --only-binary=:all: --no-deps --implementation cp --python-version "${{ matrix.python-version }}" --abi "${{ matrix.python-tag }}" --platform "${{ matrix.wheel-platform }}" "kitten-inference==${KITTEN_INFERENCE_VERSION}"
+          ls -lh native-wheel
+          python -m pip install native-wheel/*.whl
+
+      - name: Smoke test installed wheel
+        run: |
+          python -c "import importlib.metadata as md, os; import kittentts; import model_inference as mi; print('kittentts', md.version('kittentts')); print('kitten-inference', md.version('kitten-inference')); print(mi.__file__); assert md.version('kitten-inference') == os.environ['KITTEN_INFERENCE_VERSION']; assert hasattr(mi.InferenceModel, 'set_speed'); assert mi.set_backend('cpu'); assert mi.active_backend() == 'cpu'; assert kittentts.normalize_text('Fig. 2') == 'Figure two'"
+
+      - name: Smoke test Metal backend
+        if: matrix.platform == 'macOS ARM64'
+        run: |
+          python - <<'PY'
+          import model_inference as mi
+
+          assert mi.set_backend("metal")
+          assert mi.active_backend() == "metal"
+          assert mi.set_backend("cpu")
+          assert mi.active_backend() == "cpu"
+          PY
+
+      - name: Run tests against installed wheel
+        run: python -m unittest discover -s tests
+
+      - uses: actions/cache@v5
+        with:
+          path: .hf-cache
+          key: hf-${{ runner.os }}-${{ runner.arch }}-kitten-audio-v1
+
+      - name: Generate audio sample
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python tests/audio_smoke.py --mode quick --out-dir audio-smoke --cache-dir .hf-cache
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: kittentts-audio-linux-${{ matrix.wheel-platform }}-${{ matrix.python-tag }}
+          path: audio-smoke/*
+
+  desktop-wheel-audio-smoke:
+    name: ${{ matrix.platform }} Python ${{ matrix.python-version }} audio
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Windows x86_64
+            os: windows-2025-vs2026
+            python-version: "3.8"
+            artifact: windows-x86_64-cp38
+          - platform: Windows x86_64
+            os: windows-2025-vs2026
+            python-version: "3.9"
+            artifact: windows-x86_64-cp39
+          - platform: Windows x86_64
+            os: windows-2025-vs2026
+            python-version: "3.10"
+            artifact: windows-x86_64-cp310
+          - platform: Windows x86_64
+            os: windows-2025-vs2026
+            python-version: "3.11"
+            artifact: windows-x86_64-cp311
+          - platform: Windows x86_64
+            os: windows-2025-vs2026
+            python-version: "3.12"
+            artifact: windows-x86_64-cp312
+          - platform: Windows x86_64
+            os: windows-2025-vs2026
+            python-version: "3.13"
+            artifact: windows-x86_64-cp313
+          - platform: Windows x86_64
+            os: windows-2025-vs2026
+            python-version: "3.14"
+            artifact: windows-x86_64-cp314
+          - platform: Windows ARM64
+            os: windows-11-arm
+            python-version: "3.11"
+            artifact: windows-arm64-cp311
+          - platform: Windows ARM64
+            os: windows-11-arm
+            python-version: "3.12"
+            artifact: windows-arm64-cp312
+          - platform: Windows ARM64
+            os: windows-11-arm
+            python-version: "3.13"
+            artifact: windows-arm64-cp313
+          - platform: Windows ARM64
+            os: windows-11-arm
+            python-version: "3.14"
+            artifact: windows-arm64-cp314
+          - platform: macOS ARM64
+            os: macos-26
+            python-version: "3.8"
+            artifact: macos-arm64-cp38
+          - platform: macOS ARM64
+            os: macos-26
+            python-version: "3.9"
+            artifact: macos-arm64-cp39
+          - platform: macOS ARM64
+            os: macos-26
+            python-version: "3.10"
+            artifact: macos-arm64-cp310
+          - platform: macOS ARM64
+            os: macos-26
+            python-version: "3.11"
+            artifact: macos-arm64-cp311
+          - platform: macOS ARM64
+            os: macos-26
+            python-version: "3.12"
+            artifact: macos-arm64-cp312
+          - platform: macOS ARM64
+            os: macos-26
+            python-version: "3.13"
+            artifact: macos-arm64-cp313
+          - platform: macOS ARM64
+            os: macos-26
+            python-version: "3.14"
+            artifact: macos-arm64-cp314
+          - platform: macOS x86_64
+            os: macos-15-intel
+            python-version: "3.8"
+            artifact: macos-x86_64-cp38
+          - platform: macOS x86_64
+            os: macos-15-intel
+            python-version: "3.9"
+            artifact: macos-x86_64-cp39
+          - platform: macOS x86_64
+            os: macos-15-intel
+            python-version: "3.10"
+            artifact: macos-x86_64-cp310
+          - platform: macOS x86_64
+            os: macos-15-intel
+            python-version: "3.11"
+            artifact: macos-x86_64-cp311
+          - platform: macOS x86_64
+            os: macos-15-intel
+            python-version: "3.12"
+            artifact: macos-x86_64-cp312
+          - platform: macOS x86_64
+            os: macos-15-intel
+            python-version: "3.13"
+            artifact: macos-x86_64-cp313
+          - platform: macOS x86_64
+            os: macos-15-intel
+            python-version: "3.14"
+            artifact: macos-x86_64-cp314
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: actions/download-artifact@v7
+        with:
+          name: kittentts-dist
+          path: dist
+
+      - name: Install built KittenTTS wheel with PyPI native deps
+        run: |
+          python -m pip install --upgrade pip
+          python -c "from pathlib import Path; import subprocess, sys; wheel = next(Path('dist').glob('kittentts-*-py3-none-any.whl')); subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--only-binary=kitten-inference', str(wheel)])"
+
+      - name: Smoke test installed wheel
+        run: |
+          python -c "import importlib.metadata as md, os; import kittentts; import model_inference as mi; print('kittentts', md.version('kittentts')); print('kitten-inference', md.version('kitten-inference')); print(mi.__file__); assert md.version('kitten-inference') == os.environ['KITTEN_INFERENCE_VERSION']; assert hasattr(mi.InferenceModel, 'set_speed'); assert mi.set_backend('cpu'); assert mi.active_backend() == 'cpu'; assert kittentts.normalize_text('Fig. 2') == 'Figure two'"
+
+      - name: Run tests against installed wheel
+        run: python -m unittest discover -s tests
+
+      - uses: actions/cache@v5
+        with:
+          path: .hf-cache
+          key: hf-${{ runner.os }}-${{ runner.arch }}-kitten-audio-v1
+
+      - name: Generate audio samples
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python tests/audio_smoke.py --mode quick --out-dir audio-smoke --cache-dir .hf-cache
+
+      - name: Generate Metal audio sample
+        if: matrix.platform == 'macOS ARM64'
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python tests/audio_smoke.py --mode quick --backend metal --out-dir audio-smoke-metal --cache-dir .hf-cache
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: kittentts-audio-${{ matrix.artifact }}
+          path: audio-smoke/*
+
+      - uses: actions/upload-artifact@v6
+        if: matrix.platform == 'macOS ARM64'
+        with:
+          name: kittentts-audio-${{ matrix.artifact }}-metal
+          path: audio-smoke-metal/*
+
+  android-wheel-presence:
+    name: Android ARM64 CPython 3.13 wheel presence
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Download Android native wheel from PyPI
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip download --dest android-wheel --only-binary=:all: --no-deps --implementation cp --python-version "3.13" --abi cp313 --platform android_24_arm64_v8a "kitten-inference==${KITTEN_INFERENCE_VERSION}"
+          ls -lh android-wheel
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: kitten-inference-android-arm64-cp313
+          path: android-wheel/*.whl

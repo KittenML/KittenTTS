@@ -1,9 +1,10 @@
 from kittentts import KittenTTS
 
-# it will run blazing fast on any GPU. But this example will run on CPU.
+# This example runs on CPU by default. On Apple Silicon, pass backend="metal".
 
 # Step 1: Load the model
 m = KittenTTS("KittenML/kitten-tts-mini-0.8") # 80M version (highest quality)
+# m = KittenTTS("KittenML/kitten-tts-mini-0.8", backend="metal") # Apple Silicon
 # m = KittenTTS("KittenML/kitten-tts-micro-0.8") # 40M version (balances speed and quality )
 # m = KittenTTS("KittenML/kitten-tts-nano-0.8") # 15M version (tiny and faster )
 

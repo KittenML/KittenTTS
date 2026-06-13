@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="1040" viewBox="0 0 1120 1040" role="img" aria-labelledby="title desc">
+<title id="title">Kitten Inference Engine CPU benchmark vs ONNX Runtime</title>
+<desc id="desc">Combined latency and peak memory charts comparing the Kitten Inference Engine against ONNX Runtime on Android ARM64, Linux x86_64, and macOS ARM64 for the 80M int8 model. Text length = 18 words / 88 characters.</desc>
+<style>.bg { fill: #ffffff; }
+.title { font: 700 30px Arial, Helvetica, sans-serif; fill: #111111; }
+.subtitle { font: 400 15px Arial, Helvetica, sans-serif; fill: #555555; }
+.panel-title { font: 700 20px Arial, Helvetica, sans-serif; fill: #111111; }
+.axis { stroke: #d4d4d4; stroke-width: 1; }
+.grid { stroke: #eeeeee; stroke-width: 1; }
+.tick { font: 400 12px Arial, Helvetica, sans-serif; fill: #666666; }
+.label { font: 600 14px Arial, Helvetica, sans-serif; fill: #202020; }
+.detail { font: 400 12px Arial, Helvetica, sans-serif; fill: #666666; }
+.value { font: 700 12px Arial, Helvetica, sans-serif; fill: #111111; }
+.small { font: 400 11px Arial, Helvetica, sans-serif; fill: #666666; }
+.speed { font: 700 12px Arial, Helvetica, sans-serif; fill: #111111; }
+.legend { font: 600 13px Arial, Helvetica, sans-serif; fill: #202020; }
+.engine { fill: #111111; }
+.onnx { fill: #9a9a9a; }
+.thread { font: 700 11px Arial, Helvetica, sans-serif; fill: #555555; }
+.divider { stroke: #e6e6e6; stroke-width: 1; }</style>
+<rect class="bg" width="1120" height="1040"/>
+<text x="86.0" y="48.0" class="title" text-anchor="start">Kitten Inference Engine vs ONNX Runtime</text>
+<text x="86.0" y="75.0" class="subtitle" text-anchor="start">CPU-only, 80M int8. Text length = 18 words / 88 characters. Lower is better.</text>
+<rect x="690" y="44" width="14" height="14" rx="2" class="engine"/>
+<text x="712.0" y="56.0" class="legend" text-anchor="start">Kitten Inference Engine</text>
+<rect x="948" y="44" width="14" height="14" rx="2" class="onnx"/>
+<text x="970.0" y="56.0" class="legend" text-anchor="start">ONNX Runtime</text>
+<text x="86.0" y="108.0" class="panel-title" text-anchor="start">Latency</text>
+<line x1="86" y1="498.0" x2="1078" y2="498.0" class="grid"/>
+<text x="74.0" y="502.0" class="tick" text-anchor="end">0</text>
+<line x1="86" y1="424.0" x2="1078" y2="424.0" class="grid"/>
+<text x="74.0" y="428.0" class="tick" text-anchor="end">2500</text>
+<line x1="86" y1="350.0" x2="1078" y2="350.0" class="grid"/>
+<text x="74.0" y="354.0" class="tick" text-anchor="end">5000</text>
+<line x1="86" y1="276.0" x2="1078" y2="276.0" class="grid"/>
+<text x="74.0" y="280.0" class="tick" text-anchor="end">7500</text>
+<line x1="86" y1="202.0" x2="1078" y2="202.0" class="grid"/>
+<text x="74.0" y="206.0" class="tick" text-anchor="end">10000</text>
+<line x1="86" y1="128.0" x2="1078" y2="128.0" class="grid"/>
+<text x="74.0" y="132.0" class="tick" text-anchor="end">12500</text>
+<line x1="86" y1="128" x2="86" y2="498" class="axis"/>
+<line x1="86" y1="498" x2="1078" y2="498" class="axis"/>
+<text transform="rotate(-90 23 313.0)" x="23.0" y="313.0" class="label" text-anchor="middle">Latency (ms)</text>
+<text x="201.3" y="122.0" class="speed" text-anchor="middle">2.9x faster</text>
+<rect x="162.3" y="384.0" width="34" height="114.0" rx="3" class="engine"/>
+<text x="179.3" y="377.0" class="value" text-anchor="middle">3.85s</text>
+<rect x="206.3" y="170.3" width="34" height="327.7" rx="3" class="onnx"/>
+<text x="223.3" y="163.3" class="value" text-anchor="middle">11.07s</text>
+<text x="201.3" y="521.0" class="thread" text-anchor="middle">t=1</text>
+<text x="301.3" y="122.0" class="speed" text-anchor="middle">2.2x faster</text>
+<rect x="262.3" y="375.2" width="34" height="122.8" rx="3" class="engine"/>
+<text x="279.3" y="368.2" class="value" text-anchor="middle">4.15s</text>
+<rect x="306.3" y="224.5" width="34" height="273.5" rx="3" class="onnx"/>
+<text x="323.3" y="217.5" class="value" text-anchor="middle">9.24s</text>
+<text x="301.3" y="521.0" class="thread" text-anchor="middle">t=8</text>
+<text x="251.3" y="552.0" class="label" text-anchor="middle">Android ARM64</text>
+<text x="251.3" y="571.0" class="detail" text-anchor="middle">Cortex-A77</text>
+<text x="532.0" y="122.0" class="speed" text-anchor="middle">1.1x faster</text>
+<rect x="493.0" y="366.6" width="34" height="131.4" rx="3" class="engine"/>
+<text x="510.0" y="359.6" class="value" text-anchor="middle">4.44s</text>
+<rect x="537.0" y="350.9" width="34" height="147.1" rx="3" class="onnx"/>
+<text x="554.0" y="343.9" class="value" text-anchor="middle">4.97s</text>
+<text x="532.0" y="521.0" class="thread" text-anchor="middle">t=1</text>
+<text x="632.0" y="122.0" class="speed" text-anchor="middle">1.2x faster</text>
+<rect x="593.0" y="399.7" width="34" height="98.3" rx="3" class="engine"/>
+<text x="610.0" y="392.7" class="value" text-anchor="middle">3.32s</text>
+<rect x="637.0" y="380.2" width="34" height="117.8" rx="3" class="onnx"/>
+<text x="654.0" y="373.2" class="value" text-anchor="middle">3.98s</text>
+<text x="632.0" y="521.0" class="thread" text-anchor="middle">t=8</text>
+<text x="582.0" y="552.0" class="label" text-anchor="middle">Linux x86_64</text>
+<text x="582.0" y="571.0" class="detail" text-anchor="middle">Core i7-12650H</text>
+<line x1="416.7" y1="136" x2="416.7" y2="498" stroke="#f2f2f2" stroke-width="1"/>
+<text x="862.7" y="122.0" class="speed" text-anchor="middle">5.4x faster</text>
+<rect x="823.7" y="466.0" width="34" height="32.0" rx="3" class="engine"/>
+<text x="840.7" y="459.0" class="value" text-anchor="middle">1.08s</text>
+<rect x="867.7" y="325.7" width="34" height="172.3" rx="3" class="onnx"/>
+<text x="884.7" y="318.7" class="value" text-anchor="middle">5.82s</text>
+<text x="862.7" y="521.0" class="thread" text-anchor="middle">t=1</text>
+<text x="962.7" y="122.0" class="speed" text-anchor="middle">2.9x faster</text>
+<rect x="923.7" y="465.7" width="34" height="32.3" rx="3" class="engine"/>
+<text x="940.7" y="458.7" class="value" text-anchor="middle">1.09s</text>
+<rect x="967.7" y="404.8" width="34" height="93.2" rx="3" class="onnx"/>
+<text x="984.7" y="397.8" class="value" text-anchor="middle">3.15s</text>
+<text x="962.7" y="521.0" class="thread" text-anchor="middle">t=8</text>
+<text x="912.7" y="552.0" class="label" text-anchor="middle">macOS ARM64</text>
+<text x="912.7" y="571.0" class="detail" text-anchor="middle">Apple Silicon</text>
+<line x1="747.3" y1="136" x2="747.3" y2="498" stroke="#f2f2f2" stroke-width="1"/>
+<line x1="86" y1="610" x2="1078" y2="610" class="divider"/>
+<text x="86.0" y="652.0" class="panel-title" text-anchor="start">Peak Memory</text>
+<line x1="86" y1="940.0" x2="1078" y2="940.0" class="grid"/>
+<text x="74.0" y="944.0" class="tick" text-anchor="end">0</text>
+<line x1="86" y1="896.7" x2="1078" y2="896.7" class="grid"/>
+<text x="74.0" y="900.7" class="tick" text-anchor="end">300</text>
+<line x1="86" y1="853.3" x2="1078" y2="853.3" class="grid"/>
+<text x="74.0" y="857.3" class="tick" text-anchor="end">600</text>
+<line x1="86" y1="810.0" x2="1078" y2="810.0" class="grid"/>
+<text x="74.0" y="814.0" class="tick" text-anchor="end">900</text>
+<line x1="86" y1="766.7" x2="1078" y2="766.7" class="grid"/>
+<text x="74.0" y="770.7" class="tick" text-anchor="end">1200</text>
+<line x1="86" y1="723.3" x2="1078" y2="723.3" class="grid"/>
+<text x="74.0" y="727.3" class="tick" text-anchor="end">1500</text>
+<line x1="86" y1="680.0" x2="1078" y2="680.0" class="grid"/>
+<text x="74.0" y="684.0" class="tick" text-anchor="end">1800</text>
+<line x1="86" y1="680" x2="86" y2="940" class="axis"/>
+<line x1="86" y1="940" x2="1078" y2="940" class="axis"/>
+<text transform="rotate(-90 23 810.0)" x="23.0" y="810.0" class="label" text-anchor="middle">Peak RSS (MB)</text>
+<text x="251.3" y="672.0" class="speed" text-anchor="middle">1.9x lower RSS</text>
+<rect x="192.3" y="886.7" width="52" height="53.3" rx="3" class="engine"/>
+<text x="218.3" y="879.7" class="value" text-anchor="middle">369MB</text>
+<rect x="258.3" y="838.7" width="52" height="101.3" rx="3" class="onnx"/>
+<text x="284.3" y="831.7" class="value" text-anchor="middle">701MB</text>
+<text x="251.3" y="974.0" class="label" text-anchor="middle">Android ARM64</text>
+<text x="251.3" y="993.0" class="detail" text-anchor="middle">Cortex-A77</text>
+<text x="582.0" y="672.0" class="speed" text-anchor="middle">2.5x lower RSS</text>
+<rect x="523.0" y="881.5" width="52" height="58.5" rx="3" class="engine"/>
+<text x="549.0" y="874.5" class="value" text-anchor="middle">405MB</text>
+<rect x="589.0" y="792.2" width="52" height="147.8" rx="3" class="onnx"/>
+<text x="615.0" y="785.2" class="value" text-anchor="middle">1023MB</text>
+<text x="582.0" y="974.0" class="label" text-anchor="middle">Linux x86_64</text>
+<text x="582.0" y="993.0" class="detail" text-anchor="middle">Core i7-12650H</text>
+<line x1="416.7" y1="688" x2="416.7" y2="940" stroke="#f2f2f2" stroke-width="1"/>
+<text x="912.7" y="672.0" class="speed" text-anchor="middle">3.0x lower RSS</text>
+<rect x="853.7" y="872.7" width="52" height="67.3" rx="3" class="engine"/>
+<text x="879.7" y="865.7" class="value" text-anchor="middle">466MB</text>
+<rect x="919.7" y="735.6" width="52" height="204.4" rx="3" class="onnx"/>
+<text x="945.7" y="728.6" class="value" text-anchor="middle">1415MB</text>
+<text x="912.7" y="974.0" class="label" text-anchor="middle">macOS ARM64</text>
+<text x="912.7" y="993.0" class="detail" text-anchor="middle">Apple Silicon</text>
+<line x1="747.3" y1="688" x2="747.3" y2="940" stroke="#f2f2f2" stroke-width="1"/>
+<text x="86.0" y="1016.0" class="small" text-anchor="start">Thread labels are CPU host-thread settings; RSS is measured from isolated/scoped benchmark processes.</text>
+</svg>

@@ -1,6 +1,6 @@
 espeakng_loader
 phonemizer
-onnxruntime
+kitten-inference==0.1.1
 soundfile
 numpy
 huggingface_hub

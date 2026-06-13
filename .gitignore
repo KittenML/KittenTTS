@@ -29,6 +29,7 @@ Temporary Items
 .venv*
 
 *.wav
+summary.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

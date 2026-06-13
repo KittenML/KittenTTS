@@ -6,7 +6,7 @@ SAMPLE_RATE = 24000
 
 # Step 1: Load the model
 m = KittenTTS("KittenML/kitten-tts-mini-0.8")  # 80M version (highest quality)
-# m = KittenTTS("KittenML/kitten-tts-mini-0.8", backend="cuda")  # GPU version
+# m = KittenTTS("KittenML/kitten-tts-mini-0.8", backend="metal")  # Apple Silicon
 # m = KittenTTS("KittenML/kitten-tts-micro-0.8")  # 40M version
 # m = KittenTTS("KittenML/kitten-tts-nano-0.8")  # 15M version (tiny and faster)
 

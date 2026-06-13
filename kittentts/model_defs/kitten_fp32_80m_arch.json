@@ -1,0 +1,4749 @@
+{
+  "model": "kitten_fp32_80m",
+  "inputs": [
+    {
+      "name": "phoneme_ids",
+      "shape": [
+        1,
+        0,
+        1,
+        1
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "style_dec",
+      "shape": [
+        1,
+        1,
+        1,
+        128
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "style_pred",
+      "shape": [
+        1,
+        1,
+        1,
+        128
+      ],
+      "dtype": "float32"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "t_audio"
+    }
+  ],
+  "nodes": [
+    {
+      "name": "bert_embed",
+      "op": "bert_embeddings_fp32",
+      "inputs": [
+        "phoneme_ids"
+      ],
+      "outputs": [
+        "t_emb"
+      ],
+      "emb_size": 128
+    },
+    {
+      "name": "bert_enc_proj",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "t_emb"
+      ],
+      "outputs": [
+        "t_emb_proj"
+      ],
+      "C_in": 128,
+      "C_out": 768
+    },
+    {
+      "name": "bert_attn",
+      "op": "attention_fp32",
+      "inputs": [
+        "t_emb_proj"
+      ],
+      "outputs": [
+        "bl0_attn"
+      ],
+      "embed_dim": 768,
+      "num_heads": 12
+    },
+    {
+      "name": "bl0_add1n",
+      "op": "add_fp32",
+      "inputs": [
+        "t_emb_proj",
+        "bl0_attn"
+      ],
+      "outputs": [
+        "bl0_add1"
+      ]
+    },
+    {
+      "name": "bert_attn_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl0_add1"
+      ],
+      "outputs": [
+        "bl0_aln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_ff1",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl0_aln"
+      ],
+      "outputs": [
+        "bl0_ff1"
+      ],
+      "C_in": 768,
+      "C_out": 2048,
+      "gelu": true
+    },
+    {
+      "name": "bert_ff2",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl0_ff1"
+      ],
+      "outputs": [
+        "bl0_ff2"
+      ],
+      "C_in": 2048,
+      "C_out": 768
+    },
+    {
+      "name": "bl0_add2n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl0_aln",
+        "bl0_ff2"
+      ],
+      "outputs": [
+        "bl0_add2"
+      ]
+    },
+    {
+      "name": "bert_full_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl0_add2"
+      ],
+      "outputs": [
+        "bl0_fln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_attn",
+      "op": "attention_fp32",
+      "inputs": [
+        "bl0_fln"
+      ],
+      "outputs": [
+        "bl1_attn"
+      ],
+      "embed_dim": 768,
+      "num_heads": 12
+    },
+    {
+      "name": "bl1_add1n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl0_fln",
+        "bl1_attn"
+      ],
+      "outputs": [
+        "bl1_add1"
+      ]
+    },
+    {
+      "name": "bert_attn_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl1_add1"
+      ],
+      "outputs": [
+        "bl1_aln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_ff1",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl1_aln"
+      ],
+      "outputs": [
+        "bl1_ff1"
+      ],
+      "C_in": 768,
+      "C_out": 2048,
+      "gelu": true
+    },
+    {
+      "name": "bert_ff2",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl1_ff1"
+      ],
+      "outputs": [
+        "bl1_ff2"
+      ],
+      "C_in": 2048,
+      "C_out": 768
+    },
+    {
+      "name": "bl1_add2n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl1_aln",
+        "bl1_ff2"
+      ],
+      "outputs": [
+        "bl1_add2"
+      ]
+    },
+    {
+      "name": "bert_full_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl1_add2"
+      ],
+      "outputs": [
+        "bl1_fln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_attn",
+      "op": "attention_fp32",
+      "inputs": [
+        "bl1_fln"
+      ],
+      "outputs": [
+        "bl2_attn"
+      ],
+      "embed_dim": 768,
+      "num_heads": 12
+    },
+    {
+      "name": "bl2_add1n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl1_fln",
+        "bl2_attn"
+      ],
+      "outputs": [
+        "bl2_add1"
+      ]
+    },
+    {
+      "name": "bert_attn_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl2_add1"
+      ],
+      "outputs": [
+        "bl2_aln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_ff1",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl2_aln"
+      ],
+      "outputs": [
+        "bl2_ff1"
+      ],
+      "C_in": 768,
+      "C_out": 2048,
+      "gelu": true
+    },
+    {
+      "name": "bert_ff2",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl2_ff1"
+      ],
+      "outputs": [
+        "bl2_ff2"
+      ],
+      "C_in": 2048,
+      "C_out": 768
+    },
+    {
+      "name": "bl2_add2n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl2_aln",
+        "bl2_ff2"
+      ],
+      "outputs": [
+        "bl2_add2"
+      ]
+    },
+    {
+      "name": "bert_full_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl2_add2"
+      ],
+      "outputs": [
+        "bl2_fln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_attn",
+      "op": "attention_fp32",
+      "inputs": [
+        "bl2_fln"
+      ],
+      "outputs": [
+        "bl3_attn"
+      ],
+      "embed_dim": 768,
+      "num_heads": 12
+    },
+    {
+      "name": "bl3_add1n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl2_fln",
+        "bl3_attn"
+      ],
+      "outputs": [
+        "bl3_add1"
+      ]
+    },
+    {
+      "name": "bert_attn_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl3_add1"
+      ],
+      "outputs": [
+        "bl3_aln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_ff1",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl3_aln"
+      ],
+      "outputs": [
+        "bl3_ff1"
+      ],
+      "C_in": 768,
+      "C_out": 2048,
+      "gelu": true
+    },
+    {
+      "name": "bert_ff2",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl3_ff1"
+      ],
+      "outputs": [
+        "bl3_ff2"
+      ],
+      "C_in": 2048,
+      "C_out": 768
+    },
+    {
+      "name": "bl3_add2n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl3_aln",
+        "bl3_ff2"
+      ],
+      "outputs": [
+        "bl3_add2"
+      ]
+    },
+    {
+      "name": "bert_full_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl3_add2"
+      ],
+      "outputs": [
+        "bl3_fln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_attn",
+      "op": "attention_fp32",
+      "inputs": [
+        "bl3_fln"
+      ],
+      "outputs": [
+        "bl4_attn"
+      ],
+      "embed_dim": 768,
+      "num_heads": 12
+    },
+    {
+      "name": "bl4_add1n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl3_fln",
+        "bl4_attn"
+      ],
+      "outputs": [
+        "bl4_add1"
+      ]
+    },
+    {
+      "name": "bert_attn_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl4_add1"
+      ],
+      "outputs": [
+        "bl4_aln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_ff1",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl4_aln"
+      ],
+      "outputs": [
+        "bl4_ff1"
+      ],
+      "C_in": 768,
+      "C_out": 2048,
+      "gelu": true
+    },
+    {
+      "name": "bert_ff2",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl4_ff1"
+      ],
+      "outputs": [
+        "bl4_ff2"
+      ],
+      "C_in": 2048,
+      "C_out": 768
+    },
+    {
+      "name": "bl4_add2n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl4_aln",
+        "bl4_ff2"
+      ],
+      "outputs": [
+        "bl4_add2"
+      ]
+    },
+    {
+      "name": "bert_full_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl4_add2"
+      ],
+      "outputs": [
+        "bl4_fln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_attn",
+      "op": "attention_fp32",
+      "inputs": [
+        "bl4_fln"
+      ],
+      "outputs": [
+        "bl5_attn"
+      ],
+      "embed_dim": 768,
+      "num_heads": 12
+    },
+    {
+      "name": "bl5_add1n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl4_fln",
+        "bl5_attn"
+      ],
+      "outputs": [
+        "bl5_add1"
+      ]
+    },
+    {
+      "name": "bert_attn_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl5_add1"
+      ],
+      "outputs": [
+        "bl5_aln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_ff1",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl5_aln"
+      ],
+      "outputs": [
+        "bl5_ff1"
+      ],
+      "C_in": 768,
+      "C_out": 2048,
+      "gelu": true
+    },
+    {
+      "name": "bert_ff2",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl5_ff1"
+      ],
+      "outputs": [
+        "bl5_ff2"
+      ],
+      "C_in": 2048,
+      "C_out": 768
+    },
+    {
+      "name": "bl5_add2n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl5_aln",
+        "bl5_ff2"
+      ],
+      "outputs": [
+        "bl5_add2"
+      ]
+    },
+    {
+      "name": "bert_full_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl5_add2"
+      ],
+      "outputs": [
+        "bl5_fln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_attn",
+      "op": "attention_fp32",
+      "inputs": [
+        "bl5_fln"
+      ],
+      "outputs": [
+        "bl6_attn"
+      ],
+      "embed_dim": 768,
+      "num_heads": 12
+    },
+    {
+      "name": "bl6_add1n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl5_fln",
+        "bl6_attn"
+      ],
+      "outputs": [
+        "bl6_add1"
+      ]
+    },
+    {
+      "name": "bert_attn_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl6_add1"
+      ],
+      "outputs": [
+        "bl6_aln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_ff1",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl6_aln"
+      ],
+      "outputs": [
+        "bl6_ff1"
+      ],
+      "C_in": 768,
+      "C_out": 2048,
+      "gelu": true
+    },
+    {
+      "name": "bert_ff2",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl6_ff1"
+      ],
+      "outputs": [
+        "bl6_ff2"
+      ],
+      "C_in": 2048,
+      "C_out": 768
+    },
+    {
+      "name": "bl6_add2n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl6_aln",
+        "bl6_ff2"
+      ],
+      "outputs": [
+        "bl6_add2"
+      ]
+    },
+    {
+      "name": "bert_full_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl6_add2"
+      ],
+      "outputs": [
+        "bl6_fln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_attn",
+      "op": "attention_fp32",
+      "inputs": [
+        "bl6_fln"
+      ],
+      "outputs": [
+        "bl7_attn"
+      ],
+      "embed_dim": 768,
+      "num_heads": 12
+    },
+    {
+      "name": "bl7_add1n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl6_fln",
+        "bl7_attn"
+      ],
+      "outputs": [
+        "bl7_add1"
+      ]
+    },
+    {
+      "name": "bert_attn_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl7_add1"
+      ],
+      "outputs": [
+        "bl7_aln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_ff1",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl7_aln"
+      ],
+      "outputs": [
+        "bl7_ff1"
+      ],
+      "C_in": 768,
+      "C_out": 2048,
+      "gelu": true
+    },
+    {
+      "name": "bert_ff2",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl7_ff1"
+      ],
+      "outputs": [
+        "bl7_ff2"
+      ],
+      "C_in": 2048,
+      "C_out": 768
+    },
+    {
+      "name": "bl7_add2n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl7_aln",
+        "bl7_ff2"
+      ],
+      "outputs": [
+        "bl7_add2"
+      ]
+    },
+    {
+      "name": "bert_full_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl7_add2"
+      ],
+      "outputs": [
+        "bl7_fln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_attn",
+      "op": "attention_fp32",
+      "inputs": [
+        "bl7_fln"
+      ],
+      "outputs": [
+        "bl8_attn"
+      ],
+      "embed_dim": 768,
+      "num_heads": 12
+    },
+    {
+      "name": "bl8_add1n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl7_fln",
+        "bl8_attn"
+      ],
+      "outputs": [
+        "bl8_add1"
+      ]
+    },
+    {
+      "name": "bert_attn_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl8_add1"
+      ],
+      "outputs": [
+        "bl8_aln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_ff1",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl8_aln"
+      ],
+      "outputs": [
+        "bl8_ff1"
+      ],
+      "C_in": 768,
+      "C_out": 2048,
+      "gelu": true
+    },
+    {
+      "name": "bert_ff2",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl8_ff1"
+      ],
+      "outputs": [
+        "bl8_ff2"
+      ],
+      "C_in": 2048,
+      "C_out": 768
+    },
+    {
+      "name": "bl8_add2n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl8_aln",
+        "bl8_ff2"
+      ],
+      "outputs": [
+        "bl8_add2"
+      ]
+    },
+    {
+      "name": "bert_full_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl8_add2"
+      ],
+      "outputs": [
+        "bl8_fln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_attn",
+      "op": "attention_fp32",
+      "inputs": [
+        "bl8_fln"
+      ],
+      "outputs": [
+        "bl9_attn"
+      ],
+      "embed_dim": 768,
+      "num_heads": 12
+    },
+    {
+      "name": "bl9_add1n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl8_fln",
+        "bl9_attn"
+      ],
+      "outputs": [
+        "bl9_add1"
+      ]
+    },
+    {
+      "name": "bert_attn_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl9_add1"
+      ],
+      "outputs": [
+        "bl9_aln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_ff1",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl9_aln"
+      ],
+      "outputs": [
+        "bl9_ff1"
+      ],
+      "C_in": 768,
+      "C_out": 2048,
+      "gelu": true
+    },
+    {
+      "name": "bert_ff2",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl9_ff1"
+      ],
+      "outputs": [
+        "bl9_ff2"
+      ],
+      "C_in": 2048,
+      "C_out": 768
+    },
+    {
+      "name": "bl9_add2n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl9_aln",
+        "bl9_ff2"
+      ],
+      "outputs": [
+        "bl9_add2"
+      ]
+    },
+    {
+      "name": "bert_full_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl9_add2"
+      ],
+      "outputs": [
+        "bl9_fln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_attn",
+      "op": "attention_fp32",
+      "inputs": [
+        "bl9_fln"
+      ],
+      "outputs": [
+        "bl10_attn"
+      ],
+      "embed_dim": 768,
+      "num_heads": 12
+    },
+    {
+      "name": "bl10_add1n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl9_fln",
+        "bl10_attn"
+      ],
+      "outputs": [
+        "bl10_add1"
+      ]
+    },
+    {
+      "name": "bert_attn_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl10_add1"
+      ],
+      "outputs": [
+        "bl10_aln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_ff1",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl10_aln"
+      ],
+      "outputs": [
+        "bl10_ff1"
+      ],
+      "C_in": 768,
+      "C_out": 2048,
+      "gelu": true
+    },
+    {
+      "name": "bert_ff2",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl10_ff1"
+      ],
+      "outputs": [
+        "bl10_ff2"
+      ],
+      "C_in": 2048,
+      "C_out": 768
+    },
+    {
+      "name": "bl10_add2n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl10_aln",
+        "bl10_ff2"
+      ],
+      "outputs": [
+        "bl10_add2"
+      ]
+    },
+    {
+      "name": "bert_full_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl10_add2"
+      ],
+      "outputs": [
+        "bl10_fln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_attn",
+      "op": "attention_fp32",
+      "inputs": [
+        "bl10_fln"
+      ],
+      "outputs": [
+        "bl11_attn"
+      ],
+      "embed_dim": 768,
+      "num_heads": 12
+    },
+    {
+      "name": "bl11_add1n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl10_fln",
+        "bl11_attn"
+      ],
+      "outputs": [
+        "bl11_add1"
+      ]
+    },
+    {
+      "name": "bert_attn_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl11_add1"
+      ],
+      "outputs": [
+        "bl11_aln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_ff1",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl11_aln"
+      ],
+      "outputs": [
+        "bl11_ff1"
+      ],
+      "C_in": 768,
+      "C_out": 2048,
+      "gelu": true
+    },
+    {
+      "name": "bert_ff2",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl11_ff1"
+      ],
+      "outputs": [
+        "bl11_ff2"
+      ],
+      "C_in": 2048,
+      "C_out": 768
+    },
+    {
+      "name": "bl11_add2n",
+      "op": "add_fp32",
+      "inputs": [
+        "bl11_aln",
+        "bl11_ff2"
+      ],
+      "outputs": [
+        "bl11_add2"
+      ]
+    },
+    {
+      "name": "bert_full_ln",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "bl11_add2"
+      ],
+      "outputs": [
+        "bl11_fln"
+      ],
+      "eps": 1e-12
+    },
+    {
+      "name": "bert_enc",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "bl11_fln"
+      ],
+      "outputs": [
+        "t_bert_enc"
+      ],
+      "C_in": 768,
+      "C_out": 512
+    },
+    {
+      "name": "te_embed",
+      "op": "embedding_fp32",
+      "inputs": [
+        "phoneme_ids"
+      ],
+      "outputs": [
+        "t_te_emb"
+      ],
+      "num_embeddings": 178,
+      "embedding_dim": 512
+    },
+    {
+      "name": "te_conv_0",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "t_te_emb"
+      ],
+      "outputs": [
+        "t_te_c0"
+      ],
+      "C_in": 512,
+      "C_out": 512,
+      "kernel_size": 5,
+      "stride": 1,
+      "padding": 2
+    },
+    {
+      "name": "te_ln_0",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "t_te_c0"
+      ],
+      "outputs": [
+        "t_te_l0"
+      ],
+      "eps": 1e-05
+    },
+    {
+      "name": "te_relu_0",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "t_te_l0"
+      ],
+      "outputs": [
+        "t_te_a0"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "te_conv_1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "t_te_a0"
+      ],
+      "outputs": [
+        "t_te_c1"
+      ],
+      "C_in": 512,
+      "C_out": 512,
+      "kernel_size": 5,
+      "stride": 1,
+      "padding": 2
+    },
+    {
+      "name": "te_ln_1",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "t_te_c1"
+      ],
+      "outputs": [
+        "t_te_l1"
+      ],
+      "eps": 1e-05
+    },
+    {
+      "name": "te_relu_1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "t_te_l1"
+      ],
+      "outputs": [
+        "t_te_a1"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "te_conv_2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "t_te_a1"
+      ],
+      "outputs": [
+        "t_te_c2"
+      ],
+      "C_in": 512,
+      "C_out": 512,
+      "kernel_size": 5,
+      "stride": 1,
+      "padding": 2
+    },
+    {
+      "name": "te_ln_2",
+      "op": "layernorm_fp32",
+      "inputs": [
+        "t_te_c2"
+      ],
+      "outputs": [
+        "t_te_l2"
+      ],
+      "eps": 1e-05
+    },
+    {
+      "name": "te_relu_2",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "t_te_l2"
+      ],
+      "outputs": [
+        "t_te_a2"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "te_lstm",
+      "op": "lstm_fp32",
+      "inputs": [
+        "t_te_a2"
+      ],
+      "outputs": [
+        "t_te"
+      ],
+      "hidden_size": 256,
+      "bidirectional": true
+    },
+    {
+      "name": "de_cat_init",
+      "op": "concat1d_fp32",
+      "inputs": [
+        "t_bert_enc",
+        "style_pred"
+      ],
+      "outputs": [
+        "t_de_c0"
+      ],
+      "C2": 128
+    },
+    {
+      "name": "de_lstm_0",
+      "op": "lstm_fp32",
+      "inputs": [
+        "t_de_c0"
+      ],
+      "outputs": [
+        "t_de_lstm0"
+      ],
+      "hidden_size": 256,
+      "bidirectional": true
+    },
+    {
+      "name": "de_adaln_0",
+      "op": "ada_layer_norm_fp32",
+      "inputs": [
+        "t_de_lstm0",
+        "style_pred"
+      ],
+      "outputs": [
+        "t_de_aln0"
+      ],
+      "C": 512,
+      "C_style": 128
+    },
+    {
+      "name": "de_cat_0",
+      "op": "concat1d_fp32",
+      "inputs": [
+        "t_de_aln0",
+        "style_pred"
+      ],
+      "outputs": [
+        "t_de_cat0"
+      ],
+      "C2": 128
+    },
+    {
+      "name": "de_lstm_1",
+      "op": "lstm_fp32",
+      "inputs": [
+        "t_de_cat0"
+      ],
+      "outputs": [
+        "t_de_lstm1"
+      ],
+      "hidden_size": 256,
+      "bidirectional": true
+    },
+    {
+      "name": "de_adaln_1",
+      "op": "ada_layer_norm_fp32",
+      "inputs": [
+        "t_de_lstm1",
+        "style_pred"
+      ],
+      "outputs": [
+        "t_de_aln1"
+      ],
+      "C": 512,
+      "C_style": 128
+    },
+    {
+      "name": "de_cat_1",
+      "op": "concat1d_fp32",
+      "inputs": [
+        "t_de_aln1",
+        "style_pred"
+      ],
+      "outputs": [
+        "t_de_cat1"
+      ],
+      "C2": 128
+    },
+    {
+      "name": "de_lstm_2",
+      "op": "lstm_fp32",
+      "inputs": [
+        "t_de_cat1"
+      ],
+      "outputs": [
+        "t_de_lstm2"
+      ],
+      "hidden_size": 256,
+      "bidirectional": true
+    },
+    {
+      "name": "de_adaln_2",
+      "op": "ada_layer_norm_fp32",
+      "inputs": [
+        "t_de_lstm2",
+        "style_pred"
+      ],
+      "outputs": [
+        "t_de_aln2"
+      ],
+      "C": 512,
+      "C_style": 128
+    },
+    {
+      "name": "de_cat_2",
+      "op": "concat1d_fp32",
+      "inputs": [
+        "t_de_aln2",
+        "style_pred"
+      ],
+      "outputs": [
+        "t_de_cat2"
+      ],
+      "C2": 128
+    },
+    {
+      "name": "pred_lstm",
+      "op": "lstm_fp32",
+      "inputs": [
+        "t_de_cat2"
+      ],
+      "outputs": [
+        "t_pred_lstm"
+      ],
+      "hidden_size": 256,
+      "bidirectional": true
+    },
+    {
+      "name": "dur_proj",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "t_pred_lstm"
+      ],
+      "outputs": [
+        "t_dur_raw"
+      ],
+      "C_in": 512,
+      "C_out": 50
+    },
+    {
+      "name": "dur_sig",
+      "op": "sigmoid_fp32",
+      "inputs": [
+        "t_dur_raw"
+      ],
+      "outputs": [
+        "t_dur_sig"
+      ]
+    },
+    {
+      "name": "dur_sum",
+      "op": "sum_channels_fp32",
+      "inputs": [
+        "t_dur_sig"
+      ],
+      "outputs": [
+        "t_dur"
+      ]
+    },
+    {
+      "name": "len_reg_en",
+      "op": "length_regulate_fp32",
+      "inputs": [
+        "t_de_cat2",
+        "t_dur"
+      ],
+      "outputs": [
+        "en"
+      ]
+    },
+    {
+      "name": "len_reg_asr",
+      "op": "length_regulate_fp32",
+      "inputs": [
+        "t_te",
+        "t_dur"
+      ],
+      "outputs": [
+        "asr"
+      ]
+    },
+    {
+      "name": "shared_lstm",
+      "op": "lstm_fp32",
+      "inputs": [
+        "en"
+      ],
+      "outputs": [
+        "t_shared"
+      ],
+      "hidden_size": 256,
+      "bidirectional": true
+    },
+    {
+      "name": "f0b0_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_shared",
+        "style_pred"
+      ],
+      "outputs": [
+        "f0b0_n1t"
+      ],
+      "C": 512,
+      "C_style": 128
+    },
+    {
+      "name": "f0b0_r1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "f0b0_n1t"
+      ],
+      "outputs": [
+        "f0b0_r1t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "f0b0_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "f0b0_r1t"
+      ],
+      "outputs": [
+        "f0b0_c1t"
+      ],
+      "C_in": 512,
+      "C_out": 512,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "f0b0_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "f0b0_c1t",
+        "style_pred"
+      ],
+      "outputs": [
+        "f0b0_n2t"
+      ],
+      "C": 512,
+      "C_style": 128
+    },
+    {
+      "name": "f0b0_r2",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "f0b0_n2t"
+      ],
+      "outputs": [
+        "f0b0_r2t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "f0b0_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "f0b0_r2t"
+      ],
+      "outputs": [
+        "f0b0_c2t"
+      ],
+      "C_in": 512,
+      "C_out": 512,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "f0b0_add",
+      "op": "add_fp32",
+      "inputs": [
+        "f0b0_c2t",
+        "t_shared"
+      ],
+      "outputs": [
+        "f0b0_addt"
+      ]
+    },
+    {
+      "name": "f0b0_sc2",
+      "op": "scale_fp32",
+      "inputs": [
+        "f0b0_addt"
+      ],
+      "outputs": [
+        "f0b0_out"
+      ],
+      "scalar": 0.7071067811865475
+    },
+    {
+      "name": "f0b1_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "f0b0_out",
+        "style_pred"
+      ],
+      "outputs": [
+        "f0b1_n1t"
+      ],
+      "C": 512,
+      "C_style": 128
+    },
+    {
+      "name": "f0b1_r1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "f0b1_n1t"
+      ],
+      "outputs": [
+        "f0b1_r1t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "f0b1_pool",
+      "op": "conv_transpose1d_fp32",
+      "inputs": [
+        "f0b1_r1t"
+      ],
+      "outputs": [
+        "f0b1_pooled"
+      ],
+      "C_in": 512,
+      "C_out": 512,
+      "kernel_size": 3,
+      "stride": 2,
+      "padding": 1,
+      "output_padding": 1,
+      "groups": 512
+    },
+    {
+      "name": "f0b1_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "f0b1_pooled"
+      ],
+      "outputs": [
+        "f0b1_c1t"
+      ],
+      "C_in": 512,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "f0b1_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "f0b1_c1t",
+        "style_pred"
+      ],
+      "outputs": [
+        "f0b1_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "f0b1_r2",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "f0b1_n2t"
+      ],
+      "outputs": [
+        "f0b1_r2t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "f0b1_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "f0b1_r2t"
+      ],
+      "outputs": [
+        "f0b1_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "f0b1_sc_up",
+      "op": "upsample_nearest1d_fp32",
+      "inputs": [
+        "f0b0_out"
+      ],
+      "outputs": [
+        "f0b1_sc_up_t"
+      ],
+      "scale_factor": 2
+    },
+    {
+      "name": "f0b1_sc",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "f0b1_sc_up_t"
+      ],
+      "outputs": [
+        "f0b1_sc_t"
+      ],
+      "C_in": 512,
+      "C_out": 256,
+      "kernel_size": 1,
+      "stride": 1,
+      "padding": 0
+    },
+    {
+      "name": "f0b1_add",
+      "op": "add_fp32",
+      "inputs": [
+        "f0b1_c2t",
+        "f0b1_sc_t"
+      ],
+      "outputs": [
+        "f0b1_addt"
+      ]
+    },
+    {
+      "name": "f0b1_sc2",
+      "op": "scale_fp32",
+      "inputs": [
+        "f0b1_addt"
+      ],
+      "outputs": [
+        "f0b1_out"
+      ],
+      "scalar": 0.7071067811865475
+    },
+    {
+      "name": "f0b2_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "f0b1_out",
+        "style_pred"
+      ],
+      "outputs": [
+        "f0b2_n1t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "f0b2_r1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "f0b2_n1t"
+      ],
+      "outputs": [
+        "f0b2_r1t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "f0b2_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "f0b2_r1t"
+      ],
+      "outputs": [
+        "f0b2_c1t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "f0b2_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "f0b2_c1t",
+        "style_pred"
+      ],
+      "outputs": [
+        "f0b2_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "f0b2_r2",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "f0b2_n2t"
+      ],
+      "outputs": [
+        "f0b2_r2t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "f0b2_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "f0b2_r2t"
+      ],
+      "outputs": [
+        "f0b2_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "f0b2_add",
+      "op": "add_fp32",
+      "inputs": [
+        "f0b2_c2t",
+        "f0b1_out"
+      ],
+      "outputs": [
+        "f0b2_addt"
+      ]
+    },
+    {
+      "name": "f0b2_sc2",
+      "op": "scale_fp32",
+      "inputs": [
+        "f0b2_addt"
+      ],
+      "outputs": [
+        "f0b2_out"
+      ],
+      "scalar": 0.7071067811865475
+    },
+    {
+      "name": "f0_proj",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "f0b2_out"
+      ],
+      "outputs": [
+        "t_f0"
+      ],
+      "C_in": 256,
+      "C_out": 1,
+      "kernel_size": 1,
+      "stride": 1,
+      "padding": 0
+    },
+    {
+      "name": "nb0_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_shared",
+        "style_pred"
+      ],
+      "outputs": [
+        "nb0_n1t"
+      ],
+      "C": 512,
+      "C_style": 128
+    },
+    {
+      "name": "nb0_r1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "nb0_n1t"
+      ],
+      "outputs": [
+        "nb0_r1t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "nb0_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "nb0_r1t"
+      ],
+      "outputs": [
+        "nb0_c1t"
+      ],
+      "C_in": 512,
+      "C_out": 512,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "nb0_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "nb0_c1t",
+        "style_pred"
+      ],
+      "outputs": [
+        "nb0_n2t"
+      ],
+      "C": 512,
+      "C_style": 128
+    },
+    {
+      "name": "nb0_r2",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "nb0_n2t"
+      ],
+      "outputs": [
+        "nb0_r2t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "nb0_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "nb0_r2t"
+      ],
+      "outputs": [
+        "nb0_c2t"
+      ],
+      "C_in": 512,
+      "C_out": 512,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "nb0_add",
+      "op": "add_fp32",
+      "inputs": [
+        "nb0_c2t",
+        "t_shared"
+      ],
+      "outputs": [
+        "nb0_addt"
+      ]
+    },
+    {
+      "name": "nb0_sc2",
+      "op": "scale_fp32",
+      "inputs": [
+        "nb0_addt"
+      ],
+      "outputs": [
+        "nb0_out"
+      ],
+      "scalar": 0.7071067811865475
+    },
+    {
+      "name": "nb1_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "nb0_out",
+        "style_pred"
+      ],
+      "outputs": [
+        "nb1_n1t"
+      ],
+      "C": 512,
+      "C_style": 128
+    },
+    {
+      "name": "nb1_r1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "nb1_n1t"
+      ],
+      "outputs": [
+        "nb1_r1t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "nb1_pool",
+      "op": "conv_transpose1d_fp32",
+      "inputs": [
+        "nb1_r1t"
+      ],
+      "outputs": [
+        "nb1_pooled"
+      ],
+      "C_in": 512,
+      "C_out": 512,
+      "kernel_size": 3,
+      "stride": 2,
+      "padding": 1,
+      "output_padding": 1,
+      "groups": 512
+    },
+    {
+      "name": "nb1_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "nb1_pooled"
+      ],
+      "outputs": [
+        "nb1_c1t"
+      ],
+      "C_in": 512,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "nb1_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "nb1_c1t",
+        "style_pred"
+      ],
+      "outputs": [
+        "nb1_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "nb1_r2",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "nb1_n2t"
+      ],
+      "outputs": [
+        "nb1_r2t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "nb1_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "nb1_r2t"
+      ],
+      "outputs": [
+        "nb1_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "nb1_sc_up",
+      "op": "upsample_nearest1d_fp32",
+      "inputs": [
+        "nb0_out"
+      ],
+      "outputs": [
+        "nb1_sc_up_t"
+      ],
+      "scale_factor": 2
+    },
+    {
+      "name": "nb1_sc",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "nb1_sc_up_t"
+      ],
+      "outputs": [
+        "nb1_sc_t"
+      ],
+      "C_in": 512,
+      "C_out": 256,
+      "kernel_size": 1,
+      "stride": 1,
+      "padding": 0
+    },
+    {
+      "name": "nb1_add",
+      "op": "add_fp32",
+      "inputs": [
+        "nb1_c2t",
+        "nb1_sc_t"
+      ],
+      "outputs": [
+        "nb1_addt"
+      ]
+    },
+    {
+      "name": "nb1_sc2",
+      "op": "scale_fp32",
+      "inputs": [
+        "nb1_addt"
+      ],
+      "outputs": [
+        "nb1_out"
+      ],
+      "scalar": 0.7071067811865475
+    },
+    {
+      "name": "nb2_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "nb1_out",
+        "style_pred"
+      ],
+      "outputs": [
+        "nb2_n1t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "nb2_r1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "nb2_n1t"
+      ],
+      "outputs": [
+        "nb2_r1t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "nb2_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "nb2_r1t"
+      ],
+      "outputs": [
+        "nb2_c1t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "nb2_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "nb2_c1t",
+        "style_pred"
+      ],
+      "outputs": [
+        "nb2_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "nb2_r2",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "nb2_n2t"
+      ],
+      "outputs": [
+        "nb2_r2t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "nb2_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "nb2_r2t"
+      ],
+      "outputs": [
+        "nb2_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "nb2_add",
+      "op": "add_fp32",
+      "inputs": [
+        "nb2_c2t",
+        "nb1_out"
+      ],
+      "outputs": [
+        "nb2_addt"
+      ]
+    },
+    {
+      "name": "nb2_sc2",
+      "op": "scale_fp32",
+      "inputs": [
+        "nb2_addt"
+      ],
+      "outputs": [
+        "nb2_out"
+      ],
+      "scalar": 0.7071067811865475
+    },
+    {
+      "name": "n_proj",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "nb2_out"
+      ],
+      "outputs": [
+        "t_n"
+      ],
+      "C_in": 256,
+      "C_out": 1,
+      "kernel_size": 1,
+      "stride": 1,
+      "padding": 0
+    },
+    {
+      "name": "dec_f0_conv",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "t_f0"
+      ],
+      "outputs": [
+        "t_f0d"
+      ],
+      "C_in": 1,
+      "C_out": 1,
+      "kernel_size": 3,
+      "stride": 2,
+      "padding": 1
+    },
+    {
+      "name": "dec_n_conv",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "t_n"
+      ],
+      "outputs": [
+        "t_nd"
+      ],
+      "C_in": 1,
+      "C_out": 1,
+      "kernel_size": 3,
+      "stride": 2,
+      "padding": 1
+    },
+    {
+      "name": "dec_cat_01",
+      "op": "concat1d_fp32",
+      "inputs": [
+        "asr",
+        "t_f0d"
+      ],
+      "outputs": [
+        "t_dec_cat01"
+      ],
+      "C2": 1
+    },
+    {
+      "name": "dec_cat_012",
+      "op": "concat1d_fp32",
+      "inputs": [
+        "t_dec_cat01",
+        "t_nd"
+      ],
+      "outputs": [
+        "t_dec_in"
+      ],
+      "C2": 1
+    },
+    {
+      "name": "asr_res",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "asr"
+      ],
+      "outputs": [
+        "t_asr_res"
+      ],
+      "C_in": 512,
+      "C_out": 64,
+      "kernel_size": 1,
+      "stride": 1,
+      "padding": 0
+    },
+    {
+      "name": "dec_ctx01",
+      "op": "concat1d_fp32",
+      "inputs": [
+        "t_asr_res",
+        "t_f0d"
+      ],
+      "outputs": [
+        "t_dec_ctx01"
+      ],
+      "C2": 1
+    },
+    {
+      "name": "dec_ctx012",
+      "op": "concat1d_fp32",
+      "inputs": [
+        "t_dec_ctx01",
+        "t_nd"
+      ],
+      "outputs": [
+        "t_dec_ctx"
+      ],
+      "C2": 1
+    },
+    {
+      "name": "enc_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_dec_in",
+        "style_dec"
+      ],
+      "outputs": [
+        "enc_n1t"
+      ],
+      "C": 514,
+      "C_style": 128
+    },
+    {
+      "name": "enc_r1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "enc_n1t"
+      ],
+      "outputs": [
+        "enc_r1t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "enc_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "enc_r1t"
+      ],
+      "outputs": [
+        "enc_c1t"
+      ],
+      "C_in": 514,
+      "C_out": 1024,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "enc_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "enc_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "enc_n2t"
+      ],
+      "C": 1024,
+      "C_style": 128
+    },
+    {
+      "name": "enc_r2",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "enc_n2t"
+      ],
+      "outputs": [
+        "enc_r2t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "enc_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "enc_r2t"
+      ],
+      "outputs": [
+        "enc_c2t"
+      ],
+      "C_in": 1024,
+      "C_out": 1024,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "enc_sc",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "t_dec_in"
+      ],
+      "outputs": [
+        "enc_sc_t"
+      ],
+      "C_in": 514,
+      "C_out": 1024,
+      "kernel_size": 1,
+      "stride": 1,
+      "padding": 0
+    },
+    {
+      "name": "enc_add",
+      "op": "add_fp32",
+      "inputs": [
+        "enc_c2t",
+        "enc_sc_t"
+      ],
+      "outputs": [
+        "enc_addt"
+      ]
+    },
+    {
+      "name": "enc_sc2",
+      "op": "scale_fp32",
+      "inputs": [
+        "enc_addt"
+      ],
+      "outputs": [
+        "enc_out"
+      ],
+      "scalar": 0.7071067811865475
+    },
+    {
+      "name": "dec0_cat",
+      "op": "concat1d_fp32",
+      "inputs": [
+        "enc_out",
+        "t_dec_ctx"
+      ],
+      "outputs": [
+        "t_dec0_in"
+      ],
+      "C2": 66
+    },
+    {
+      "name": "dec0_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_dec0_in",
+        "style_dec"
+      ],
+      "outputs": [
+        "dec0_n1t"
+      ],
+      "C": 1090,
+      "C_style": 128
+    },
+    {
+      "name": "dec0_r1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "dec0_n1t"
+      ],
+      "outputs": [
+        "dec0_r1t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "dec0_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "dec0_r1t"
+      ],
+      "outputs": [
+        "dec0_c1t"
+      ],
+      "C_in": 1090,
+      "C_out": 1024,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "dec0_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "dec0_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "dec0_n2t"
+      ],
+      "C": 1024,
+      "C_style": 128
+    },
+    {
+      "name": "dec0_r2",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "dec0_n2t"
+      ],
+      "outputs": [
+        "dec0_r2t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "dec0_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "dec0_r2t"
+      ],
+      "outputs": [
+        "dec0_c2t"
+      ],
+      "C_in": 1024,
+      "C_out": 1024,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "dec0_sc",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "t_dec0_in"
+      ],
+      "outputs": [
+        "dec0_sc_t"
+      ],
+      "C_in": 1090,
+      "C_out": 1024,
+      "kernel_size": 1,
+      "stride": 1,
+      "padding": 0
+    },
+    {
+      "name": "dec0_add",
+      "op": "add_fp32",
+      "inputs": [
+        "dec0_c2t",
+        "dec0_sc_t"
+      ],
+      "outputs": [
+        "dec0_addt"
+      ]
+    },
+    {
+      "name": "dec0_sc2",
+      "op": "scale_fp32",
+      "inputs": [
+        "dec0_addt"
+      ],
+      "outputs": [
+        "dec0_out"
+      ],
+      "scalar": 0.7071067811865475
+    },
+    {
+      "name": "dec1_cat",
+      "op": "concat1d_fp32",
+      "inputs": [
+        "dec0_out",
+        "t_dec_ctx"
+      ],
+      "outputs": [
+        "t_dec1_in"
+      ],
+      "C2": 66
+    },
+    {
+      "name": "dec1_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_dec1_in",
+        "style_dec"
+      ],
+      "outputs": [
+        "dec1_n1t"
+      ],
+      "C": 1090,
+      "C_style": 128
+    },
+    {
+      "name": "dec1_r1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "dec1_n1t"
+      ],
+      "outputs": [
+        "dec1_r1t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "dec1_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "dec1_r1t"
+      ],
+      "outputs": [
+        "dec1_c1t"
+      ],
+      "C_in": 1090,
+      "C_out": 1024,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "dec1_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "dec1_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "dec1_n2t"
+      ],
+      "C": 1024,
+      "C_style": 128
+    },
+    {
+      "name": "dec1_r2",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "dec1_n2t"
+      ],
+      "outputs": [
+        "dec1_r2t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "dec1_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "dec1_r2t"
+      ],
+      "outputs": [
+        "dec1_c2t"
+      ],
+      "C_in": 1024,
+      "C_out": 1024,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "dec1_sc",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "t_dec1_in"
+      ],
+      "outputs": [
+        "dec1_sc_t"
+      ],
+      "C_in": 1090,
+      "C_out": 1024,
+      "kernel_size": 1,
+      "stride": 1,
+      "padding": 0
+    },
+    {
+      "name": "dec1_add",
+      "op": "add_fp32",
+      "inputs": [
+        "dec1_c2t",
+        "dec1_sc_t"
+      ],
+      "outputs": [
+        "dec1_addt"
+      ]
+    },
+    {
+      "name": "dec1_sc2",
+      "op": "scale_fp32",
+      "inputs": [
+        "dec1_addt"
+      ],
+      "outputs": [
+        "dec1_out"
+      ],
+      "scalar": 0.7071067811865475
+    },
+    {
+      "name": "dec2_cat",
+      "op": "concat1d_fp32",
+      "inputs": [
+        "dec1_out",
+        "t_dec_ctx"
+      ],
+      "outputs": [
+        "t_dec2_in"
+      ],
+      "C2": 66
+    },
+    {
+      "name": "dec2_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_dec2_in",
+        "style_dec"
+      ],
+      "outputs": [
+        "dec2_n1t"
+      ],
+      "C": 1090,
+      "C_style": 128
+    },
+    {
+      "name": "dec2_r1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "dec2_n1t"
+      ],
+      "outputs": [
+        "dec2_r1t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "dec2_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "dec2_r1t"
+      ],
+      "outputs": [
+        "dec2_c1t"
+      ],
+      "C_in": 1090,
+      "C_out": 1024,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "dec2_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "dec2_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "dec2_n2t"
+      ],
+      "C": 1024,
+      "C_style": 128
+    },
+    {
+      "name": "dec2_r2",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "dec2_n2t"
+      ],
+      "outputs": [
+        "dec2_r2t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "dec2_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "dec2_r2t"
+      ],
+      "outputs": [
+        "dec2_c2t"
+      ],
+      "C_in": 1024,
+      "C_out": 1024,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "dec2_sc",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "t_dec2_in"
+      ],
+      "outputs": [
+        "dec2_sc_t"
+      ],
+      "C_in": 1090,
+      "C_out": 1024,
+      "kernel_size": 1,
+      "stride": 1,
+      "padding": 0
+    },
+    {
+      "name": "dec2_add",
+      "op": "add_fp32",
+      "inputs": [
+        "dec2_c2t",
+        "dec2_sc_t"
+      ],
+      "outputs": [
+        "dec2_addt"
+      ]
+    },
+    {
+      "name": "dec2_sc2",
+      "op": "scale_fp32",
+      "inputs": [
+        "dec2_addt"
+      ],
+      "outputs": [
+        "dec2_out"
+      ],
+      "scalar": 0.7071067811865475
+    },
+    {
+      "name": "dec3_cat",
+      "op": "concat1d_fp32",
+      "inputs": [
+        "dec2_out",
+        "t_dec_ctx"
+      ],
+      "outputs": [
+        "t_dec3_in"
+      ],
+      "C2": 66
+    },
+    {
+      "name": "dec3_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_dec3_in",
+        "style_dec"
+      ],
+      "outputs": [
+        "dec3_n1t"
+      ],
+      "C": 1090,
+      "C_style": 128
+    },
+    {
+      "name": "dec3_r1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "dec3_n1t"
+      ],
+      "outputs": [
+        "dec3_r1t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "dec3_pool",
+      "op": "conv_transpose1d_fp32",
+      "inputs": [
+        "dec3_r1t"
+      ],
+      "outputs": [
+        "dec3_pooled"
+      ],
+      "C_in": 1090,
+      "C_out": 1090,
+      "kernel_size": 3,
+      "stride": 2,
+      "padding": 1,
+      "output_padding": 1,
+      "groups": 1090
+    },
+    {
+      "name": "dec3_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "dec3_pooled"
+      ],
+      "outputs": [
+        "dec3_c1t"
+      ],
+      "C_in": 1090,
+      "C_out": 512,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "dec3_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "dec3_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "dec3_n2t"
+      ],
+      "C": 512,
+      "C_style": 128
+    },
+    {
+      "name": "dec3_r2",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "dec3_n2t"
+      ],
+      "outputs": [
+        "dec3_r2t"
+      ],
+      "alpha": 0.2
+    },
+    {
+      "name": "dec3_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "dec3_r2t"
+      ],
+      "outputs": [
+        "dec3_c2t"
+      ],
+      "C_in": 512,
+      "C_out": 512,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1
+    },
+    {
+      "name": "dec3_sc_up",
+      "op": "upsample_nearest1d_fp32",
+      "inputs": [
+        "t_dec3_in"
+      ],
+      "outputs": [
+        "dec3_sc_up_t"
+      ],
+      "scale_factor": 2
+    },
+    {
+      "name": "dec3_sc",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "dec3_sc_up_t"
+      ],
+      "outputs": [
+        "dec3_sc_t"
+      ],
+      "C_in": 1090,
+      "C_out": 512,
+      "kernel_size": 1,
+      "stride": 1,
+      "padding": 0
+    },
+    {
+      "name": "dec3_add",
+      "op": "add_fp32",
+      "inputs": [
+        "dec3_c2t",
+        "dec3_sc_t"
+      ],
+      "outputs": [
+        "dec3_addt"
+      ]
+    },
+    {
+      "name": "dec3_sc2",
+      "op": "scale_fp32",
+      "inputs": [
+        "dec3_addt"
+      ],
+      "outputs": [
+        "dec3_out"
+      ],
+      "scalar": 0.7071067811865475
+    },
+    {
+      "name": "gen_f0_up",
+      "op": "upsample_nearest1d_fp32",
+      "inputs": [
+        "t_f0"
+      ],
+      "outputs": [
+        "t_f0_up"
+      ],
+      "scale_factor": 300
+    },
+    {
+      "name": "gen_sine",
+      "op": "sine_gen_fp32",
+      "inputs": [
+        "t_f0_up"
+      ],
+      "outputs": [
+        "t_sines"
+      ],
+      "sample_rate": 24000,
+      "harmonic_num": 8,
+      "sine_amp": 0.1,
+      "voiced_threshold": 10.0,
+      "noise_std": 0.0,
+      "upsample_scale": 300
+    },
+    {
+      "name": "gen_l_lin",
+      "op": "seqgemm_fp32",
+      "inputs": [
+        "t_sines"
+      ],
+      "outputs": [
+        "t_har_lin"
+      ],
+      "C_in": 9,
+      "C_out": 1
+    },
+    {
+      "name": "gen_l_tanh",
+      "op": "tanh_fp32",
+      "inputs": [
+        "t_har_lin"
+      ],
+      "outputs": [
+        "t_har_src"
+      ]
+    },
+    {
+      "name": "gen_stft",
+      "op": "stft_fp32",
+      "inputs": [
+        "t_har_src"
+      ],
+      "outputs": [
+        "t_har"
+      ],
+      "n_fft": 20,
+      "hop_size": 5
+    },
+    {
+      "name": "gen_lr0",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "dec3_out"
+      ],
+      "outputs": [
+        "t_gen_lr0"
+      ],
+      "alpha": 0.1
+    },
+    {
+      "name": "gen_nc0",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "t_har"
+      ],
+      "outputs": [
+        "t_gen_nc0"
+      ],
+      "C_in": 22,
+      "C_out": 256,
+      "kernel_size": 12,
+      "stride": 6,
+      "padding": 3
+    },
+    {
+      "name": "gen_nr0_d0_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_gen_nc0",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_nr0_d0_n1t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_nr0_d0_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_nr0_d0_n1t"
+      ],
+      "outputs": [
+        "gen_nr0_d0_sk1t"
+      ]
+    },
+    {
+      "name": "gen_nr0_d0_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_nr0_d0_sk1t"
+      ],
+      "outputs": [
+        "gen_nr0_d0_c1t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 7,
+      "stride": 1,
+      "padding": 3,
+      "dilation": 1
+    },
+    {
+      "name": "gen_nr0_d0_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_nr0_d0_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_nr0_d0_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_nr0_d0_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_nr0_d0_n2t"
+      ],
+      "outputs": [
+        "gen_nr0_d0_sk2t"
+      ]
+    },
+    {
+      "name": "gen_nr0_d0_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_nr0_d0_sk2t"
+      ],
+      "outputs": [
+        "gen_nr0_d0_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 7,
+      "stride": 1,
+      "padding": 3,
+      "dilation": 1
+    },
+    {
+      "name": "gen_nr0_d0_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_nr0_d0_c2t",
+        "t_gen_nc0"
+      ],
+      "outputs": [
+        "gen_nr0_d0_out"
+      ]
+    },
+    {
+      "name": "gen_nr0_d1_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_nr0_d0_out",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_nr0_d1_n1t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_nr0_d1_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_nr0_d1_n1t"
+      ],
+      "outputs": [
+        "gen_nr0_d1_sk1t"
+      ]
+    },
+    {
+      "name": "gen_nr0_d1_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_nr0_d1_sk1t"
+      ],
+      "outputs": [
+        "gen_nr0_d1_c1t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 7,
+      "stride": 1,
+      "padding": 9,
+      "dilation": 3
+    },
+    {
+      "name": "gen_nr0_d1_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_nr0_d1_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_nr0_d1_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_nr0_d1_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_nr0_d1_n2t"
+      ],
+      "outputs": [
+        "gen_nr0_d1_sk2t"
+      ]
+    },
+    {
+      "name": "gen_nr0_d1_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_nr0_d1_sk2t"
+      ],
+      "outputs": [
+        "gen_nr0_d1_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 7,
+      "stride": 1,
+      "padding": 3,
+      "dilation": 1
+    },
+    {
+      "name": "gen_nr0_d1_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_nr0_d1_c2t",
+        "gen_nr0_d0_out"
+      ],
+      "outputs": [
+        "gen_nr0_d1_out"
+      ]
+    },
+    {
+      "name": "gen_nr0_d2_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_nr0_d1_out",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_nr0_d2_n1t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_nr0_d2_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_nr0_d2_n1t"
+      ],
+      "outputs": [
+        "gen_nr0_d2_sk1t"
+      ]
+    },
+    {
+      "name": "gen_nr0_d2_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_nr0_d2_sk1t"
+      ],
+      "outputs": [
+        "gen_nr0_d2_c1t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 7,
+      "stride": 1,
+      "padding": 15,
+      "dilation": 5
+    },
+    {
+      "name": "gen_nr0_d2_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_nr0_d2_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_nr0_d2_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_nr0_d2_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_nr0_d2_n2t"
+      ],
+      "outputs": [
+        "gen_nr0_d2_sk2t"
+      ]
+    },
+    {
+      "name": "gen_nr0_d2_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_nr0_d2_sk2t"
+      ],
+      "outputs": [
+        "gen_nr0_d2_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 7,
+      "stride": 1,
+      "padding": 3,
+      "dilation": 1
+    },
+    {
+      "name": "gen_nr0_d2_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_nr0_d2_c2t",
+        "gen_nr0_d1_out"
+      ],
+      "outputs": [
+        "gen_nr0_d2_out"
+      ]
+    },
+    {
+      "name": "gen_up0",
+      "op": "conv_transpose1d_fp32",
+      "inputs": [
+        "t_gen_lr0"
+      ],
+      "outputs": [
+        "t_gen_up0"
+      ],
+      "C_in": 512,
+      "C_out": 256,
+      "kernel_size": 20,
+      "stride": 10,
+      "padding": 5
+    },
+    {
+      "name": "gen_add_n0",
+      "op": "add_fp32",
+      "inputs": [
+        "t_gen_up0",
+        "gen_nr0_d2_out"
+      ],
+      "outputs": [
+        "t_gen_xn0"
+      ]
+    },
+    {
+      "name": "gen_rb0_0_d0_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_gen_xn0",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb0_0_d0_n1t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb0_0_d0_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d0_n1t"
+      ],
+      "outputs": [
+        "gen_rb0_0_d0_sk1t"
+      ]
+    },
+    {
+      "name": "gen_rb0_0_d0_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d0_sk1t"
+      ],
+      "outputs": [
+        "gen_rb0_0_d0_c1t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb0_0_d0_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d0_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb0_0_d0_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb0_0_d0_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d0_n2t"
+      ],
+      "outputs": [
+        "gen_rb0_0_d0_sk2t"
+      ]
+    },
+    {
+      "name": "gen_rb0_0_d0_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d0_sk2t"
+      ],
+      "outputs": [
+        "gen_rb0_0_d0_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb0_0_d0_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb0_0_d0_c2t",
+        "t_gen_xn0"
+      ],
+      "outputs": [
+        "gen_rb0_0_d0_out"
+      ]
+    },
+    {
+      "name": "gen_rb0_0_d1_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d0_out",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb0_0_d1_n1t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb0_0_d1_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d1_n1t"
+      ],
+      "outputs": [
+        "gen_rb0_0_d1_sk1t"
+      ]
+    },
+    {
+      "name": "gen_rb0_0_d1_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d1_sk1t"
+      ],
+      "outputs": [
+        "gen_rb0_0_d1_c1t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 3,
+      "dilation": 3
+    },
+    {
+      "name": "gen_rb0_0_d1_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d1_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb0_0_d1_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb0_0_d1_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d1_n2t"
+      ],
+      "outputs": [
+        "gen_rb0_0_d1_sk2t"
+      ]
+    },
+    {
+      "name": "gen_rb0_0_d1_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d1_sk2t"
+      ],
+      "outputs": [
+        "gen_rb0_0_d1_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb0_0_d1_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb0_0_d1_c2t",
+        "gen_rb0_0_d0_out"
+      ],
+      "outputs": [
+        "gen_rb0_0_d1_out"
+      ]
+    },
+    {
+      "name": "gen_rb0_0_d2_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d1_out",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb0_0_d2_n1t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb0_0_d2_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d2_n1t"
+      ],
+      "outputs": [
+        "gen_rb0_0_d2_sk1t"
+      ]
+    },
+    {
+      "name": "gen_rb0_0_d2_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d2_sk1t"
+      ],
+      "outputs": [
+        "gen_rb0_0_d2_c1t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 5,
+      "dilation": 5
+    },
+    {
+      "name": "gen_rb0_0_d2_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d2_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb0_0_d2_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb0_0_d2_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d2_n2t"
+      ],
+      "outputs": [
+        "gen_rb0_0_d2_sk2t"
+      ]
+    },
+    {
+      "name": "gen_rb0_0_d2_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb0_0_d2_sk2t"
+      ],
+      "outputs": [
+        "gen_rb0_0_d2_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb0_0_d2_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb0_0_d2_c2t",
+        "gen_rb0_0_d1_out"
+      ],
+      "outputs": [
+        "gen_rb0_0_d2_out"
+      ]
+    },
+    {
+      "name": "gen_rb0_1_d0_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_gen_xn0",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb0_1_d0_n1t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb0_1_d0_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d0_n1t"
+      ],
+      "outputs": [
+        "gen_rb0_1_d0_sk1t"
+      ]
+    },
+    {
+      "name": "gen_rb0_1_d0_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d0_sk1t"
+      ],
+      "outputs": [
+        "gen_rb0_1_d0_c1t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb0_1_d0_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d0_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb0_1_d0_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb0_1_d0_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d0_n2t"
+      ],
+      "outputs": [
+        "gen_rb0_1_d0_sk2t"
+      ]
+    },
+    {
+      "name": "gen_rb0_1_d0_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d0_sk2t"
+      ],
+      "outputs": [
+        "gen_rb0_1_d0_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb0_1_d0_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb0_1_d0_c2t",
+        "t_gen_xn0"
+      ],
+      "outputs": [
+        "gen_rb0_1_d0_out"
+      ]
+    },
+    {
+      "name": "gen_rb0_1_d1_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d0_out",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb0_1_d1_n1t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb0_1_d1_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d1_n1t"
+      ],
+      "outputs": [
+        "gen_rb0_1_d1_sk1t"
+      ]
+    },
+    {
+      "name": "gen_rb0_1_d1_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d1_sk1t"
+      ],
+      "outputs": [
+        "gen_rb0_1_d1_c1t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 3,
+      "dilation": 3
+    },
+    {
+      "name": "gen_rb0_1_d1_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d1_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb0_1_d1_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb0_1_d1_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d1_n2t"
+      ],
+      "outputs": [
+        "gen_rb0_1_d1_sk2t"
+      ]
+    },
+    {
+      "name": "gen_rb0_1_d1_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d1_sk2t"
+      ],
+      "outputs": [
+        "gen_rb0_1_d1_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb0_1_d1_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb0_1_d1_c2t",
+        "gen_rb0_1_d0_out"
+      ],
+      "outputs": [
+        "gen_rb0_1_d1_out"
+      ]
+    },
+    {
+      "name": "gen_rb0_1_d2_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d1_out",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb0_1_d2_n1t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb0_1_d2_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d2_n1t"
+      ],
+      "outputs": [
+        "gen_rb0_1_d2_sk1t"
+      ]
+    },
+    {
+      "name": "gen_rb0_1_d2_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d2_sk1t"
+      ],
+      "outputs": [
+        "gen_rb0_1_d2_c1t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 5,
+      "dilation": 5
+    },
+    {
+      "name": "gen_rb0_1_d2_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d2_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb0_1_d2_n2t"
+      ],
+      "C": 256,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb0_1_d2_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d2_n2t"
+      ],
+      "outputs": [
+        "gen_rb0_1_d2_sk2t"
+      ]
+    },
+    {
+      "name": "gen_rb0_1_d2_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb0_1_d2_sk2t"
+      ],
+      "outputs": [
+        "gen_rb0_1_d2_c2t"
+      ],
+      "C_in": 256,
+      "C_out": 256,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb0_1_d2_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb0_1_d2_c2t",
+        "gen_rb0_1_d1_out"
+      ],
+      "outputs": [
+        "gen_rb0_1_d2_out"
+      ]
+    },
+    {
+      "name": "gen_rb0_sum01",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb0_0_d2_out",
+        "gen_rb0_1_d2_out"
+      ],
+      "outputs": [
+        "t_gen_rb0_s"
+      ]
+    },
+    {
+      "name": "gen_rb0_avg",
+      "op": "scale_fp32",
+      "inputs": [
+        "t_gen_rb0_s"
+      ],
+      "outputs": [
+        "t_gen_rb0"
+      ],
+      "scalar": 0.5
+    },
+    {
+      "name": "gen_lr1",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "t_gen_rb0"
+      ],
+      "outputs": [
+        "t_gen_lr1"
+      ],
+      "alpha": 0.1
+    },
+    {
+      "name": "gen_nc1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "t_har"
+      ],
+      "outputs": [
+        "t_gen_nc1"
+      ],
+      "C_in": 22,
+      "C_out": 128,
+      "kernel_size": 1,
+      "stride": 1,
+      "padding": 0
+    },
+    {
+      "name": "gen_nr1_d0_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_gen_nc1",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_nr1_d0_n1t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_nr1_d0_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_nr1_d0_n1t"
+      ],
+      "outputs": [
+        "gen_nr1_d0_sk1t"
+      ]
+    },
+    {
+      "name": "gen_nr1_d0_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_nr1_d0_sk1t"
+      ],
+      "outputs": [
+        "gen_nr1_d0_c1t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 11,
+      "stride": 1,
+      "padding": 5,
+      "dilation": 1
+    },
+    {
+      "name": "gen_nr1_d0_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_nr1_d0_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_nr1_d0_n2t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_nr1_d0_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_nr1_d0_n2t"
+      ],
+      "outputs": [
+        "gen_nr1_d0_sk2t"
+      ]
+    },
+    {
+      "name": "gen_nr1_d0_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_nr1_d0_sk2t"
+      ],
+      "outputs": [
+        "gen_nr1_d0_c2t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 11,
+      "stride": 1,
+      "padding": 5,
+      "dilation": 1
+    },
+    {
+      "name": "gen_nr1_d0_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_nr1_d0_c2t",
+        "t_gen_nc1"
+      ],
+      "outputs": [
+        "gen_nr1_d0_out"
+      ]
+    },
+    {
+      "name": "gen_nr1_d1_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_nr1_d0_out",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_nr1_d1_n1t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_nr1_d1_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_nr1_d1_n1t"
+      ],
+      "outputs": [
+        "gen_nr1_d1_sk1t"
+      ]
+    },
+    {
+      "name": "gen_nr1_d1_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_nr1_d1_sk1t"
+      ],
+      "outputs": [
+        "gen_nr1_d1_c1t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 11,
+      "stride": 1,
+      "padding": 15,
+      "dilation": 3
+    },
+    {
+      "name": "gen_nr1_d1_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_nr1_d1_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_nr1_d1_n2t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_nr1_d1_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_nr1_d1_n2t"
+      ],
+      "outputs": [
+        "gen_nr1_d1_sk2t"
+      ]
+    },
+    {
+      "name": "gen_nr1_d1_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_nr1_d1_sk2t"
+      ],
+      "outputs": [
+        "gen_nr1_d1_c2t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 11,
+      "stride": 1,
+      "padding": 5,
+      "dilation": 1
+    },
+    {
+      "name": "gen_nr1_d1_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_nr1_d1_c2t",
+        "gen_nr1_d0_out"
+      ],
+      "outputs": [
+        "gen_nr1_d1_out"
+      ]
+    },
+    {
+      "name": "gen_nr1_d2_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_nr1_d1_out",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_nr1_d2_n1t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_nr1_d2_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_nr1_d2_n1t"
+      ],
+      "outputs": [
+        "gen_nr1_d2_sk1t"
+      ]
+    },
+    {
+      "name": "gen_nr1_d2_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_nr1_d2_sk1t"
+      ],
+      "outputs": [
+        "gen_nr1_d2_c1t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 11,
+      "stride": 1,
+      "padding": 25,
+      "dilation": 5
+    },
+    {
+      "name": "gen_nr1_d2_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_nr1_d2_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_nr1_d2_n2t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_nr1_d2_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_nr1_d2_n2t"
+      ],
+      "outputs": [
+        "gen_nr1_d2_sk2t"
+      ]
+    },
+    {
+      "name": "gen_nr1_d2_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_nr1_d2_sk2t"
+      ],
+      "outputs": [
+        "gen_nr1_d2_c2t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 11,
+      "stride": 1,
+      "padding": 5,
+      "dilation": 1
+    },
+    {
+      "name": "gen_nr1_d2_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_nr1_d2_c2t",
+        "gen_nr1_d1_out"
+      ],
+      "outputs": [
+        "gen_nr1_d2_out"
+      ]
+    },
+    {
+      "name": "gen_up1",
+      "op": "conv_transpose1d_fp32",
+      "inputs": [
+        "t_gen_lr1"
+      ],
+      "outputs": [
+        "t_gen_up1"
+      ],
+      "C_in": 256,
+      "C_out": 128,
+      "kernel_size": 12,
+      "stride": 6,
+      "padding": 3
+    },
+    {
+      "name": "gen_pad1",
+      "op": "reflection_pad1d_fp32",
+      "inputs": [
+        "t_gen_up1"
+      ],
+      "outputs": [
+        "t_gen_pad1"
+      ]
+    },
+    {
+      "name": "gen_add_n1",
+      "op": "add_fp32",
+      "inputs": [
+        "t_gen_pad1",
+        "gen_nr1_d2_out"
+      ],
+      "outputs": [
+        "t_gen_xn1"
+      ]
+    },
+    {
+      "name": "gen_rb1_0_d0_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_gen_xn1",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb1_0_d0_n1t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb1_0_d0_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d0_n1t"
+      ],
+      "outputs": [
+        "gen_rb1_0_d0_sk1t"
+      ]
+    },
+    {
+      "name": "gen_rb1_0_d0_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d0_sk1t"
+      ],
+      "outputs": [
+        "gen_rb1_0_d0_c1t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb1_0_d0_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d0_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb1_0_d0_n2t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb1_0_d0_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d0_n2t"
+      ],
+      "outputs": [
+        "gen_rb1_0_d0_sk2t"
+      ]
+    },
+    {
+      "name": "gen_rb1_0_d0_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d0_sk2t"
+      ],
+      "outputs": [
+        "gen_rb1_0_d0_c2t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb1_0_d0_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb1_0_d0_c2t",
+        "t_gen_xn1"
+      ],
+      "outputs": [
+        "gen_rb1_0_d0_out"
+      ]
+    },
+    {
+      "name": "gen_rb1_0_d1_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d0_out",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb1_0_d1_n1t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb1_0_d1_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d1_n1t"
+      ],
+      "outputs": [
+        "gen_rb1_0_d1_sk1t"
+      ]
+    },
+    {
+      "name": "gen_rb1_0_d1_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d1_sk1t"
+      ],
+      "outputs": [
+        "gen_rb1_0_d1_c1t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 3,
+      "dilation": 3
+    },
+    {
+      "name": "gen_rb1_0_d1_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d1_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb1_0_d1_n2t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb1_0_d1_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d1_n2t"
+      ],
+      "outputs": [
+        "gen_rb1_0_d1_sk2t"
+      ]
+    },
+    {
+      "name": "gen_rb1_0_d1_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d1_sk2t"
+      ],
+      "outputs": [
+        "gen_rb1_0_d1_c2t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb1_0_d1_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb1_0_d1_c2t",
+        "gen_rb1_0_d0_out"
+      ],
+      "outputs": [
+        "gen_rb1_0_d1_out"
+      ]
+    },
+    {
+      "name": "gen_rb1_0_d2_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d1_out",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb1_0_d2_n1t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb1_0_d2_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d2_n1t"
+      ],
+      "outputs": [
+        "gen_rb1_0_d2_sk1t"
+      ]
+    },
+    {
+      "name": "gen_rb1_0_d2_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d2_sk1t"
+      ],
+      "outputs": [
+        "gen_rb1_0_d2_c1t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 5,
+      "dilation": 5
+    },
+    {
+      "name": "gen_rb1_0_d2_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d2_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb1_0_d2_n2t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb1_0_d2_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d2_n2t"
+      ],
+      "outputs": [
+        "gen_rb1_0_d2_sk2t"
+      ]
+    },
+    {
+      "name": "gen_rb1_0_d2_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb1_0_d2_sk2t"
+      ],
+      "outputs": [
+        "gen_rb1_0_d2_c2t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb1_0_d2_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb1_0_d2_c2t",
+        "gen_rb1_0_d1_out"
+      ],
+      "outputs": [
+        "gen_rb1_0_d2_out"
+      ]
+    },
+    {
+      "name": "gen_rb1_1_d0_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "t_gen_xn1",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb1_1_d0_n1t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb1_1_d0_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d0_n1t"
+      ],
+      "outputs": [
+        "gen_rb1_1_d0_sk1t"
+      ]
+    },
+    {
+      "name": "gen_rb1_1_d0_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d0_sk1t"
+      ],
+      "outputs": [
+        "gen_rb1_1_d0_c1t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb1_1_d0_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d0_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb1_1_d0_n2t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb1_1_d0_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d0_n2t"
+      ],
+      "outputs": [
+        "gen_rb1_1_d0_sk2t"
+      ]
+    },
+    {
+      "name": "gen_rb1_1_d0_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d0_sk2t"
+      ],
+      "outputs": [
+        "gen_rb1_1_d0_c2t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb1_1_d0_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb1_1_d0_c2t",
+        "t_gen_xn1"
+      ],
+      "outputs": [
+        "gen_rb1_1_d0_out"
+      ]
+    },
+    {
+      "name": "gen_rb1_1_d1_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d0_out",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb1_1_d1_n1t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb1_1_d1_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d1_n1t"
+      ],
+      "outputs": [
+        "gen_rb1_1_d1_sk1t"
+      ]
+    },
+    {
+      "name": "gen_rb1_1_d1_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d1_sk1t"
+      ],
+      "outputs": [
+        "gen_rb1_1_d1_c1t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 3,
+      "dilation": 3
+    },
+    {
+      "name": "gen_rb1_1_d1_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d1_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb1_1_d1_n2t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb1_1_d1_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d1_n2t"
+      ],
+      "outputs": [
+        "gen_rb1_1_d1_sk2t"
+      ]
+    },
+    {
+      "name": "gen_rb1_1_d1_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d1_sk2t"
+      ],
+      "outputs": [
+        "gen_rb1_1_d1_c2t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb1_1_d1_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb1_1_d1_c2t",
+        "gen_rb1_1_d0_out"
+      ],
+      "outputs": [
+        "gen_rb1_1_d1_out"
+      ]
+    },
+    {
+      "name": "gen_rb1_1_d2_n1",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d1_out",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb1_1_d2_n1t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb1_1_d2_sk1",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d2_n1t"
+      ],
+      "outputs": [
+        "gen_rb1_1_d2_sk1t"
+      ]
+    },
+    {
+      "name": "gen_rb1_1_d2_c1",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d2_sk1t"
+      ],
+      "outputs": [
+        "gen_rb1_1_d2_c1t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 5,
+      "dilation": 5
+    },
+    {
+      "name": "gen_rb1_1_d2_n2",
+      "op": "ada_in1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d2_c1t",
+        "style_dec"
+      ],
+      "outputs": [
+        "gen_rb1_1_d2_n2t"
+      ],
+      "C": 128,
+      "C_style": 128
+    },
+    {
+      "name": "gen_rb1_1_d2_sk2",
+      "op": "snake1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d2_n2t"
+      ],
+      "outputs": [
+        "gen_rb1_1_d2_sk2t"
+      ]
+    },
+    {
+      "name": "gen_rb1_1_d2_c2",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "gen_rb1_1_d2_sk2t"
+      ],
+      "outputs": [
+        "gen_rb1_1_d2_c2t"
+      ],
+      "C_in": 128,
+      "C_out": 128,
+      "kernel_size": 3,
+      "stride": 1,
+      "padding": 1,
+      "dilation": 1
+    },
+    {
+      "name": "gen_rb1_1_d2_add",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb1_1_d2_c2t",
+        "gen_rb1_1_d1_out"
+      ],
+      "outputs": [
+        "gen_rb1_1_d2_out"
+      ]
+    },
+    {
+      "name": "gen_rb1_sum01",
+      "op": "add_fp32",
+      "inputs": [
+        "gen_rb1_0_d2_out",
+        "gen_rb1_1_d2_out"
+      ],
+      "outputs": [
+        "t_gen_rb1_s"
+      ]
+    },
+    {
+      "name": "gen_rb1_avg",
+      "op": "scale_fp32",
+      "inputs": [
+        "t_gen_rb1_s"
+      ],
+      "outputs": [
+        "t_gen_rb1"
+      ],
+      "scalar": 0.5
+    },
+    {
+      "name": "gen_final_lr",
+      "op": "leaky_relu_fp32",
+      "inputs": [
+        "t_gen_rb1"
+      ],
+      "outputs": [
+        "t_gen_flr"
+      ],
+      "alpha": 0.01
+    },
+    {
+      "name": "gen_post",
+      "op": "conv1d_fp32",
+      "inputs": [
+        "t_gen_flr"
+      ],
+      "outputs": [
+        "t_gen_post"
+      ],
+      "C_in": 128,
+      "C_out": 22,
+      "kernel_size": 7,
+      "stride": 1,
+      "padding": 3
+    },
+    {
+      "name": "gen_slice_mag",
+      "op": "slice_channels_fp32",
+      "inputs": [
+        "t_gen_post"
+      ],
+      "outputs": [
+        "t_gen_mag"
+      ],
+      "ch_start": 0,
+      "ch_end": 11
+    },
+    {
+      "name": "gen_slice_phase",
+      "op": "slice_channels_fp32",
+      "inputs": [
+        "t_gen_post"
+      ],
+      "outputs": [
+        "t_gen_phase"
+      ],
+      "ch_start": 11,
+      "ch_end": 22
+    },
+    {
+      "name": "gen_exp",
+      "op": "exp_fp32",
+      "inputs": [
+        "t_gen_mag"
+      ],
+      "outputs": [
+        "t_spec"
+      ]
+    },
+    {
+      "name": "gen_sin",
+      "op": "sin_fp32",
+      "inputs": [
+        "t_gen_phase"
+      ],
+      "outputs": [
+        "t_phase"
+      ]
+    },
+    {
+      "name": "gen_istft",
+      "op": "istft_fp32",
+      "inputs": [
+        "t_spec",
+        "t_phase"
+      ],
+      "outputs": [
+        "t_audio"
+      ],
+      "n_fft": 20,
+      "hop_size": 5
+    }
+  ]
+}

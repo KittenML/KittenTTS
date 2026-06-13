@@ -4,36 +4,44 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kittentts"
-version = "0.8.1"
-description = "Ultra-lightweight text-to-speech model with just 15 million parameters"
+version = "0.8.2"
+description = "Ultra-lightweight text-to-speech models powered by native inference"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "Apache 2.0"}
 authors = [
     {name = "KittenML"}
 ]
-keywords = ["text-to-speech", "tts", "speech-synthesis", "neural-networks", "onnx"]
+keywords = ["text-to-speech", "tts", "speech-synthesis", "neural-networks", "native-inference", "cpp"]
 classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Multimedia :: Sound/Audio :: Speech",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
     "espeakng_loader",
     "phonemizer",
-    "onnxruntime",
+    "kitten-inference==0.1.1",
     "soundfile",
     "numpy",
     "huggingface_hub",
 ]
 
 [project.urls]
-Homepage = "https://github.com/kittenml/kittentts"
-Repository = "https://github.com/kittenml/kittentts"
-Issues = "https://github.com/kittenml/kittentts/issues"
+Homepage = "https://github.com/KittenML/KittenTTS"
+Repository = "https://github.com/KittenML/KittenTTS"
+Issues = "https://github.com/KittenML/KittenTTS/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["kittentts*"]
 
 [tool.setuptools.package-data]
-kittentts = ["*.json", "*.txt", "*.onnx"]
+kittentts = ["*.json", "*.txt", "model_defs/*.json"]
