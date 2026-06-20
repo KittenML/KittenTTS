@@ -25,6 +25,7 @@ Kitten TTS is an open-source, lightweight text-to-speech library built on ONNX. 
 - [Available Models](#available-models)
 - [Demo](#demo)
 - [Quick Start](#quick-start)
+- [Official SDKs](#official-sdks)
 - [API Reference](#api-reference)
 - [System Requirements](#system-requirements)
 - [Roadmap](#roadmap)
@@ -111,6 +112,19 @@ m = KittenTTS("KittenML/kitten-tts-mini-0.8", backend="cuda")
 
 Check out `example_cuda.py` 
 
+## Official SDKs
+
+Use the official SDKs when you want to run Kitten TTS inside an app runtime instead of calling the Python package directly.
+
+| SDK | Platforms | Notes |
+|---|---|---|
+| [KittenTTS Swift](https://github.com/KittenML/KittenTTS-swift) | iOS and macOS | Swift Package Manager SDK for on-device text-to-speech with async generation, playback, WAV export, and model caching. |
+| [KittenTTS React Native](https://github.com/KittenML/KittenTTS-react-native) | React Native iOS, Android, and Web | Mobile and web SDK for local speech generation, playback helpers, offline assets, and generated word timings. |
+| [KittenTTS Flutter](https://github.com/KittenML/KittenTTS-flutter) | Android, iOS, macOS, Linux, and Windows | Flutter SDK for on-device inference, app-provided playback, model caching, streaming generation, and word timings. |
+| [KittenTTS Web](https://github.com/KittenML/KittenTTS-web) | Browser and Node.js | TypeScript SDK for browser and Node.js speech generation with WAV/MP3 output, streaming, and word timings. |
+
+Each SDK is in developer preview. See the linked repositories for current installation instructions, platform requirements, examples, and release status.
+
 ## API Reference
 
 ### `KittenTTS(model_name, cache_dir=None)`
@@ -179,7 +193,7 @@ A virtual environment (conda, venv, or similar) is recommended to avoid dependen
 ## Roadmap
 
 - [ ] Release optimized inference engine
-- [ ] Release mobile SDK
+- [ ] Expand official SDK coverage and platform examples
 - [ ] Release higher quality TTS models
 - [ ] Release multilingual TTS
 - [ ] Release KittenASR
