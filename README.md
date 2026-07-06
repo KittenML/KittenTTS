@@ -111,6 +111,17 @@ m = KittenTTS("KittenML/kitten-tts-mini-0.8", backend="cuda")
 
 Check out `example_cuda.py` 
 
+### Using the system espeak-ng
+
+By default, KittenTTS uses the espeak-ng library bundled with `espeakng_loader`. If you already have espeak-ng installed on your system and prefer to use it, point KittenTTS to it via the standard phonemizer environment variables before importing:
+
+```bash
+export PHONEMIZER_ESPEAK_LIBRARY=/usr/lib/libespeak-ng.so   # path to your espeak-ng shared library
+export ESPEAK_DATA_PATH=/usr/share/espeak-ng-data           # optional: path to your espeak-ng data
+```
+
+When `PHONEMIZER_ESPEAK_LIBRARY` is set, the bundled library is not loaded and `espeakng_loader` does not need to be installed.
+
 ## API Reference
 
 ### `KittenTTS(model_name, cache_dir=None)`

@@ -1,8 +1,22 @@
 import os
-import espeakng_loader
+
+try:
+    import espeakng_loader
+except ImportError:
+    espeakng_loader = None
+
 from phonemizer.backend.espeak.wrapper import EspeakWrapper
-EspeakWrapper.set_library(espeakng_loader.get_library_path())
-os.environ['ESPEAK_DATA_PATH'] = espeakng_loader.get_data_path()
+
+# Use the system espeak-ng if the user points to it via the standard
+# PHONEMIZER_ESPEAK_LIBRARY / ESPEAK_DATA_PATH environment variables,
+# otherwise fall back to the library bundled with espeakng_loader.
+if os.environ.get('PHONEMIZER_ESPEAK_LIBRARY'):
+    EspeakWrapper.set_library(os.environ['PHONEMIZER_ESPEAK_LIBRARY'])
+elif espeakng_loader is not None:
+    EspeakWrapper.set_library(espeakng_loader.get_library_path())
+
+if espeakng_loader is not None:
+    os.environ.setdefault('ESPEAK_DATA_PATH', espeakng_loader.get_data_path())
 import numpy as np
 import phonemizer
 import soundfile as sf
