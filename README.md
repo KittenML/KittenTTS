@@ -1,7 +1,7 @@
 # Kitten TTS
 
 <p align="center">
-  <img width="607" height="255" alt="Kitten TTS" src="https://github.com/user-attachments/assets/f4646722-ba78-4b25-8a65-81bacee0d4f6" />
+  <img width="607"   alt="Kitten TTS" src="https://github.com/user-attachments/assets/6e24bdc1-9750-4416-ad8b-275bdc30b798" />
 </p>
 
 <p align="center">
@@ -11,7 +11,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-green.svg" alt="License"></a>
 </p>
 
-> **New:** Kitten TTS v0.8 is out -- 15M, 40M, and 80M parameter models now available.
+> ## **New:** Free Kitten TTS API available at  [https://platform.kittenml.com](https://platform.kittenml.com/)
 
 Kitten TTS is an open-source, lightweight text-to-speech library built on ONNX. With models ranging from 15M to 80M parameters (25-80 MB on disk), it delivers high-quality voice synthesis on CPU without requiring a GPU.
 
