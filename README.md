@@ -99,7 +99,7 @@ print(model.available_voices)
 # ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
 ```
 
-Kitten TTS sends anonymous generation analytics; see [`docs/analytics.md`](docs/analytics.md) for details and opt-out.
+Kitten TTS sends privacy-limited generation analytics; see [`docs/analytics.md`](docs/analytics.md) for the exact fields, offline behavior, and opt-out controls.
 
 ### Using with GPU
 

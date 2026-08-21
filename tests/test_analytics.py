@@ -1,14 +1,36 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from kittentts.analytics import AnalyticsClient, error_code, parse_model_name, post_json_request
+from kittentts.analytics import (
+    AnalyticsClient,
+    AnalyticsTransportError,
+    error_code,
+    parse_model_name,
+    post_json_request,
+)
 from kittentts.get_model import KittenTTS
 
 
 class AnalyticsTests(unittest.TestCase):
-    def make_client(self, post_json, enabled=True, anonymous_id_path=None):
+    def setUp(self):
+        self.environment = patch.dict(os.environ, {
+            "DO_NOT_TRACK": "",
+            "HF_HUB_DISABLE_TELEMETRY": "",
+            "HF_HUB_OFFLINE": "",
+            "KITTENTTS_ANALYTICS": "",
+            "KITTENTTS_OFFLINE": "",
+        })
+        self.environment.start()
+        self.addCleanup(self.environment.stop)
+
+    def make_client(self, post_json, enabled=True, anonymous_id_path=None, **kwargs):
+        if anonymous_id_path is None:
+            tempdir = tempfile.TemporaryDirectory()
+            self.addCleanup(tempdir.cleanup)
+            anonymous_id_path = Path(tempdir.name) / "analytics_id"
         return AnalyticsClient(
             sdk_version="0.8.1",
             selected_model="kitten-tts-nano",
@@ -18,6 +40,7 @@ class AnalyticsTests(unittest.TestCase):
             anonymous_id_path=anonymous_id_path,
             post_json=post_json,
             async_delivery=False,
+            **kwargs,
         )
 
     def test_disabled_analytics_sends_no_request(self):
@@ -77,6 +100,17 @@ class AnalyticsTests(unittest.TestCase):
         client = self.make_client(failing_post)
         client.track_generation(selected_voice="Jasper", generation="wav")
 
+        self.assertEqual(len(list(client._pending_dir.glob("*.json"))), 1)
+
+    def test_non_retryable_http_error_is_not_kept(self):
+        def rejected_post(endpoint, payload, timeout):
+            raise AnalyticsTransportError("invalid event", retryable=False)
+
+        client = self.make_client(rejected_post)
+        client.track_generation(selected_voice="Jasper", generation="wav")
+
+        self.assertEqual(list(client._pending_dir.glob("*.json")), [])
+
     def test_payload_error_does_not_raise(self):
         client = self.make_client(lambda *args: None)
 
@@ -84,11 +118,14 @@ class AnalyticsTests(unittest.TestCase):
             client.track_generation(selected_voice="Jasper", generation="wav")
 
     def test_thread_start_error_does_not_raise(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
         client = AnalyticsClient(
             sdk_version="0.8.1",
             selected_model="kitten-tts-nano",
             model_version="0.8",
             asset_source="cache",
+            anonymous_id_path=Path(tempdir.name) / "analytics_id",
             post_json=lambda *args: None,
             async_delivery=True,
         )
@@ -98,11 +135,14 @@ class AnalyticsTests(unittest.TestCase):
             client.track_generation(selected_voice="Jasper", generation="wav")
 
     def test_async_delivery_uses_daemon_thread(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
         client = AnalyticsClient(
             sdk_version="0.8.1",
             selected_model="kitten-tts-nano",
             model_version="0.8",
             asset_source="cache",
+            anonymous_id_path=Path(tempdir.name) / "analytics_id",
             post_json=lambda *args: None,
             async_delivery=True,
         )
@@ -112,6 +152,87 @@ class AnalyticsTests(unittest.TestCase):
 
         self.assertTrue(thread_class.call_args.kwargs["daemon"])
         thread_class.return_value.start.assert_called_once()
+
+    def test_event_is_persisted_before_background_delivery_starts(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        path = Path(tempdir.name) / "analytics_id"
+        client = AnalyticsClient(
+            sdk_version="0.8.1",
+            selected_model="kitten-tts-nano",
+            model_version="0.8",
+            asset_source="cache",
+            anonymous_id_path=path,
+            post_json=lambda *args: None,
+            async_delivery=True,
+        )
+
+        with patch("kittentts.analytics.threading.Thread") as thread_class:
+            client.track_generation(selected_voice="Jasper", generation="wav")
+
+        self.assertEqual(len(list((path.parent / "analytics_pending").glob("*.json"))), 1)
+        thread_class.return_value.start.assert_called_once()
+
+    def test_explicit_offline_mode_queues_then_later_flushes(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        path = Path(tempdir.name) / "analytics_id"
+        calls = []
+
+        with patch.dict(os.environ, {"KITTENTTS_OFFLINE": "1"}):
+            offline_client = self.make_client(
+                lambda endpoint, payload, timeout: calls.append(payload),
+                anonymous_id_path=path,
+            )
+            offline_client.track_generation(selected_voice="Jasper", generation="wav")
+
+        self.assertEqual(calls, [])
+        self.assertEqual(len(list((path.parent / "analytics_pending").glob("*.json"))), 1)
+
+        self.make_client(
+            lambda endpoint, payload, timeout: calls.append(payload),
+            anonymous_id_path=path,
+        )
+
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(list((path.parent / "analytics_pending").glob("*.json")), [])
+
+    def test_pending_queue_is_bounded(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        path = Path(tempdir.name) / "analytics_id"
+
+        with patch.dict(os.environ, {"KITTENTTS_OFFLINE": "1"}):
+            client = self.make_client(
+                lambda *args: None,
+                anonymous_id_path=path,
+                max_pending_events=2,
+            )
+            for _ in range(3):
+                client.track_generation(selected_voice="Jasper", generation="wav")
+
+        self.assertEqual(len(list((path.parent / "analytics_pending").glob("*.json"))), 2)
+
+    def test_opt_out_clears_unsent_events(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        path = Path(tempdir.name) / "analytics_id"
+
+        with patch.dict(os.environ, {"KITTENTTS_OFFLINE": "1"}):
+            client = self.make_client(lambda *args: None, anonymous_id_path=path)
+            client.track_generation(selected_voice="Jasper", generation="wav")
+
+        self.make_client(lambda *args: None, enabled=False, anonymous_id_path=path)
+
+        self.assertEqual(list((path.parent / "analytics_pending").glob("*.json")), [])
+
+    def test_ecosystem_telemetry_opt_outs_are_honored(self):
+        for variable in ["HF_HUB_DISABLE_TELEMETRY", "DO_NOT_TRACK"]:
+            with self.subTest(variable=variable), patch.dict(os.environ, {variable: "1"}):
+                calls = []
+                client = self.make_client(lambda *args: calls.append(args))
+                client.track_generation(selected_voice="Jasper", generation="wav")
+                self.assertEqual(calls, [])
 
     def test_post_request_uses_sdk_user_agent(self):
         captured = []
