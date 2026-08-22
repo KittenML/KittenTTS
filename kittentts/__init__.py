@@ -7,6 +7,7 @@ __description__ = "Ultra-lightweight text-to-speech model with just 15 million p
 __all__ = [
     "get_model",
     "KittenTTS",
+    "load_from_local",
     "normalize_text",
     "normalize_text_result",
     "NormalizedSpan",
@@ -15,8 +16,8 @@ __all__ = [
 
 
 def __getattr__(name):
-    if name in {"get_model", "KittenTTS"}:
-        from kittentts.get_model import KittenTTS, get_model
+    if name in {"get_model", "KittenTTS", "load_from_local"}:
+        from kittentts.get_model import KittenTTS, get_model, load_from_local
 
-        return {"get_model": get_model, "KittenTTS": KittenTTS}[name]
+        return {"get_model": get_model, "KittenTTS": KittenTTS, "load_from_local": load_from_local}[name]
     raise AttributeError(f"module 'kittentts' has no attribute {name!r}")
