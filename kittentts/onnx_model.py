@@ -15,6 +15,12 @@ def basic_english_tokenize(text):
     tokens = re.findall(r"\w+|[^\w\s]", text)
     return tokens
 
+
+def mono_audio_array(audio):
+    """Return generated mono audio as a flat samples array."""
+    return np.asarray(audio).squeeze()
+
+
 class TextCleaner:
     def __init__(self, dummy=None):
         _pad = "$"
@@ -154,7 +160,7 @@ class KittenTTS_1_Onnx:
         # Trim audio
         audio = outputs[0][..., :-5000]
 
-        return audio
+        return mono_audio_array(audio)
     
     def generate_to_file(self, text: str, output_path: str, voice: str = "expr-voice-5-m", 
                           speed: float = 1.0, sample_rate: int = 24000, clean_text: bool=True) -> None:
