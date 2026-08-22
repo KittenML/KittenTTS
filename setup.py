@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import Extension, find_packages, setup
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -13,6 +13,18 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/kittenml/kittentts",
     packages=find_packages(),
+    ext_modules=[
+        Extension(
+            "kittentts._ephonemizer",
+            sources=[
+                "kittentts/native_phonemizer/ephonemizer_module.cpp",
+                "kittentts/native_phonemizer/phonemizer.cpp",
+            ],
+            include_dirs=["kittentts/native_phonemizer"],
+            language="c++",
+            extra_compile_args=["-std=c++17"],
+        )
+    ],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
