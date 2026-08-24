@@ -11,7 +11,7 @@ m = KittenTTS("KittenML/kitten-tts-mini-0.8") # 80M version (highest quality)
 # Step 2: Generate the audio 
 
 # this is a sample from the TinyStories dataset. 
-text ="""One day, a little girl named Lily found a needle in her room. She knew it was difficult to play with it because it was sharp. """
+text ="""你好你好你好 """
 
 
 # available_voices : ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
