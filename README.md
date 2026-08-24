@@ -99,6 +99,23 @@ print(model.available_voices)
 # ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
 ```
 
+### Conversational Voice Assistant
+
+An interactive terminal voice assistant that uses an LLM to generate responses and speaks them aloud in real time — no audio files saved.
+
+```bash
+pip install groq sounddevice python-dotenv
+export GROQ_API_KEY=your_key_here
+python example_conversation.py
+```
+
+- Streams audio directly to speakers via `sounddevice`
+- Types each word letter-by-letter in sync with playback
+- Maintains multi-turn conversation history
+- Works with any [Groq](https://console.groq.com) model (Llama, Gemma, Mixtral)
+
+Check out `example_conversation.py`
+
 ### Using with GPU
 
 ```
