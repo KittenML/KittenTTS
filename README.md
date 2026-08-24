@@ -52,6 +52,35 @@ Kitten TTS is an open-source, lightweight text-to-speech library built on ONNX. 
 
 > **Note:** Some users have reported issues with the `kitten-tts-nano-0.8-int8` model. If you encounter problems, please [open an issue](https://github.com/KittenML/KittenTTS/issues).
 
+### Performance Comparison
+
+Real-world performance on Apple M2 Ultra (24 cores):
+
+| Model | Parameters | Disk Size | RTF* | Memory** | Speed | Best For |
+|-------|-----------|-----------|------|----------|-------|----------|
+| **kitten-tts-mini** | 80M | 80 MB | 0.19x | ~180 MB | 5x real-time | High-quality audiobooks, podcasts |
+| **kitten-tts-micro** | 40M | 41 MB | 0.10x | ~160 MB | 10x real-time | General use, summaries, articles |
+| **kitten-tts-nano** | 15M | 56 MB | 0.03x | ~145 MB | 34x real-time | Quick responses, notifications |
+
+\* RTF = Real-Time Factor (lower is faster). 0.03x means generating 1 second of audio takes 0.03 seconds.  
+\*\* Memory usage beyond base requirements; actual usage may vary with text length.
+
+### Which Model Should I Use?
+
+- **For fastest generation:** Use `nano` — generates audio 34x faster than real-time with good quality
+- **For balanced performance:** Use `micro` — recommended for most use cases, 10x real-time
+- **For best quality:** Use `mini` — highest fidelity audio, still 5x faster than real-time
+
+All models run efficiently on CPU without requiring a GPU. Performance scales with CPU cores and speed.
+
+### Performance Notes
+
+- All measurements taken on Apple M2 Ultra (24 cores, macOS)
+- RTF varies slightly with text complexity and length
+- Memory usage is approximate and depends on text being processed
+- Your mileage may vary on different hardware; contributions of benchmarks welcome
+
+
 ## Demo
 
 https://github.com/user-attachments/assets/d80120f2-c751-407e-a166-068dd1dd9e8d
