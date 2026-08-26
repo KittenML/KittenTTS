@@ -17,6 +17,9 @@ PostHog. The installation ID is pseudonymous and remains stable until
 Streaming calls create one `stream` event per stream invocation, not one event
 per generated chunk.
 
+The first time an installation ID is created, the SDK prints a one-time notice
+to stderr describing what is collected and how to opt out.
+
 ## Opt out
 
 Disable analytics at model creation:

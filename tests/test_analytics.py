@@ -1,12 +1,17 @@
+import io
 import os
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from kittentts.analytics import (
+    FIRST_RUN_NOTICE,
+    STALE_TEMP_FILE_AGE_SECONDS,
     AnalyticsClient,
     AnalyticsTransportError,
+    _emit_first_run_notice,
     error_code,
     parse_model_name,
     post_json_request,
@@ -25,6 +30,9 @@ class AnalyticsTests(unittest.TestCase):
         })
         self.environment.start()
         self.addCleanup(self.environment.stop)
+        notice = patch("kittentts.analytics._emit_first_run_notice")
+        self.notice = notice.start()
+        self.addCleanup(notice.stop)
 
     def make_client(self, post_json, enabled=True, anonymous_id_path=None, **kwargs):
         if anonymous_id_path is None:
@@ -196,6 +204,98 @@ class AnalyticsTests(unittest.TestCase):
 
         self.assertEqual(len(calls), 1)
         self.assertEqual(list((path.parent / "analytics_pending").glob("*.json")), [])
+
+    def test_backlog_larger_than_flush_batch_drains_fully(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        path = Path(tempdir.name) / "analytics_id"
+
+        with patch.dict(os.environ, {"KITTENTTS_OFFLINE": "1"}):
+            offline_client = self.make_client(lambda *args: None, anonymous_id_path=path)
+            for _ in range(5):
+                offline_client.track_generation(selected_voice="Jasper", generation="wav")
+
+        calls = []
+        self.make_client(
+            lambda endpoint, payload, timeout: calls.append(payload),
+            anonymous_id_path=path,
+            max_flush_events=2,
+        )
+
+        self.assertEqual(len(calls), 5)
+        self.assertEqual(list((path.parent / "analytics_pending").glob("*.json")), [])
+
+    def test_flush_stops_on_retryable_failure_and_keeps_events(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        path = Path(tempdir.name) / "analytics_id"
+
+        with patch.dict(os.environ, {"KITTENTTS_OFFLINE": "1"}):
+            offline_client = self.make_client(lambda *args: None, anonymous_id_path=path)
+            for _ in range(3):
+                offline_client.track_generation(selected_voice="Jasper", generation="wav")
+
+        delivered = []
+
+        def rate_limited_after_first(endpoint, payload, timeout):
+            if delivered:
+                raise AnalyticsTransportError("analytics HTTP 429", retryable=True)
+            delivered.append(payload)
+
+        self.make_client(rate_limited_after_first, anonymous_id_path=path)
+
+        self.assertEqual(len(delivered), 1)
+        self.assertEqual(len(list((path.parent / "analytics_pending").glob("*.json"))), 2)
+
+    def test_stale_temporary_files_are_removed(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        path = Path(tempdir.name) / "analytics_id"
+        pending_dir = path.parent / "analytics_pending"
+        pending_dir.mkdir(parents=True)
+        stale = pending_dir / ".dead-event.abc123.tmp"
+        fresh = pending_dir / ".live-event.def456.tmp"
+        stale.write_text("{}", encoding="utf-8")
+        fresh.write_text("{}", encoding="utf-8")
+        old = time.time() - STALE_TEMP_FILE_AGE_SECONDS - 60
+        os.utime(stale, (old, old))
+
+        self.make_client(lambda *args: None, anonymous_id_path=path)
+
+        self.assertFalse(stale.exists())
+        self.assertTrue(fresh.exists())
+
+    def test_first_run_notice_is_printed_once(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        path = Path(tempdir.name) / "analytics_id"
+
+        first = self.make_client(lambda *args: None, anonymous_id_path=path)
+        first.track_generation(selected_voice="Jasper", generation="wav")
+        self.assertEqual(self.notice.call_count, 1)
+
+        second = self.make_client(lambda *args: None, anonymous_id_path=path)
+        second.track_generation(selected_voice="Jasper", generation="wav")
+        self.assertEqual(self.notice.call_count, 1)
+
+    def test_first_run_notice_is_not_printed_when_disabled(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        path = Path(tempdir.name) / "analytics_id"
+
+        client = self.make_client(lambda *args: None, enabled=False, anonymous_id_path=path)
+        client.track_generation(selected_voice="Jasper", generation="wav")
+
+        self.notice.assert_not_called()
+        self.assertFalse(path.exists())
+
+    def test_first_run_notice_writes_opt_out_details_to_stderr(self):
+        stderr = io.StringIO()
+        with patch("sys.stderr", stderr):
+            _emit_first_run_notice()
+
+        self.assertEqual(stderr.getvalue().strip(), FIRST_RUN_NOTICE)
+        self.assertIn("KITTENTTS_ANALYTICS=0", FIRST_RUN_NOTICE)
 
     def test_pending_queue_is_bounded(self):
         tempdir = tempfile.TemporaryDirectory()

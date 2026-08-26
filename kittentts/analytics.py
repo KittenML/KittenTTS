@@ -19,6 +19,12 @@ DEFAULT_TIMEOUT_SECONDS = 3.0
 DEFAULT_MAX_PENDING_EVENTS = 1000
 DEFAULT_MAX_PENDING_AGE_SECONDS = 30 * 24 * 60 * 60
 DEFAULT_MAX_FLUSH_EVENTS = 20
+STALE_TEMP_FILE_AGE_SECONDS = 60 * 60
+FIRST_RUN_NOTICE = (
+    "KittenTTS sends privacy-limited usage analytics (never your text or audio). "
+    "Opt out with KITTENTTS_ANALYTICS=0 or KittenTTS(..., analytics=False). "
+    "Details: https://github.com/KittenML/KittenTTS/blob/main/docs/analytics.md"
+)
 
 _FALSE_VALUES = {"0", "false", "off", "no"}
 _TRUE_VALUES = {"1", "true", "on", "yes"}
@@ -131,7 +137,10 @@ class AnalyticsClient:
     @property
     def anonymous_id(self) -> str:
         if not self._anonymous_id:
+            first_run = not self._anonymous_id_path.exists()
             self._anonymous_id = load_or_create_anonymous_id(self._anonymous_id_path)
+            if first_run and self.enabled:
+                _emit_first_run_notice()
         return self._anonymous_id
 
     def track_generation(
@@ -196,20 +205,29 @@ class AnalyticsClient:
             self._deliver(payload)
 
     def _flush_pending(self) -> None:
-        if offline_mode() or not self._flush_lock.acquire(blocking=False):
+        if not self._flush_lock.acquire(blocking=False):
             return
         try:
-            for pending_path in self._pending_files()[: self._max_flush_events]:
-                payload = self._read_pending(pending_path)
-                if payload is None:
-                    self._unlink(pending_path)
-                    continue
+            processed = set()
+            while not offline_mode():
+                batch = [
+                    path for path in self._pending_files() if path not in processed
+                ][: self._max_flush_events]
+                if not batch:
+                    return
 
-                result = self._deliver(payload)
-                if result in {"sent", "drop"}:
-                    self._unlink(pending_path)
-                    continue
-                break
+                for pending_path in batch:
+                    processed.add(pending_path)
+                    payload = self._read_pending(pending_path)
+                    if payload is None:
+                        self._unlink(pending_path)
+                        continue
+
+                    result = self._deliver(payload)
+                    if result in {"sent", "drop"}:
+                        self._unlink(pending_path)
+                        continue
+                    return
         finally:
             self._flush_lock.release()
 
@@ -245,6 +263,22 @@ class AnalyticsClient:
         overflow = len(files) - self._max_pending_events
         for path in files[: max(0, overflow)]:
             self._unlink(path)
+        self._remove_stale_temporaries()
+
+    def _remove_stale_temporaries(self) -> None:
+        # A crash between temporary-file creation and os.replace leaves
+        # ".<event>.<nonce>.tmp" files that the "*.json" queue never touches.
+        try:
+            candidates = list(self._pending_dir.glob(".*.tmp"))
+        except OSError:
+            return
+        now = time.time()
+        for path in candidates:
+            try:
+                if now - path.stat().st_mtime > STALE_TEMP_FILE_AGE_SECONDS:
+                    path.unlink()
+            except OSError:
+                continue
 
     def _pending_files(self, remove_expired: bool = False) -> List[Path]:
         try:
@@ -309,6 +343,13 @@ def post_json_request(endpoint: str, payload: Dict[str, str], timeout_seconds: f
         raise AnalyticsTransportError(f"analytics HTTP {exc.code}", retryable=retryable) from exc
     except (error.URLError, TimeoutError, OSError) as exc:
         raise AnalyticsTransportError("analytics delivery failed", retryable=True) from exc
+
+
+def _emit_first_run_notice() -> None:
+    try:
+        print(FIRST_RUN_NOTICE, file=sys.stderr)
+    except Exception:
+        pass
 
 
 def default_anonymous_id_path() -> Path:
