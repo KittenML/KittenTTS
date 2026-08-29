@@ -12,7 +12,8 @@ or default voice, generation type (`wav`, `speak`, or `stream`), asset source,
 and a coarse SDK error code for failed calls. The server adds a country code.
 It does not forward raw IP addresses, user agents, or city-level location to
 PostHog. The installation ID is pseudonymous and remains stable until
-`~/.kittentts/analytics_id` is deleted.
+`~/.kittentts/analytics_id` is deleted. Set `KITTENTTS_ANALYTICS_HOME` to store
+the installation ID and pending queue somewhere other than `~/.kittentts`.
 
 Streaming calls create one `stream` event per stream invocation, not one event
 per generated chunk.
