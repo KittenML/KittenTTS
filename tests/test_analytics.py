@@ -247,6 +247,43 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(len(delivered), 1)
         self.assertEqual(len(list((path.parent / "analytics_pending").glob("*.json"))), 2)
 
+    def test_failed_delivery_backs_off_before_next_attempt(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        path = Path(tempdir.name) / "analytics_id"
+        calls = []
+        failures = {"remaining": 1}
+
+        def flaky_post(endpoint, payload, timeout):
+            if failures["remaining"]:
+                failures["remaining"] -= 1
+                raise AnalyticsTransportError("analytics HTTP 429", retryable=True)
+            calls.append(payload)
+
+        client = self.make_client(flaky_post, anonymous_id_path=path)
+        client.track_generation(selected_voice="Jasper", generation="wav")
+        self.assertEqual(calls, [])
+
+        client.track_generation(selected_voice="Jasper", generation="wav")
+        self.assertEqual(calls, [], "no delivery attempt during the backoff window")
+        self.assertEqual(len(list(client._pending_dir.glob("*.json"))), 2)
+
+        client._backoff_until = 0.0
+        client.track_generation(selected_voice="Jasper", generation="wav")
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(list(client._pending_dir.glob("*.json")), [])
+
+    def test_backoff_duration_is_configurable(self):
+        def failing_post(endpoint, payload, timeout):
+            raise AnalyticsTransportError("analytics HTTP 503", retryable=True)
+
+        client = self.make_client(failing_post, retry_backoff_seconds=5.0)
+        before = time.time()
+        client.track_generation(selected_voice="Jasper", generation="wav")
+
+        self.assertGreaterEqual(client._backoff_until, before + 4.5)
+        self.assertLessEqual(client._backoff_until, time.time() + 5.5)
+
     def test_stale_temporary_files_are_removed(self):
         tempdir = tempfile.TemporaryDirectory()
         self.addCleanup(tempdir.cleanup)

@@ -19,6 +19,7 @@ DEFAULT_TIMEOUT_SECONDS = 3.0
 DEFAULT_MAX_PENDING_EVENTS = 1000
 DEFAULT_MAX_PENDING_AGE_SECONDS = 30 * 24 * 60 * 60
 DEFAULT_MAX_FLUSH_EVENTS = 20
+DEFAULT_RETRY_BACKOFF_SECONDS = 60.0
 STALE_TEMP_FILE_AGE_SECONDS = 60 * 60
 FIRST_RUN_NOTICE = (
     "KittenTTS sends privacy-limited usage analytics (never your text or audio). "
@@ -108,6 +109,7 @@ class AnalyticsClient:
         max_pending_events: int = DEFAULT_MAX_PENDING_EVENTS,
         max_pending_age_seconds: float = DEFAULT_MAX_PENDING_AGE_SECONDS,
         max_flush_events: int = DEFAULT_MAX_FLUSH_EVENTS,
+        retry_backoff_seconds: float = DEFAULT_RETRY_BACKOFF_SECONDS,
     ):
         self.sdk_version = sdk_version
         self.selected_model = selected_model
@@ -123,7 +125,10 @@ class AnalyticsClient:
         self._max_pending_events = max(1, int(max_pending_events))
         self._max_pending_age_seconds = max(0.0, float(max_pending_age_seconds))
         self._max_flush_events = max(1, int(max_flush_events))
+        self._retry_backoff_seconds = max(0.0, float(retry_backoff_seconds))
+        self._backoff_until = 0.0
         self._anonymous_id = None
+        self._id_lock = threading.Lock()
         self._flush_lock = threading.Lock()
         self._flush_thread = None
 
@@ -136,11 +141,12 @@ class AnalyticsClient:
 
     @property
     def anonymous_id(self) -> str:
-        if not self._anonymous_id:
-            first_run = not self._anonymous_id_path.exists()
-            self._anonymous_id = load_or_create_anonymous_id(self._anonymous_id_path)
-            if first_run and self.enabled:
-                _emit_first_run_notice()
+        with self._id_lock:
+            if not self._anonymous_id:
+                first_run = not self._anonymous_id_path.exists()
+                self._anonymous_id = load_or_create_anonymous_id(self._anonymous_id_path)
+                if first_run and self.enabled:
+                    _emit_first_run_notice()
         return self._anonymous_id
 
     def track_generation(
@@ -189,6 +195,8 @@ class AnalyticsClient:
             self._schedule_transient(payload)
 
     def _schedule_flush(self) -> None:
+        if time.time() < self._backoff_until:
+            return
         if self._async_delivery:
             if self._flush_thread and self._flush_thread.is_alive():
                 return
@@ -209,7 +217,7 @@ class AnalyticsClient:
             return
         try:
             processed = set()
-            while not offline_mode():
+            while not offline_mode() and time.time() >= self._backoff_until:
                 batch = [
                     path for path in self._pending_files() if path not in processed
                 ][: self._max_flush_events]
@@ -227,6 +235,9 @@ class AnalyticsClient:
                     if result in {"sent", "drop"}:
                         self._unlink(pending_path)
                         continue
+                    # Matches the intake's Retry-After: hold off before the
+                    # next delivery attempt instead of retrying per TTS call.
+                    self._backoff_until = time.time() + self._retry_backoff_seconds
                     return
         finally:
             self._flush_lock.release()

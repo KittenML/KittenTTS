@@ -52,3 +52,8 @@ discarded first, so permanently offline applications do not grow storage
 without bound. Each event is persisted before a daemon delivery thread starts,
 which makes short-lived scripts resilient to process exit without making TTS
 wait for the network.
+
+After a failed delivery attempt (an unreachable network, a rate-limited or
+unavailable intake), the SDK waits 60 seconds before the next attempt instead
+of retrying on every generation call. Events keep queueing locally during that
+window and nothing is lost.
