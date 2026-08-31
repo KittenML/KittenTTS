@@ -3,7 +3,7 @@
 [English](README.md) | [中文版](README.zh.md)
 
 <p align="center">
-  <img width="607" height="255" alt="Kitten TTS" src="https://github.com/user-attachments/assets/f4646722-ba78-4b25-8a65-81bacee0d4f6" />
+  <img width="607"   alt="Kitten TTS" src="https://github.com/user-attachments/assets/6e24bdc1-9750-4416-ad8b-275bdc30b798" />
 </p>
 
 <p align="center">
@@ -13,7 +13,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-green.svg" alt="License"></a>
 </p>
 
-> **New:** Kitten TTS v0.8 is out -- 15M, 40M, and 80M parameter models now available.
+> ## **New:** Free Kitten TTS API available at  [https://platform.kittenml.com](https://platform.kittenml.com/)
 
 Kitten TTS is an open-source, lightweight text-to-speech library built on ONNX. With models ranging from 15M to 80M parameters (25-80 MB on disk), it delivers high-quality voice synthesis on CPU without requiring a GPU.
 
@@ -101,6 +101,18 @@ print(model.available_voices)
 # ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
 ```
 
+### Using with GPU
+
+```
+pip install -r requirements_gpu.txt
+```
+
+```python
+m = KittenTTS("KittenML/kitten-tts-mini-0.8", backend="cuda")
+```
+
+Check out `example_cuda.py` 
+
 ## API Reference
 
 ### `KittenTTS(model_name, cache_dir=None)`
@@ -135,6 +147,23 @@ Synthesize speech and write directly to an audio file.
 | `speed` | `float` | `1.0` | Speech speed multiplier |
 | `sample_rate` | `int` | `24000` | Audio sample rate in Hz |
 | `clean_text` | `bool` | `True` | Preprocess text (expand numbers, currencies, etc.) |
+
+### `normalize_text(text, locale="en-US", return_spans=False)`
+
+Normalize text for TTS without generating audio.
+
+```python
+from kittentts import normalize_text
+
+normalized = normalize_text("Dr. Rivera paid $12.50 at 3:05 p.m.")
+# "Doctor Rivera paid twelve dollars and fifty cents at three oh five p m."
+
+result = normalize_text("Fig. 2", return_spans=True)
+print(result.text)
+print(result.spans)
+```
+
+When `return_spans=True`, the result includes original-to-normalized character spans for changed segments such as abbreviations, dates, times, numbers, currency, URLs, and punctuation.
 
 ### `model.available_voices`
 
