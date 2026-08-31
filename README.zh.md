@@ -1,7 +1,9 @@
 # Kitten TTS (小猫语音)
 
+[English](README.md) | [中文版](README.zh.md)
+
 <p align="center">
-  <img width="607" height="255" alt="Kitten TTS" src="https://github.com/user-attachments/assets/f4646722-ba78-4b25-8a65-81bacee0d4f6" />
+  <img width="607" alt="Kitten TTS" src="https://github.com/user-attachments/assets/6e24bdc1-9750-4416-ad8b-275bdc30b798" />
 </p>
 
 <p align="center">
@@ -11,7 +13,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/许可证-Apache_2.0-green.svg" alt="License"></a>
 </p>
 
-> **最新动态：** Kitten TTS v0.8 已发布 —— 现已提供 15M、40M 和 80M 参数规模的模型。
+> ## **新功能：** 现已在 [https://platform.kittenml.com](https://platform.kittenml.com/) 免费提供 Kitten TTS API
 
 Kitten TTS 是一个开源、轻量级的语音合成（TTS）库，基于 ONNX 构建。模型参数量从 15M 到 80M 不等（磁盘占用仅 25-80 MB），无需 GPU 即可在 CPU 上实现高质量的语音合成。
 
@@ -99,6 +101,18 @@ print(model.available_voices)
 # ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
 ```
 
+### 使用 GPU
+
+```bash
+pip install -r requirements_gpu.txt
+```
+
+```python
+m = KittenTTS("KittenML/kitten-tts-mini-0.8", backend="cuda")
+```
+
+详见 `example_cuda.py`。
+
 ## API 参考
 
 ### `KittenTTS(model_name, cache_dir=None)`
@@ -132,7 +146,28 @@ print(model.available_voices)
 | `voice` | `str` | `"expr-voice-5-m"` | 音色名称 |
 | `speed` | `float` | `1.0` | 语速倍率 |
 | `sample_rate` | `int` | `24000` | 音频采样率 (Hz) |
-| `clean_text` | `bool` | `True` | 是否预处理文本 |
+| `clean_text` | `bool` | `True` | 是否预处理文本（展开数字、货币等） |
+
+### `normalize_text(text, locale="en-US", return_spans=False)`
+
+无需生成音频，仅对文本进行 TTS 规范化处理。
+
+```python
+from kittentts import normalize_text
+
+normalized = normalize_text("Dr. Rivera paid $12.50 at 3:05 p.m.")
+# "Doctor Rivera paid twelve dollars and fifty cents at three oh five p m."
+
+result = normalize_text("Fig. 2", return_spans=True)
+print(result.text)
+print(result.spans)
+```
+
+当 `return_spans=True` 时，返回结果中包含缩写、日期、时间、数字、货币、URL 和标点符号等发生变化的原始字符跨度与规范化跨度映射。
+
+### `model.available_voices`
+
+返回可用音色名称列表：`['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']`
 
 ## 系统要求
 
@@ -160,9 +195,10 @@ print(model.available_voices)
 
 ## 社区与支持
 
-- **Discord:** [加入社区](https://discord.gg/VJ86W4SURW)
+- **Discord:** [加入社区](https://discord.com/invite/VJ86W4SURW)
 - **官网:** [kittenml.com](https://kittenml.com)
-- **定制支持:** [申请表单单](https://docs.google.com/forms/d/e/1FAIpQLSc49erSr7jmh3H2yeqH4oZyRRuXm0ROuQdOgWguTzx6SMdUnQ/viewform?usp=preview)
+- **定制支持:** [申请表单](https://docs.google.com/forms/d/e/1FAIpQLSc49erSr7jmh3H2yeqH4oZyRRuXm0ROuQdOgWguTzx6SMdUnQ/viewform?usp=preview)
+- **邮箱:** info@stellonlabs.com
 - **GitHub Issues:** [问题反馈](https://github.com/KittenML/KittenTTS/issues)
 
 ## 许可证
