@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kittenml"
-version = "0.9.2"
+version = "0.9.3"
 description = "Text-to-speech with voice cloning and expression control, plus ultra-lightweight models that run on CPU"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -27,6 +27,13 @@ dependencies = [
     "soundfile",
     "librosa",
     "huggingface_hub",
+    # huggingface_hub downloads over httpx, which offers Brotli to the Hub
+    # whenever a Brotli package is importable. Its fallback backend,
+    # brotlicffi, errors mid-stream on some CDN responses ("decoder process
+    # called with data when 'can_accept_more_data()' is False"), failing the
+    # download. httpx prefers these C bindings over brotlicffi, so having
+    # them installed keeps that path out of reach.
+    "brotli",
     "einops",
     "diffusers",
     "omegaconf",

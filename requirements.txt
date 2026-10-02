@@ -11,6 +11,8 @@ scipy
 soundfile
 librosa
 huggingface_hub
+# keeps httpx off brotlicffi, whose decoder fails on some Hub downloads
+brotli
 
 # s3gen vocoder (vendored in kittenml/kittentts2/s3gen.py)
 einops
