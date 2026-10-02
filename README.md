@@ -72,9 +72,14 @@ The library also ships the original [**lightweight legacy models**](docs/onnx-mo
 
 https://github.com/user-attachments/assets/d80120f2-c751-407e-a166-068dd1dd9e8d
 
+
+
+
+
+
 ### Try it online
 
-Try Kitten TTS directly in your browser on [Hugging Face Spaces](https://huggingface.co/spaces/KittenML/KittenTTS-Demo).
+Try Kitten TTS directly in your browser on [KittenML Platform](https://platform.kittenml.com).
 
 ## Quick Start
 
