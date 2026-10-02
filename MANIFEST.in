@@ -1,9 +1,9 @@
 include README.md
 include LICENSE
 include requirements.txt
-recursive-include kittentts *.py
-recursive-include kittentts *.json
-recursive-include kittentts *.txt
-recursive-include kittentts *.onnx
+recursive-include kittenml *.py
+recursive-include kittenml *.json
+recursive-include kittenml *.txt
+recursive-include kittenml *.onnx
 global-exclude __pycache__
 global-exclude *.py[co]

@@ -1,7 +1,7 @@
 import unittest
 
-from kittentts import NormalizedTextResult, normalize_text
-from kittentts.preprocess import chunk_text
+from kittenml import NormalizedTextResult, normalize_text
+from kittenml.preprocess import chunk_text
 
 
 class TextNormalizationTests(unittest.TestCase):

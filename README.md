@@ -1,7 +1,7 @@
 # Kitten TTS
 
 <p align="center">
-  <img width="607"   alt="Kitten TTS" src="https://github.com/user-attachments/assets/6e24bdc1-9750-4416-ad8b-275bdc30b798" />
+  <img width="607" alt="Kitten TTS" src="https://raw.githubusercontent.com/KittenML/KittenTTS/main/assets/banner.png" />
 </p>
 
 <p align="center">
@@ -13,9 +13,13 @@
 
 > ## **New:** Free Kitten TTS API available at  [https://platform.kittenml.com](https://platform.kittenml.com/)
 
-Kitten TTS is an open-source, lightweight text-to-speech library built on ONNX. With models ranging from 15M to 80M parameters (25-80 MB on disk), it delivers high-quality voice synthesis on CPU without requiring a GPU.
+Kitten TTS is an open-source text-to-speech library. Its flagship model, **KittenTTS 2**, is a
+1.7B-parameter speech language model with in-context voice cloning and expression control: give it
+five seconds of anyone's voice and it speaks your text in that voice.
 
-> **Status:** Developer preview -- APIs may change between releases.
+The library also ships the original [**lightweight legacy models**](docs/onnx-models.md),
+15M-80M parameters, which run on CPU without a GPU. Both families load through the same
+`KittenTTS(...)` constructor.
 
 **Commercial support is available.** For integration assistance, custom voices, or enterprise licensing, [contact us](https://docs.google.com/forms/d/e/1FAIpQLSc49erSr7jmh3H2yeqH4oZyRRuXm0ROuQdOgWguTzx6SMdUnQ/viewform?usp=preview).
 
@@ -25,23 +29,36 @@ Kitten TTS is an open-source, lightweight text-to-speech library built on ONNX. 
 - [Available Models](#available-models)
 - [Demo](#demo)
 - [Quick Start](#quick-start)
-- [API Reference](#api-reference)
+- [Voice cloning](#voice-cloning)
+- [Expression controls](#expression-controls)
+- [Running on CPU](#running-on-cpu)
+- [Long text and streaming](#long-text-and-streaming)
+- [Documentation](#documentation)
 - [System Requirements](#system-requirements)
-- [Roadmap](#roadmap)
 - [Commercial Support](#commercial-support)
 - [Community and Support](#community-and-support)
 - [License](#license)
 
 ## Features
 
-- **Ultra-lightweight** -- Model sizes from 25 MB (int8) to 80 MB, suitable for edge deployment
-- **CPU-optimized** -- ONNX-based inference runs efficiently without a GPU
-- **8 built-in voices** -- Bella, Jasper, Luna, Bruno, Rosie, Hugo, Kiki, and Leo
-- **Adjustable speech speed** -- Control playback rate via the `speed` parameter
-- **Text preprocessing** -- Built-in pipeline handles numbers, currencies, units, and more
+- **Voice cloning** -- Clone any speaker from 5-30 seconds of audio, no fine-tuning
+- **47 built-in voices** -- Including the eight from KittenTTS 0.8 and nine non-English
+- **Multilingual** -- Ten languages: English, Arabic, Chinese, French, German, Hindi, Italian, Portuguese, Russian, Spanish
+- **Expression control** -- `[emotion]` tags, inline `<event>` tags, and `(((emphasis)))` spans
+- **Decoding presets** -- Trade stability against expressiveness per request
+- **Long-form text** -- Sentence-aware chunking with seamless joins
+- **Text preprocessing** -- Numbers, currencies, dates, units and abbreviations expanded automatically
 - **24 kHz output** -- High-quality audio at a standard sample rate
-
+- **Runs without a GPU**
 ## Available Models
+
+**KittenTTS 2** -- speech language model:
+
+| Model | Parameters | Size | Voices | Download |
+|---|---|---|---|---|
+| kitten-tts-2 | 1.7B | 506 MiB | 47 + cloning | [KittenML/kitten-tts-2](https://huggingface.co/KittenML/kitten-tts-2) |
+
+**Lightweight ONNX** -- runs on CPU, no GPU required:
 
 | Model | Parameters | Size | Download |
 |---|---|---|---|
@@ -50,7 +67,6 @@ Kitten TTS is an open-source, lightweight text-to-speech library built on ONNX. 
 | kitten-tts-nano | 15M | 56 MB | [KittenML/kitten-tts-nano-0.8](https://huggingface.co/KittenML/kitten-tts-nano-0.8-fp32) |
 | kitten-tts-nano (int8) | 15M | 25 MB | [KittenML/kitten-tts-nano-0.8-int8](https://huggingface.co/KittenML/kitten-tts-nano-0.8-int8) |
 
-> **Note:** Some users have reported issues with the `kitten-tts-nano-0.8-int8` model. If you encounter problems, please [open an issue](https://github.com/KittenML/KittenTTS/issues).
 
 ## Demo
 
@@ -64,126 +80,155 @@ Try Kitten TTS directly in your browser on [Hugging Face Spaces](https://hugging
 
 ### Prerequisites
 
-- Python 3.8 or later
-- pip
+- Python 3.9 or later
+- A CUDA GPU with roughly 8 GB free, or a CPU with about 6 GB of RAM
+- About 1 GB of disk space for the model, or 506 MiB with the smaller weights
 
 ### Installation
 
 ```bash
-pip install https://github.com/KittenML/KittenTTS/releases/download/0.8.1/kittentts-0.8.1-py3-none-any.whl
+pip install kittenml
 ```
 
-### Basic Usage
+That is the whole install. KittenTTS 2 is the default model, voice cloning is included, and no
+Hugging Face login is needed -- every weight the model uses ships in its own repository. It also
+pulls the small ONNX runtime, so the [lightweight models](docs/onnx-models.md) work from the
+same install.
+
+### Basic usage
 
 ```python
-from kittentts import KittenTTS
-
-model = KittenTTS("KittenML/kitten-tts-mini-0.8")
-audio = model.generate("This high-quality TTS model runs without a GPU.", voice="Jasper")
-
+from kittenml import KittenTTS
 import soundfile as sf
-sf.write("output.wav", audio, 24000)
+
+m = KittenTTS("KittenML/kitten-tts-2")
+
+audio = m.generate("One day, a little girl named Lily found a needle in her room.",
+                   voice="Bruno")
+sf.write("output.wav", audio, m.sample_rate)
 ```
 
-### Advanced Usage
+`m.available_voices` lists all 47 built-in voices, described in
+[voices and expression](docs/voices-and-expression.md). Bella, Jasper, Luna, Bruno, Rosie, Hugo,
+Kiki and Leo are the same speakers as in KittenTTS 0.8, so code written against the ONNX models
+keeps working.
+
+The weights come in two sizes. The default is 947 MiB and lossless; `weights="emb4"` is 506 MiB
+because it quantises the token embedding, which costs a little quality. Only the one you ask for
+is downloaded.
 
 ```python
-# Adjust speech speed (default: 1.0)
-audio = model.generate("Hello, world.", voice="Luna", speed=1.2)
+m = KittenTTS("KittenML/kitten-tts-2", weights="emb4")   # half the download
+```
+
+```python
+# Trade stability against expressiveness
+audio = m.generate("Hello, world.", voice="Luna", preset="expressive")
 
 # Save directly to a file
-model.generate_to_file("Hello, world.", "output.wav", voice="Bruno", speed=0.9)
-
-# List available voices
-print(model.available_voices)
-# ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
+m.generate_to_file("Hello, world.", "output.wav", voice="Bruno")
 ```
 
-### Using with GPU
+## Voice cloning
 
-```
-pip install -r requirements_gpu.txt
-```
+Pass `reference=` instead of `voice=` — same method, the recording just replaces the built-in
+speaker. Give it 5-30 seconds of a single speaker. The transcript is part of the prompt, but you
+do not have to type it; Whisper fills it in when omitted.
 
 ```python
-m = KittenTTS("KittenML/kitten-tts-mini-0.8", backend="cuda")
+audio = m.generate("This is my own voice, cloned.", reference="my_voice.wav")
+
+# Supplying the transcript skips the Whisper pass
+audio = m.generate("This is my own voice.", reference="my_voice.wav",
+                   reference_text="what is actually said in the clip")
 ```
 
-Check out `example_cuda.py` 
+The reference feeds the model by two independent routes -- a speaker embedding through the
+model's projection head, and the clip itself as codec tokens in the prompt -- so identity
+survives even when one route is weak.
 
-## API Reference
+Measured on the built-in voices: a generated clip scores 0.49-0.72 speaker similarity against its
+own reference and 0.01-0.18 against the other 37, and cloning an unseen recording scores 0.81
+against that recording.
 
-### `KittenTTS(model_name, cache_dir=None)`
+## Expression controls
 
-Load a model from Hugging Face Hub.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `model_name` | `str` | `"KittenML/kitten-tts-nano-0.8"` | Hugging Face repository ID |
-| `cache_dir` | `str` | `None` | Local directory for caching downloaded model files |
-
-### `model.generate(text, voice, speed, clean_text)`
-
-Synthesize speech from text, returning a NumPy array of audio samples at 24 kHz.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `text` | `str` | -- | Input text to synthesize |
-| `voice` | `str` | `"expr-voice-5-m"` | Voice name (see available voices) |
-| `speed` | `float` | `1.0` | Speech speed multiplier |
-| `clean_text` | `bool` | `False` | Preprocess text (expand numbers, currencies, etc.) |
-
-### `model.generate_to_file(text, output_path, voice, speed, sample_rate, clean_text)`
-
-Synthesize speech and write directly to an audio file.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `text` | `str` | -- | Input text to synthesize |
-| `output_path` | `str` | -- | Path to save the audio file |
-| `voice` | `str` | `"expr-voice-5-m"` | Voice name |
-| `speed` | `float` | `1.0` | Speech speed multiplier |
-| `sample_rate` | `int` | `24000` | Audio sample rate in Hz |
-| `clean_text` | `bool` | `True` | Preprocess text (expand numbers, currencies, etc.) |
-
-### `normalize_text(text, locale="en-US", return_spans=False)`
-
-Normalize text for TTS without generating audio.
+> **Beta.** Emotion control steers delivery rather than guaranteeing it, and the effect varies
+> by voice and by sentence.
 
 ```python
-from kittentts import normalize_text
-
-normalized = normalize_text("Dr. Rivera paid $12.50 at 3:05 p.m.")
-# "Doctor Rivera paid twelve dollars and fifty cents at three oh five p m."
-
-result = normalize_text("Fig. 2", return_spans=True)
-print(result.text)
-print(result.spans)
+audio = m.generate(
+    "[joyful] We actually won the grant <laugh> I can (((hardly))) believe it!",
+    voice="Kiki",
+    preset="expressive",
+)
 ```
 
-When `return_spans=True`, the result includes original-to-normalized character spans for changed segments such as abbreviations, dates, times, numbers, currency, URLs, and punctuation.
+A leading `[emotion]` tag, inline `<event>` tags and `(((emphasis)))` spans reach the model as
+markup rather than being spoken, and automatically enable its expression conditioning. Ten
+emotions and ten vocal events are recognised -- see
+[voices and expression](docs/voices-and-expression.md) for the full lists and what is not
+covered.
 
-### `model.available_voices`
+## Running on CPU
 
-Returns a list of available voice names: `['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']`
+KittenTTS 2 runs on CPU out of the box — `device` is auto-detected — but the fastest way is
+[kitten-tts-2-cpp](https://github.com/KittenML/kitten-tts-2-cpp), our llama.cpp fork. It reads
+the GGUF weights in the model repository's `cpp/` directory.
+
+
+## Long text and streaming
+
+Long input is split on sentence boundaries and synthesized chunk by chunk, then joined with
+silence trimming and short edge fades so the seams are inaudible. This is automatic: the model is
+reliable on short inputs but truncates or drifts into repetition when asked for a whole script in
+one pass.
+
+To start playing before the whole thing is ready, stream it:
+
+```python
+for chunk in m.generate_stream(long_text, voice="Luna"):
+    play(chunk)          # each chunk is a numpy array at m.sample_rate
+```
+
+It takes the same arguments as `generate`, so `reference=` streams a cloned voice too.
+
+Streaming is **chunk-level, not token-level**: a chunk is generated and vocoded in full before it
+is yielded, so the first chunk still costs its own generation time. On an A100, a 936-character
+passage yielded its first 21 s of audio after 17 s and finished 54 s of audio in 42 s of wall
+clock -- so playback keeps ahead of generation, but there is a real initial delay.
+
+Two consequences worth knowing:
+
+- **Short text does not stream.** Input that fits in one chunk (under roughly 380 characters,
+  and short trailing pieces get merged into their neighbour) yields exactly one chunk, so
+  `generate_stream` behaves like `generate`.
+- **Chunks are yielded raw.** `generate` post-processes the seams -- trimming each segment's edge
+  silence, adding short fades and one consistent pause -- which a streaming caller cannot do
+  without waiting for the next chunk. Concatenating streamed chunks directly gives slightly
+  rougher joins than `generate` on the same text.
+
+## Documentation
+
+| | |
+|---|---|
+| [API reference](docs/api.md) | Every argument to `generate`, streaming, and the advanced knobs |
+| [Voices and expression](docs/voices-and-expression.md) | The 47 voices, emotion and vocal-event tags, the ten languages |
+| [Decoders](docs/decoders.md) | How audio is decoded, and the smaller quantised decoders |
+| [Text normalization](docs/text-normalization.md) | How written text becomes spoken text |
+| [Architecture](docs/architecture.md) | What the model is, package layout, vendored components |
+| [Lightweight ONNX models](docs/onnx-models.md) | The CPU models, 15M-80M parameters, and their API |
 
 ## System Requirements
 
-- **Operating system:** Linux, macOS, or Windows
-- **Python:** 3.8 or later
-- **Hardware:** Runs on CPU; no GPU required
-- **Disk space:** 25-80 MB depending on model variant
+**KittenTTS 2**
+
+- **Operating system:** Linux, Windows or Mac
+- **Python:** 3.9 or later
+
 
 A virtual environment (conda, venv, or similar) is recommended to avoid dependency conflicts.
 
-## Roadmap
-
-- [ ] Release optimized inference engine
-- [ ] Release mobile SDK
-- [ ] Release higher quality TTS models
-- [ ] Release multilingual TTS
-- [ ] Release KittenASR
-- [ ] Need anything else? [Let us know](https://github.com/KittenML/KittenTTS/issues)
 
 ## Commercial Support
 
@@ -201,4 +246,15 @@ We offer commercial support for teams integrating Kitten TTS into their products
 
 ## License
 
-This project is licensed under the [Apache License 2.0](LICENSE).
+This project is licensed under the [Apache License 2.0](LICENSE). That covers the code in this
+repository.
+
+**The models are licensed separately and their terms may differ.** Each model repository carries
+its own licensing, so check the one you intend to use before relying on it — do not assume the
+code's license extends to the weights.
+
+KittenTTS 2 is released under the
+[Stellon Labs Community License](https://huggingface.co/KittenML/kitten-tts-2/blob/main/LICENSE.md):
+free for research, non-commercial and limited commercial use, with the commercial grant ending
+once you pass USD $1,000,000 in annual revenue or total funding. The older ONNX models carry their
+own terms in their own repositories.

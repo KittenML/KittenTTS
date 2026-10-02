@@ -3,37 +3,51 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "kittentts"
-version = "0.8.1"
-description = "Ultra-lightweight text-to-speech model with just 15 million parameters"
+name = "kittenml"
+version = "0.9.2"
+description = "Text-to-speech with voice cloning and expression control, plus ultra-lightweight models that run on CPU"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = {text = "Apache 2.0"}
 authors = [
     {name = "KittenML"}
 ]
-keywords = ["text-to-speech", "tts", "speech-synthesis", "neural-networks", "onnx"]
+keywords = ["text-to-speech", "tts", "speech-synthesis", "voice-cloning", "neural-networks", "onnx"]
 classifiers = [
     "Topic :: Multimedia :: Sound/Audio :: Speech",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
+    "torch>=2.6",
+    "torchaudio>=2.6",
+    "transformers>=4.55",
+    "safetensors",
+    "numpy",
+    "scipy",
+    "soundfile",
+    "librosa",
+    "huggingface_hub",
+    "einops",
+    "diffusers",
+    "omegaconf",
+    "hydra-core",
+    "s3tokenizer",
+    "resemble-perth",
+    "pyloudnorm",
+    "kitten-text-processing>=0.1.0",
     "espeakng_loader",
     "phonemizer",
     "onnxruntime",
-    "soundfile",
-    "numpy",
-    "huggingface_hub",
 ]
 
 [project.urls]
-Homepage = "https://github.com/kittenml/kittentts"
-Repository = "https://github.com/kittenml/kittentts"
-Issues = "https://github.com/kittenml/kittentts/issues"
+Homepage = "https://github.com/KittenML/KittenTTS"
+Repository = "https://github.com/KittenML/KittenTTS"
+Issues = "https://github.com/KittenML/KittenTTS/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["kittentts*"]
+include = ["kittenml*"]
 
 [tool.setuptools.package-data]
-kittentts = ["*.json", "*.txt", "*.onnx"]
+kittenml = ["*.json", "*.txt", "*.onnx"]

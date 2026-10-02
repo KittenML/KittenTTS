@@ -1,6 +1,31 @@
+# Default install: everything KittenTTS 2 needs, including voice cloning, plus the
+# small ONNX runtime so the lightweight models in kittenml/kittentts_legacy work too.
+
+# KittenTTS 2 — speech language model
+torch>=2.6
+torchaudio>=2.6
+transformers>=4.55
+safetensors
+numpy
+scipy
+soundfile
+librosa
+huggingface_hub
+
+# s3gen vocoder (vendored in kittenml/kittentts2/s3gen.py)
+einops
+diffusers
+omegaconf
+hydra-core
+s3tokenizer
+resemble-perth
+pyloudnorm
+
+# Text normalization: reproduces what KittenTTS 2 was served with. Pure Python,
+# no compiled dependencies, so it installs on every platform.
+kitten-text-processing>=0.1.0
+
+# Lightweight ONNX models (kittenml/kittentts_legacy)
 espeakng_loader
 phonemizer
 onnxruntime
-soundfile
-numpy
-huggingface_hub

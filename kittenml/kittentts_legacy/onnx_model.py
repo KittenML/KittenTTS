@@ -7,7 +7,7 @@ import numpy as np
 import phonemizer
 import soundfile as sf
 import onnxruntime as ort
-from .preprocess import TextPreprocessor, chunk_text, normalize_text
+from ..preprocess import TextPreprocessor, chunk_text, normalize_text
 
 def basic_english_tokenize(text):
     """Basic English tokenizer that splits on whitespace and punctuation."""

@@ -246,3 +246,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Internal tooling: builds the model repository from a private inference bundle,
+# and regenerates the vendored s3gen / student-flow files from private checkouts.
+# Not useful without those inputs, so it is kept out of the published repo.
+scripts/
