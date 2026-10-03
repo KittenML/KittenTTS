@@ -70,7 +70,10 @@ The library also ships the original [**lightweight legacy models**](docs/onnx-mo
 
 ## Demo
 
-https://github.com/user-attachments/assets/d80120f2-c751-407e-a166-068dd1dd9e8d
+
+https://github.com/user-attachments/assets/c42c236b-7b7d-41d6-944b-7527a5f30626
+
+
 
 
 
