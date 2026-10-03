@@ -50,6 +50,7 @@ The library also ships the original [**lightweight legacy models**](docs/onnx-mo
 - **Text preprocessing** -- Numbers, currencies, dates, units and abbreviations expanded automatically
 - **24 kHz output** -- High-quality audio at a standard sample rate
 - **Runs without a GPU**
+- **Optimized C++ inference for CPU** -- Our fork of [llama.cpp](https://github.com/KittenML/kitten-tts-2-cpp)
 ## Available Models
 
 **KittenTTS 2** -- speech language model:
