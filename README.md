@@ -14,8 +14,8 @@
 > ## **New:** Free Kitten TTS API available at  [https://platform.kittenml.com](https://platform.kittenml.com/)
 
 Kitten TTS is an open-source text-to-speech library. Its flagship model, **KittenTTS 2**, is a
-1.7B-parameter speech language model with in-context voice cloning and expression control: give it
-five seconds of anyone's voice and it speaks your text in that voice.
+1.7B-parameter 1-bit speech language model with in-context voice cloning and expression control: give it
+five seconds of anyone's voice and it speaks your text in that voice. It runs realtime on a CPU!
 
 The library also ships the original [**lightweight legacy models**](docs/onnx-models.md),
 15M-80M parameters, which run on CPU without a GPU. Both families load through the same
@@ -43,7 +43,7 @@ The library also ships the original [**lightweight legacy models**](docs/onnx-mo
 
 - **Voice cloning** -- Clone any speaker from 5-30 seconds of audio, no fine-tuning
 - **47 built-in voices** -- Including the eight from KittenTTS 0.8 and nine non-English
-- **Multilingual** -- Ten languages: English, Arabic, Chinese, French, German, Hindi, Italian, Portuguese, Russian, Spanish
+- **Multilingual** -- 20 languages: English, Arabic, Chinese, French, German, Hindi, Italian, Portuguese, Russian, Spanish, Japanese, Korean, Turkish, Dutch, Swedish, Danish, Finnish, Swahili, Greek, Hebrew
 - **Expression control** -- `[emotion]` tags, inline `<event>` tags, and `(((emphasis)))` spans
 - **Decoding presets** -- Trade stability against expressiveness per request
 - **Long-form text** -- Sentence-aware chunking with seamless joins
@@ -262,7 +262,4 @@ its own licensing, so check the one you intend to use before relying on it — d
 code's license extends to the weights.
 
 KittenTTS 2 is released under the
-[Stellon Labs Community License](https://huggingface.co/KittenML/kitten-tts-2/blob/main/LICENSE.md):
-free for research, non-commercial and limited commercial use, with the commercial grant ending
-once you pass USD $1,000,000 in annual revenue or total funding. The older ONNX models carry their
-own terms in their own repositories.
+[Stellon Labs Community License](https://huggingface.co/KittenML/kitten-tts-2/blob/main/LICENSE.md)
