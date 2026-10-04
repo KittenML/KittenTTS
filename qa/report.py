@@ -11,6 +11,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import statistics
 import sys
 
@@ -49,6 +50,7 @@ def load_results(results_dir, plan_path):
 # ── Formatting helpers ─────────────────────────────────────────────────────────────
 
 def cell(text):
+    # <br> is the one tag kept: it puts a CPU's cores and RAM under its name.
     return str(text).replace("|", "\\|").replace("\n", " ").strip()
 
 
@@ -79,16 +81,26 @@ def platform_name(r):
     return f"{r['spec']['name']} · py{r['spec']['python']}"
 
 
-def cpu_label(r):
+def short_cpu(name):
+    """'INTEL(R) XEON(R) PLATINUM 8573C' -> 'Intel Xeon Platinum 8573C'; drops '64-Core Processor'."""
+    n = re.sub(r"\((R|TM)\)", "", name, flags=re.I)
+    n = re.sub(r"\s+\d+-Core Processor|\s+CPU\s*@.*|\s+Processor$", "", n)
+    words = {"INTEL": "Intel", "XEON": "Xeon", "PLATINUM": "Platinum", "GOLD": "Gold", "SILVER": "Silver"}
+    return " ".join(words.get(w, w) for w in n.split())
+
+
+def cpu_label(r, specs=True):
+    """The runner's CPU; with specs, its cores and RAM on a second line."""
     env = r.get("env") or {}
     if not env.get("cpu"):
         return r["spec"]["runner"]
-    bits = [env["cpu"]]
+    label = short_cpu(env["cpu"])
+    bits = []
     if env.get("cpu_count"):
         bits.append(f"{env['cpu_count']} cores")
     if env.get("ram_gb"):
-        bits.append(f"{env['ram_gb']:g} GB")
-    return " · ".join(bits)
+        bits.append(f"{round(env['ram_gb'])} GB")
+    return f"{label}<br>{' · '.join(bits)}" if specs and bits else label
 
 
 # ── Per-model numbers ──────────────────────────────────────────────────────────────
@@ -201,8 +213,6 @@ def status_section(results):
             continue
         models = r.get("models", [])
         ok = sum(model_status(r, m) == "Passed" for m in models)
-        rtfs = [(model_stats(m)["rtf"], m["label"]) for m in models if model_stats(m)["rtf"]]
-        worst = max(rtfs) if rtfs else None
         wers = [row["wer"] for row in asr_rows(r) if row.get("wer") is not None]
         rss = [m.get("peak_rss_mb") for m in models if m.get("peak_rss_mb")]
         install = r.get("install") or {}
@@ -216,14 +226,15 @@ def status_section(results):
             + ("" if r["spec"].get("gating", True) else " (non-gating)"),
             fmt(install.get("secs"), 0, " s") if install else "—",
             f"{ok}/{len(models)}" if models else "—",
-            f"{worst[0]:.2f} ({worst[1]})" if worst else "—",
             pct(statistics.mean(wers)) if wers else "—",
             f"{max(rss) / 1024:.1f} GB" if rss else "—",
             notes[:300],
         ])
-    return "## Platform Status\n\n" + table(
-        ["Platform", "CPU", "Status", "Install", "Models", "Worst RTF", "Avg WER", "Peak RAM", "Notes"], rows,
-        ["---", "---", "---", "---:", "---:", "---", "---:", "---:", "---"])
+    header = ["Platform", "CPU", "Status", "Install", "Models", "Avg WER", "Peak RAM", "Notes"]
+    align = ["---", "---", "---", "---:", "---:", "---:", "---:", "---"]
+    if not any(row[-1] for row in rows):
+        header, align, rows = header[:-1], align[:-1], [row[:-1] for row in rows]
+    return "## Platform Status\n\n" + table(header, rows, align)
 
 
 def rtf_section(results):
@@ -237,7 +248,7 @@ def rtf_section(results):
         if not r.get("models"):
             continue
         by = {m["label"]: m for m in r["models"]}
-        row = [platform_name(r), cpu_label(r)]
+        row = [platform_name(r), cpu_label(r, specs=False)]
         for label in labels:
             m = by.get(label)
             if not m:
@@ -290,7 +301,7 @@ def details_section(results):
                          f"{fmt(s['p50'], 3)} / {fmt(s['p95'], 3)}" if s["p50"] is not None else "—",
                          fmt(s["rtf"], 3), fmt(s["audio"], 2),
                          f"{m['peak_rss_mb'] / 1024:.1f} GB" if m.get("peak_rss_mb") else "—",
-                         pct(w.get("wer")), (w.get("transcript") or w.get("error") or "")[:160]])
+                         pct(w.get("wer"))])
         checks = []
         for m in r["models"]:
             for c in m.get("checks", []):
@@ -300,16 +311,29 @@ def details_section(results):
         for c in (r.get("package") or {}).get("checks", []):
             checks.append(["package", c["name"], "Passed" if c["status"] == "pass" else "Failed",
                            fmt(c.get("secs"), 1), c.get("error") or c.get("version") or c.get("output", "")])
-        for row in asr_rows(r):
-            if " · " in row.get("label", ""):
-                checks.append([row["label"].split(" · ")[0], "clone WER", "—", "—",
-                               f"{pct(row.get('wer'))} — {row.get('transcript', row.get('error', ''))[:160]}"])
+        heard = [[row["label"], pct(row.get("wer")),
+                  f"{row['edits']}/{row['words']}" if row.get("words") else "—",
+                  (row.get("transcript") or row.get("error") or "")[:300]]
+                 for row in asr_rows(r) if row.get("wer") != 0]
+        rows_0 = sum(row.get("wer") == 0 for row in asr_rows(r))
+        if heard:
+            asr_md = ("**What Whisper heard** (where it differs from the text)\n\n"
+                      + table(["Audio", "WER", "Edits", "Transcript"], heard, ["---", "---:", "---:", "---"]))
+            if rows_0:
+                asr_md += ("\n\nThe other clip transcribes word for word." if rows_0 == 1 else
+                           f"\n\nThe other {rows_0} clips transcribe word for word.")
+        elif rows_0:
+            asr_md = ("The clip transcribes word for word (WER 0%)." if rows_0 == 1 else
+                      f"All {rows_0} clips transcribe word for word (WER 0%).")
+        else:
+            asr_md = ""
         out.append(
             f"<details><summary><b>{platform_name(r)}</b> — {ICON[r['status']]} {STATUS_LABEL[r['status']]}"
-            f" · {cpu_label(r)}</summary>\n\n{' · '.join(meta)}\n\n"
+            f" · {cpu_label(r).replace('<br>', ' · ')}</summary>\n\n{' · '.join(meta)}\n\n"
             + table(["Model", "Status", "Load (s)", "First gen (s)", "Warm p50/p95 (s)", "Best RTF",
-                     "Audio (s)", "Peak RAM", "WER", "Transcript"], perf,
-                    ["---", "---", "---:", "---:", "---:", "---:", "---:", "---:", "---:", "---"])
+                     "Audio (s)", "Peak RAM", "WER"], perf,
+                    ["---", "---", "---:", "---:", "---:", "---:", "---:", "---:", "---:"])
+            + (f"\n\n{asr_md}" if asr_md else "")
             + ("\n\n" + table(["Model", "Check", "Status", "Time (s)", "Result"], checks,
                               ["---", "---", "---", "---:", "---"]) if checks else "")
             + "\n\n</details>\n")

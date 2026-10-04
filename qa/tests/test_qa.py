@@ -222,7 +222,16 @@ class Report(unittest.TestCase):
         self.assertIn("✅ **All 1 supported platform jobs passed.**", md)
         self.assertIn("| Linux x64 · py3.12 |", md)
         self.assertIn("| 0.100 |", md)       # best warm run 0.4 s for 4 s of audio
-        self.assertIn("AMD EPYC 7763 · 4 cores · 15.6 GB", md)
+        self.assertIn("| AMD EPYC 7763<br>4 cores · 16 GB |", md)
+        self.assertIn("The clip transcribes word for word (WER 0%).", md)
+
+    def test_cpu_names_are_shortened(self):
+        for raw, short in (("AMD EPYC 7763 64-Core Processor", "AMD EPYC 7763"),
+                           ("INTEL(R) XEON(R) PLATINUM 8573C", "Intel Xeon Platinum 8573C"),
+                           ("Intel(R) Xeon(R) 6973P-C", "Intel Xeon 6973P-C"),
+                           ("Apple M1 (Virtual)", "Apple M1 (Virtual)"),
+                           ("Neoverse-N2", "Neoverse-N2")):
+            self.assertEqual(report.short_cpu(raw), short)
 
     def test_failure_and_missing_job_fail_the_gate(self):
         bad = result(spec(id="win-py3.12", name="Windows x64", runner="windows-2025"),
