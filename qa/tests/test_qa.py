@@ -17,6 +17,36 @@ from qa_common import (CHANGED, FAILED, NO_RESULT, PASSED, UNSUPPORTED,  # noqa:
 ASR = {"enabled": True, "model": "openai/whisper-small.en", "warn_above": 0.15, "fail_above": 0.5}
 
 
+# Tests use this, not qa/config.toml, so editing the real config never breaks them.
+FIXTURE = """
+[sample]
+text = "Hello there."
+voice = "Bruno"
+
+[models.small]
+repo = "KittenML/kitten-tts-nano-0.8"
+checks = ["stream"]
+
+[models.big]
+repo = "KittenML/kitten-tts-2"
+checks = ["clone"]
+
+[[target]]
+name = "Big runner"
+runner = "ubuntu-24.04"
+pythons = ["3.11", "3.12"]
+models = ["small", "big"]
+
+[[target]]
+name = "Small runner"
+runner = "macos-15"
+pythons = ["3.12"]
+models = ["big"]
+text = "Short."
+overrides = { big = { weights = "emb4", warm_runs = 0 } }
+"""
+
+
 def spec(**kw):
     s = {"id": "linux-x64-py3.12", "name": "Linux x64", "runner": "ubuntu-24.04", "python": "3.12",
          "expect": "works", "gating": True, "reason": "", "text": "Hello there.", "voice": "Bruno",
@@ -121,14 +151,13 @@ class Plan(unittest.TestCase):
             self.assertGreater(j["timeout"], 0)
 
     def test_overrides_apply_to_one_target(self):
-        cfg = plan.load(os.path.join(QA, "config.toml"))
-        specs = [json.loads(j["spec"]) for j in plan.expand(cfg)]
-        mac = next(s for s in specs if s["name"] == "macOS Apple Silicon · KittenTTS 2")
-        linux = next(s for s in specs if s["name"] == "Linux x64" and s["python"] == "3.12")
-        mac_tts2 = next(m for m in mac["models"] if m["key"] == "tts2")
-        linux_tts2 = next(m for m in linux["models"] if m["key"] == "tts2")
-        self.assertEqual(mac_tts2["weights"], "emb4")
-        self.assertNotIn("weights", linux_tts2)
+        specs = [json.loads(j["spec"]) for j in plan.expand(plan.load(self.write(FIXTURE)))]
+        small = next(s for s in specs if s["name"] == "Small runner")
+        big = next(s for s in specs if s["name"] == "Big runner" and s["python"] == "3.12")
+        self.assertEqual(next(m for m in small["models"] if m["key"] == "big")["weights"], "emb4")
+        self.assertEqual(small["text"], "Short.")
+        self.assertNotIn("weights", next(m for m in big["models"] if m["key"] == "big"))
+        self.assertEqual(big["text"], "Hello there.")
 
     def test_invalid_config_is_rejected_with_reasons(self):
         path = self.write('[sample]\ntext="x"\nvoice="Bruno"\n'
@@ -143,8 +172,8 @@ class Plan(unittest.TestCase):
             self.assertIn(bit, msg)
 
     def test_filters(self):
-        cfg = plan.load(os.path.join(QA, "config.toml"))
-        env = {"QA_TARGETS": "Linux ARM64", "QA_PYTHONS": "3.12", "QA_MODELS": "nano,tts2"}
+        cfg = plan.load(self.write(FIXTURE))
+        env = {"QA_TARGETS": "big", "QA_PYTHONS": "3.12", "QA_MODELS": "small"}
         old = {k: os.environ.get(k) for k in env}
         os.environ.update(env)
         try:
@@ -152,8 +181,8 @@ class Plan(unittest.TestCase):
         finally:
             for k, v in old.items():
                 os.environ.pop(k, None) if v is None else os.environ.__setitem__(k, v)
-        self.assertEqual([(j["name"], j["python"]) for j in jobs], [("Linux ARM64", "3.12")])
-        self.assertEqual([m["key"] for m in json.loads(jobs[0]["spec"])["models"]], ["nano", "tts2"])
+        self.assertEqual([(j["name"], j["python"]) for j in jobs], [("Big runner", "3.12")])
+        self.assertEqual([m["key"] for m in json.loads(jobs[0]["spec"])["models"]], ["small"])
 
 
 class Report(unittest.TestCase):
