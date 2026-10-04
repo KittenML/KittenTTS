@@ -1,0 +1,138 @@
+# What the Platform QA workflow tests.
+#
+# Every job installs this checkout of kittenml on one GitHub-hosted runner and
+# Python version, runs the models listed for that platform, and reports to the PR.
+# Change platforms, Python versions, models or the sample text here — the
+# workflow reads this file at run time and needs no edits.
+
+[sample]
+# Spoken by every model. WER is measured against it.
+text = "Kitten TTS runs fully on your device and creates clear speech quickly. This benchmark compares every model for speed, quality, and consistency."
+voice = "Bruno"
+
+[asr]
+# Each runner transcribes its own audio to measure word error rate.
+enabled = true
+model = "openai/whisper-small.en"
+warn_above = 0.15   # WER above this is flagged in the report
+fail_above = 0.50   # WER above this fails the run (the audio is not the text)
+
+# ── Models ─────────────────────────────────────────────────────────────────────
+# warm_runs: generations after the first one, timed for p50/p95.
+# checks: extra API checks beyond load + generate. Known checks:
+#   stream, speed, to_file          (any model)
+#   expression, clone, clone_whisper (KittenTTS 2)
+# timeout_minutes: per model, so a hang is reported instead of eating the job.
+
+[models.nano]
+repo = "KittenML/kitten-tts-nano-0.8"
+label = "Nano (fp32)"
+warm_runs = 3
+checks = ["stream", "speed", "to_file"]
+timeout_minutes = 10
+
+[models.nano-int8]
+repo = "KittenML/kitten-tts-nano-0.8-int8"
+label = "Nano (int8)"
+warm_runs = 3
+checks = []
+timeout_minutes = 10
+
+[models.micro]
+repo = "KittenML/kitten-tts-micro-0.8"
+label = "Micro"
+warm_runs = 3
+checks = []
+timeout_minutes = 10
+
+[models.mini]
+repo = "KittenML/kitten-tts-mini-0.8"
+label = "Mini"
+warm_runs = 3
+checks = []
+timeout_minutes = 10
+
+[models.tts2]
+repo = "KittenML/kitten-tts-2"
+label = "KittenTTS 2"
+warm_runs = 1
+checks = ["stream", "expression", "clone", "clone_whisper"]
+timeout_minutes = 40
+# weights = "emb4"   # the 506 MiB variant; default is the 947 MiB one
+
+# ── Platforms ──────────────────────────────────────────────────────────────────
+# runner:  a GitHub-hosted runner label (its CPU is recorded in the report).
+# expect:  "works" (default), "install-fails" (known unsupported: passes when the
+#          install fails, flags it when it starts working) or "refused" (pip must
+#          refuse it on Requires-Python).
+# gating:  false reports results without failing the run.
+# overrides: per-model settings for this platform only.
+# text:    a different sample text for this platform.
+
+[[target]]
+name = "Linux x64"
+runner = "ubuntu-24.04"            # AMD EPYC or Intel Xeon, 4 vCPU, 16 GB
+pythons = ["3.10", "3.11", "3.12", "3.13", "3.14"]
+models = ["nano", "nano-int8", "micro", "mini", "tts2"]
+
+[[target]]
+name = "Linux ARM64"
+runner = "ubuntu-24.04-arm"        # Arm Neoverse, 4 vCPU, 16 GB
+pythons = ["3.10", "3.11", "3.12", "3.13", "3.14"]
+models = ["nano", "nano-int8", "micro", "mini", "tts2"]
+
+[[target]]
+name = "Windows x64"
+runner = "windows-2025"            # AMD EPYC or Intel Xeon, 4 vCPU, 16 GB
+pythons = ["3.10", "3.11", "3.12", "3.13", "3.14"]
+models = ["nano", "nano-int8", "micro", "mini", "tts2"]
+
+[[target]]
+name = "macOS Apple Silicon"
+runner = "macos-15"                # Apple M1, 3 vCPU, 7 GB
+pythons = ["3.10", "3.11", "3.12", "3.13", "3.14"]
+models = ["nano", "nano-int8", "micro", "mini"]
+
+[[target]]
+# KittenTTS 2 peaks near 6 GB, so on the 7 GB runner it swaps and runs far below
+# realtime. One Python, one short generation, the smaller weights: enough to show
+# it works on Apple Silicon without holding the run up for an hour.
+name = "macOS Apple Silicon · KittenTTS 2"
+runner = "macos-15"
+pythons = ["3.12"]
+models = ["tts2"]
+text = "Kitten TTS runs fully on your device."
+timeout_minutes = 75
+overrides = { tts2 = { weights = "emb4", warm_runs = 0, checks = [], timeout_minutes = 60 } }
+
+[[target]]
+name = "macOS Intel"
+runner = "macos-15-intel"
+pythons = ["3.12"]
+models = ["nano"]
+expect = "install-fails"
+reason = "kittenml needs torch>=2.6, and PyTorch stopped publishing Intel macOS wheels after 2.2."
+
+[[target]]
+name = "Windows ARM64"
+runner = "windows-11-arm"
+pythons = ["3.12"]
+models = ["nano"]
+expect = "install-fails"
+reason = "PyTorch publishes no Windows ARM64 wheels on PyPI."
+
+[[target]]
+name = "Linux x64 · oldest Python"
+runner = "ubuntu-24.04"
+pythons = ["3.9"]
+models = []
+expect = "refused"
+reason = "kittenml requires Python 3.10 or newer."
+
+[[target]]
+name = "Linux x64 · next Python"
+runner = "ubuntu-24.04"
+pythons = ["3.15"]
+models = ["nano", "nano-int8", "micro", "mini", "tts2"]
+gating = false
+reason = "Pre-release Python; PyTorch publishes wheels for a new Python some weeks after its release."

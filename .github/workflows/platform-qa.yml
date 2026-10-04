@@ -1,0 +1,195 @@
+name: Platform QA
+
+# Installs this checkout of kittenml on every OS, CPU and Python version listed in
+# qa/config.toml, runs each model, and posts one report to the pull request.
+# To change what is tested, edit qa/config.toml — not this file.
+
+on:
+  pull_request:
+    paths:
+      - "kittenml/**"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - "qa/**"
+      - ".github/workflows/platform-qa*.yml"
+  push:
+    branches: [main]
+    paths:
+      - "kittenml/**"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - "qa/**"
+      - ".github/workflows/platform-qa*.yml"
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: "Only platforms whose name or runner contains one of these, comma-separated (e.g. 'Linux, macos'). Empty runs all."
+        default: ""
+      pythons:
+        description: "Only these Python versions, comma-separated (e.g. '3.12'). Empty runs all."
+        default: ""
+      models:
+        description: "Only these models from qa/config.toml, comma-separated (e.g. 'nano,tts2'). Empty runs all."
+        default: ""
+      source:
+        description: "'checkout' tests this branch; a pip requirement (e.g. 'kittenml==0.9.3') tests a PyPI release."
+        default: "checkout"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-qa-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  QA_SOURCE: ${{ inputs.source || 'checkout' }}
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test the QA scripts
+        run: python -m unittest discover -s qa/tests -v
+
+      - name: Expand qa/config.toml into jobs
+        id: plan
+        env:
+          QA_TARGETS: ${{ inputs.targets }}
+          QA_PYTHONS: ${{ inputs.pythons }}
+          QA_MODELS: ${{ inputs.models }}
+        run: python qa/plan.py --out plan.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qa-plan
+          path: plan.json
+
+  platform:
+    name: ${{ matrix.name }} · py${{ matrix.python }}
+    needs: plan
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      PYTHONUTF8: "1"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          allow-prereleases: true
+
+      - name: Install and test
+        shell: bash
+        env:
+          QA_SPEC: ${{ matrix.spec }}
+        run: |
+          printf '%s' "$QA_SPEC" > "$RUNNER_TEMP/spec.json"
+          python qa/run_target.py --spec "$RUNNER_TEMP/spec.json" --out qa-out
+
+      - name: Upload audio
+        id: audio
+        if: always() && hashFiles('qa-out/audio/*.wav') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-audio-${{ matrix.id }}
+          path: qa-out/audio/
+          retention-days: 14
+
+      - name: Link the audio from the result
+        if: always() && steps.audio.outputs.artifact-url != '' && hashFiles('qa-out/result.json') != ''
+        shell: bash
+        env:
+          AUDIO_URL: ${{ steps.audio.outputs.artifact-url }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          path = "qa-out/result.json"
+          with open(path, encoding="utf-8") as f:
+              result = json.load(f)
+          result["audio_url"] = os.environ["AUDIO_URL"]
+          with open(path, "w", encoding="utf-8") as f:
+              json.dump(result, f, indent=1)
+          EOF
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-result-${{ matrix.id }}
+          path: |
+            qa-out/result.json
+            qa-out/install.log
+            qa-out/logs/
+          if-no-files-found: ignore
+
+  report:
+    name: Report
+    needs: [plan, platform]
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: qa-result-*
+          path: results
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: qa-plan
+          path: plan
+
+      - name: Build report
+        env:
+          QA_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python qa/report.py results report --plan plan/plan.json
+          cat report/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record the pull request for the fork commenter
+        if: github.event_name == 'pull_request'
+        run: echo "${{ github.event.pull_request.number }}" > report/pr-number.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qa-report
+          path: report/
+
+      # Pull requests from forks get a read-only token; platform-qa-comment.yml
+      # posts their report from the base repository instead.
+      - name: Comment on the pull request
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >
+          python qa/pr_comment.py --repo "${{ github.repository }}"
+          --pr "${{ github.event.pull_request.number }}"
+          --sha "${{ github.event.pull_request.head.sha }}"
+          --body report/pr-comment.md
+
+      - name: Fail on platform failures
+        run: python qa/report.py --gate report/summary.json
