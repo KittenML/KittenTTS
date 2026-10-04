@@ -114,6 +114,18 @@ class Classify(unittest.TestCase):
         rows = [{"wav": "audio/nano.wav", "label": "Nano", "wer": 0.3, "transcript": "close"}]
         self.assertEqual(classify(result(asr_rows=rows))[0], PASSED)
 
+    def test_crashed_package_checks_fail(self):
+        r = result()
+        r["package"] = {"status": "crash", "error": "process exited with code 1 before reporting"}
+        status, reasons, failing = classify(r)
+        self.assertEqual((status, failing), (FAILED, True))
+        self.assertIn("package checks", reasons[0])
+
+    def test_crashed_transcription_fails(self):
+        r = result()
+        r["asr"] = {"status": "timeout", "error": "timed out after 20 min"}
+        self.assertEqual(classify(r)[0], FAILED)
+
     def test_job_without_install_record_is_no_result(self):
         self.assertEqual(classify({"spec": spec()})[0], NO_RESULT)
 
@@ -238,6 +250,15 @@ class Report(unittest.TestCase):
         self.assertIn("1 passed / 1 failed (non-gating)", md)
         self.assertIn("ERROR: no torch for 3.15; pre-release", md)
         self.assertIn("py3.15 (non-gating): install failed", md)
+
+    def test_crashed_transcription_is_shown_with_its_log(self):
+        r = result()
+        r["asr"] = {"status": "crash", "error": "process exited with code -9 before reporting",
+                    "log_tail": "Killed"}
+        md, code, _ = self.run_report([r])
+        self.assertEqual(code, 1)
+        self.assertIn("WER transcription: process exited with code -9", md)
+        self.assertIn("Killed", md)
 
     def test_unsupported_platforms_are_listed_and_pass(self):
         s = spec(id="mac-intel", name="macOS Intel", runner="macos-15-intel", expect="install-fails",

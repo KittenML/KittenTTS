@@ -48,15 +48,19 @@ def classify(result):
             return UNSUPPORTED, [], False
         return FAILED, ["install failed"], gating
 
-    for name in ("package",):
-        part = result.get(name) or {}
-        for chk in part.get("checks", []):
-            if chk["status"] != "pass":
-                reasons.append(f"{chk['name']}: {chk.get('error', chk['status'])}")
+    package = result.get("package") or {}
+    if package.get("status") in ("crash", "timeout"):
+        reasons.append(f"package checks: {package.get('error', package['status'])}")
+    for chk in package.get("checks", []):
+        if chk["status"] != "pass":
+            reasons.append(f"{chk['name']}: {chk.get('error', chk['status'])}")
     for model in result.get("models", []):
         if model["status"] != "pass":
             reasons.append(f"{model['label']}: {model.get('error') or model['status']}")
     asr = result.get("asr") or {}
+    if asr.get("status") in ("crash", "timeout"):
+        # No WER means no check that the audio says the text; that must not pass quietly.
+        reasons.append(f"WER transcription: {asr.get('error', asr['status'])}")
     fail_above = spec.get("asr", {}).get("fail_above")
     for row in asr.get("rows", []):
         if fail_above is not None and row.get("wer") is not None and row["wer"] > fail_above:

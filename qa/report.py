@@ -157,7 +157,10 @@ def header(results, ctx):
     failing = [r for r in results if r["failing"]]
     counts = {s: sum(r["status"] == s for r in results) for s in STATUS_LABEL}
     soft = sum(r["status"] == FAILED and not r["failing"] for r in results)
-    spec = results[0]["spec"] if results else {}
+    # Targets can override the text; show the one most jobs spoke.
+    texts = [r["spec"].get("text", "") for r in results]
+    spec = dict(results[0]["spec"]) if results else {}
+    spec["text"] = max(set(texts), key=texts.count) if texts else ""
     asr_cfg = spec.get("asr", {})
     verdict = (f"❌ **{len(failing)} platform job{'s' if len(failing) != 1 else ''} failed.**" if failing else
                f"✅ **All {len(gating)} supported platform jobs passed.**")
@@ -327,6 +330,12 @@ def failures_section(results, trace_chars):
         if install and not install.get("ok") and r["spec"].get("expect", "works") == "works":
             items.append(f"<details><summary>{name}: install failed — {cell(install.get('error', ''))}</summary>"
                          f"\n\n```\n{install.get('log_tail', '')[-trace_chars:]}\n```\n</details>")
+        for part in ("package", "asr"):
+            p = r.get(part) or {}
+            if p.get("status") in ("crash", "timeout"):
+                label = "package checks" if part == "package" else "WER transcription"
+                items.append(f"<details><summary>{name} · {label}: {cell(p.get('error', p['status']))}</summary>"
+                             f"\n\n```\n{p.get('log_tail', '')[-trace_chars:]}\n```\n</details>")
         for c in (r.get("package") or {}).get("checks", []):
             if c["status"] != "pass":
                 items.append(f"<details><summary>{name} · {c['name']}: {cell(c.get('error', ''))}</summary>"
