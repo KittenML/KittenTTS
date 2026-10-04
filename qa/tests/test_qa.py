@@ -251,6 +251,7 @@ class Report(unittest.TestCase):
         self.assertIn("❌ **1 platform job failed.**", md)
         self.assertIn("| Nano | Failed (WER) |", md)
         self.assertIn("| 0/1 |", md)
+        self.assertIn("\n\n- Linux x64 · py3.12 · Nano: WER 90% is above 50%", md)
 
     def test_non_gating_failure_is_labelled_and_passes_the_gate(self):
         s = spec(id="next", name="Linux x64 · next Python", python="3.15", gating=False, reason="pre-release")

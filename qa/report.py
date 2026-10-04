@@ -230,11 +230,12 @@ def status_section(results):
             f"{max(rss) / 1024:.1f} GB" if rss else "—",
             notes[:300],
         ])
-    header = ["Platform", "CPU", "Status", "Install", "Models", "Avg WER", "Peak RAM", "Notes"]
-    align = ["---", "---", "---", "---:", "---:", "---:", "---:", "---"]
-    if not any(row[-1] for row in rows):
-        header, align, rows = header[:-1], align[:-1], [row[:-1] for row in rows]
-    return "## Platform Status\n\n" + table(header, rows, align)
+    # Notes go under the table: a long one in a column squeezes every other cell.
+    notes = [f"- **{row[0]}:** {cell(row[-1])}" for row in rows if row[-1]]
+    md = "## Platform Status\n\n" + table(
+        ["Platform", "CPU", "Status", "Install", "Models", "Avg WER", "Peak RAM"], [row[:-1] for row in rows],
+        ["---", "---", "---", "---:", "---:", "---:", "---:"])
+    return md + ("\n\n" + "\n".join(notes) if notes else "")
 
 
 def rtf_section(results):
@@ -298,7 +299,8 @@ def details_section(results):
             w = model_wer(r, m) or {}
             status = model_status(r, m)
             perf.append([m["label"], status, fmt(m.get("load_s")), fmt(s["first"], 3),
-                         f"{fmt(s['p50'], 3)} / {fmt(s['p95'], 3)}" if s["p50"] is not None else "—",
+                         "—" if s["p50"] is None else fmt(s["p50"], 3) if len(m.get("warm_s") or []) == 1
+                         else f"{fmt(s['p50'], 3)} / {fmt(s['p95'], 3)}",
                          fmt(s["rtf"], 3), fmt(s["audio"], 2),
                          f"{m['peak_rss_mb'] / 1024:.1f} GB" if m.get("peak_rss_mb") else "—",
                          pct(w.get("wer"))])
@@ -376,7 +378,9 @@ def failures_section(results, trace_chars):
         for reason in r.get("reasons", []):
             if "WER" in reason:
                 items.append(f"- {name} · {reason}")
-    return "## Failures\n\n" + "\n".join(items) if items else ""
+    # Blank lines between items: a list or <details> straight after </details> is
+    # otherwise run into one paragraph by GitHub's renderer.
+    return "## Failures\n\n" + "\n\n".join(items) if items else ""
 
 
 def build(results, ctx):
