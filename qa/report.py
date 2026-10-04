@@ -115,6 +115,20 @@ def model_wer(r, m):
     return None
 
 
+MODEL_STATUS = {"pass": "Passed", "fail": "Failed", "crash": "Crashed", "timeout": "Timed out"}
+
+
+def model_status(r, m):
+    """A model's status as shown: a WER above asr.fail_above fails it too."""
+    if m.get("status") != "pass":
+        return MODEL_STATUS.get(m.get("status"), str(m.get("status")))
+    w = (model_wer(r, m) or {}).get("wer")
+    fail_above = r["spec"].get("asr", {}).get("fail_above")
+    if w is not None and fail_above is not None and w > fail_above:
+        return "Failed (WER)"
+    return "Passed"
+
+
 def wer_counts(results, asr_cfg):
     warn, fail = asr_cfg.get("warn_above", 1), asr_cfg.get("fail_above", 1)
     c = {"passed": 0, "flagged": 0, "failed": 0, "skipped": 0}
@@ -143,7 +157,7 @@ def header(results, ctx):
     counts = {s: sum(r["status"] == s for r in results) for s in STATUS_LABEL}
     spec = results[0]["spec"] if results else {}
     asr_cfg = spec.get("asr", {})
-    verdict = (f"❌ **{len(failing)} platform job(s) failed.**" if failing else
+    verdict = (f"❌ **{len(failing)} platform job{'s' if len(failing) != 1 else ''} failed.**" if failing else
                f"✅ **All {len(gating)} supported platform jobs passed.**")
     versions = next(((r.get("install") or {}).get("versions") for r in results
                      if (r.get("install") or {}).get("versions")), {}) or {}
@@ -179,7 +193,7 @@ def status_section(results):
         if r["status"] == UNSUPPORTED:
             continue
         models = r.get("models", [])
-        ok = sum(m.get("status") == "pass" for m in models)
+        ok = sum(model_status(r, m) == "Passed" for m in models)
         rtfs = [(model_stats(m)["rtf"], m["label"]) for m in models if model_stats(m)["rtf"]]
         worst = max(rtfs) if rtfs else None
         wers = [row["wer"] for row in asr_rows(r) if row.get("wer") is not None]
@@ -258,7 +272,7 @@ def details_section(results):
         for m in r["models"]:
             s = model_stats(m)
             w = model_wer(r, m) or {}
-            status = "Passed" if m.get("status") == "pass" else m.get("status", "?").capitalize()
+            status = model_status(r, m)
             perf.append([m["label"], status, fmt(m.get("load_s")), fmt(s["first"], 3),
                          f"{fmt(s['p50'], 3)} / {fmt(s['p95'], 3)}" if s["p50"] is not None else "—",
                          fmt(s["rtf"], 3), fmt(s["audio"], 2),

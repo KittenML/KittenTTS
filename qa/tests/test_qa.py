@@ -218,10 +218,18 @@ class Report(unittest.TestCase):
         missing = spec(id="mac-py3.12", name="macOS", runner="macos-15")
         md, code, out = self.run_report([bad], planned=[bad["spec"], missing])
         self.assertEqual(code, 1)
-        self.assertIn("❌ **2 platform job(s) failed.**", md)
+        self.assertIn("❌ **2 platform jobs failed.**", md)
         self.assertIn("ValueError: bad audio", md)
         self.assertIn("macOS · py3.12: no result", md)
         self.assertIn("FAILED Windows x64 · py3.12", out)
+
+    def test_wer_failure_marks_the_model_failed(self):
+        rows = [{"wav": "audio/nano.wav", "label": "Nano", "wer": 0.9, "transcript": "something else"}]
+        md, code, _ = self.run_report([result(asr_rows=rows)])
+        self.assertEqual(code, 1)
+        self.assertIn("❌ **1 platform job failed.**", md)
+        self.assertIn("| Nano | Failed (WER) |", md)
+        self.assertIn("| 0/1 |", md)
 
     def test_unsupported_platforms_are_listed_and_pass(self):
         s = spec(id="mac-intel", name="macOS Intel", runner="macos-15-intel", expect="install-fails",
