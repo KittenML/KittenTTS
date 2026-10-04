@@ -69,9 +69,10 @@ def table(header, rows, align=None):
 
 def describe(detail):
     """A check's numbers as words: {'chunks': 2, 'audio_s': 12.5} -> '2 chunks, 12.5 s of audio'."""
-    words = {"chunks": "{} chunks", "first_chunk_s": "first chunk after {:.2f} s",
+    words = {"chunks": "{} chunk(s)", "first_chunk_s": "first chunk after {:.2f} s",
              "audio_s": "{:.1f} s of audio"}
-    return ", ".join(words[k].format(v) if k in words else f"{k} {v}" for k, v in detail.items())
+    text = ", ".join(words[k].format(v) if k in words else f"{k} {v}" for k, v in detail.items())
+    return text.replace("1 chunk(s)", "1 chunk").replace(" chunk(s)", " chunks")
 
 
 def platform_name(r):
@@ -155,6 +156,7 @@ def header(results, ctx):
     gating = [r for r in results if r["spec"].get("expect", "works") == "works" and r["spec"].get("gating", True)]
     failing = [r for r in results if r["failing"]]
     counts = {s: sum(r["status"] == s for r in results) for s in STATUS_LABEL}
+    soft = sum(r["status"] == FAILED and not r["failing"] for r in results)
     spec = results[0]["spec"] if results else {}
     asr_cfg = spec.get("asr", {})
     verdict = (f"❌ **{len(failing)} platform job{'s' if len(failing) != 1 else ''} failed.**" if failing else
@@ -169,7 +171,9 @@ def header(results, ctx):
         ["Sample text", spec.get("text", "")],
         ["Character length", len(spec.get("text", ""))],
         ["Voice", spec.get("voice", "")],
-        ["Platform jobs", " / ".join(f"{counts[s]} {STATUS_LABEL[s].lower()}" for s in STATUS_LABEL if counts[s])],
+        ["Platform jobs", " / ".join(
+            f"{counts[s] - (soft if s == FAILED else 0)} {STATUS_LABEL[s].lower()}" for s in STATUS_LABEL
+            if counts[s] - (soft if s == FAILED else 0)) + (f" / {soft} failed (non-gating)" if soft else "")],
     ]
     if asr_cfg.get("enabled"):
         c = wer_counts(results, asr_cfg)
@@ -200,6 +204,8 @@ def status_section(results):
         rss = [m.get("peak_rss_mb") for m in models if m.get("peak_rss_mb")]
         install = r.get("install") or {}
         notes = "; ".join(r.get("reasons", []))
+        if install and not install.get("ok"):
+            notes = "; ".join(x for x in (install.get("error", "install failed"), r["spec"].get("reason")) if x)
         if r["status"] == CHANGED:
             notes = "config.toml expects this install to fail — update it. " + notes
         rows.append([
@@ -313,7 +319,7 @@ def failures_section(results, trace_chars):
         if r["status"] not in (FAILED, NO_RESULT, CHANGED) and not any(
                 m.get("status") != "pass" for m in r.get("models", [])):
             continue
-        name = platform_name(r)
+        name = platform_name(r) + ("" if r["spec"].get("gating", True) else " (non-gating)")
         install = r.get("install") or {}
         if r["status"] == NO_RESULT:
             items.append(f"<details><summary>{name}: no result</summary>\n\n{'; '.join(r['reasons'])}\n</details>")

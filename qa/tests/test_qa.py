@@ -231,6 +231,14 @@ class Report(unittest.TestCase):
         self.assertIn("| Nano | Failed (WER) |", md)
         self.assertIn("| 0/1 |", md)
 
+    def test_non_gating_failure_is_labelled_and_passes_the_gate(self):
+        s = spec(id="next", name="Linux x64 · next Python", python="3.15", gating=False, reason="pre-release")
+        md, code, _ = self.run_report([result(), result(s, ok=False, error="ERROR: no torch for 3.15")])
+        self.assertEqual(code, 0)
+        self.assertIn("1 passed / 1 failed (non-gating)", md)
+        self.assertIn("ERROR: no torch for 3.15; pre-release", md)
+        self.assertIn("py3.15 (non-gating): install failed", md)
+
     def test_unsupported_platforms_are_listed_and_pass(self):
         s = spec(id="mac-intel", name="macOS Intel", runner="macos-15-intel", expect="install-fails",
                  reason="no torch wheels")

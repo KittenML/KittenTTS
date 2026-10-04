@@ -141,7 +141,9 @@ jobs:
   report:
     name: Report
     needs: [plan, platform]
-    if: always() && needs.plan.result == 'success'
+    # Not always(): a run cancelled by a newer push must not post a report of
+    # "no result" for every job it cancelled.
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
