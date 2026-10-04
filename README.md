@@ -89,9 +89,9 @@ Try Kitten TTS directly in your browser on [KittenML Platform](https://platform.
 
 ### Prerequisites
 
-- Python 3.9 or later
+- Python 3.10 or later; Windows CPU quick start tested with 64-bit CPython 3.12
 - A CUDA GPU with roughly 8 GB free, or a CPU with about 6 GB of RAM
-- About 1 GB of disk space for the model, or 506 MiB with the smaller weights
+- Allow about 2.1 GB for the default KittenTTS 2 model downloads, plus additional disk space for Python packages and caches. The smaller LM weights do not include the decoder or supporting files.
 
 ### Installation
 
@@ -99,10 +99,33 @@ Try Kitten TTS directly in your browser on [KittenML Platform](https://platform.
 pip install kittenml
 ```
 
-That is the whole install. KittenTTS 2 is the default model, voice cloning is included, and no
-Hugging Face login is needed -- every weight the model uses ships in its own repository. It also
-pulls the small ONNX runtime, so the [lightweight models](docs/onnx-models.md) work from the
-same install.
+The package includes KittenTTS 2 and the legacy ONNX models. Select KittenTTS 2 explicitly with `KittenTTS("KittenML/kitten-tts-2")`; in the tested package, version 0.9.3, the argument-free constructor selects a legacy nano model. The public model files require no Hugging Face login. First initialization downloads files from both `KittenML/kitten-tts-2` and `ResembleAI/chatterbox-turbo`.
+
+### Windows CPU quick start
+
+Tested on Windows 11 x64 with CPython 3.12 and `kittenml==0.9.3`. Install standard 64-bit Windows CPython 3.12, then paste these commands into PowerShell in a writable folder. The commands create a separate environment, save a complete example, and generate `windows-python.wav` on the CPU.
+
+```powershell
+py -3.12 -m venv .venv-windows
+if ($LASTEXITCODE -ne 0) { throw 'Virtual environment creation failed.' }
+& .\.venv-windows\Scripts\python.exe -m pip install 'kittenml==0.9.3'
+if ($LASTEXITCODE -ne 0) { throw 'Package installation failed.' }
+$env:PYTHONUTF8 = '1'
+@'
+from kittenml import KittenTTS
+import soundfile as sf
+
+tts = KittenTTS("KittenML/kitten-tts-2", device="cpu")
+samples = tts.generate("Hello from Windows. This is a speech test.", voice="Bruno")
+sf.write("windows-python.wav", samples, tts.sample_rate)
+'@ | Set-Content -LiteralPath windows_python.py -Encoding UTF8
+& .\.venv-windows\Scripts\python.exe windows_python.py
+if ($LASTEXITCODE -ne 0) { throw 'Speech generation failed.' }
+```
+
+`PYTHONUTF8=1` must be set before starting Python with kittenml 0.9.3. On the tested Windows system, the default CP1252 encoding caused a `UnicodeDecodeError` when loading the UTF-8 voice metadata. Repeat the environment-variable assignment when opening a new PowerShell session. The explicit environment Python path avoids activation and PowerShell execution-policy changes.
+
+Initial downloads and loading can take several minutes. CPU synthesis speed depends on the hardware; real-time generation is not guaranteed.
 
 ### Basic usage
 
@@ -233,7 +256,7 @@ Two consequences worth knowing:
 **KittenTTS 2**
 
 - **Operating system:** Linux, Windows or Mac
-- **Python:** 3.9 or later
+- **Python:** 3.10 or later; Windows CPU quick start tested with 64-bit CPython 3.12
 
 
 A virtual environment (conda, venv, or similar) is recommended to avoid dependency conflicts.
