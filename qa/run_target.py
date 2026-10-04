@@ -142,7 +142,9 @@ def run_child(kind, arg, spec_path, out, timeout_s):
     """Run one isolated part; returns its JSON, or a crash/timeout record."""
     part_out = os.path.join(out, "parts", f"{kind}-{arg}.json")
     log_path = os.path.join(out, "logs", f"{kind}-{arg}.log")
-    cmd = [sys.executable, os.path.abspath(__file__), "--child", kind, arg,
+    # faulthandler prints the Python stack when native code crashes the process
+    # (segfault, illegal instruction, Windows exceptions), which otherwise dies silently.
+    cmd = [sys.executable, "-X", "faulthandler", os.path.abspath(__file__), "--child", kind, arg,
            "--spec", spec_path, "--out", out]
     t0 = time.time()
     with open(log_path, "w", encoding="utf-8") as log:
@@ -161,8 +163,29 @@ def run_child(kind, arg, spec_path, out, timeout_s):
     if code is None:
         return {"status": "timeout", "secs": secs, "error": f"timed out after {timeout_s // 60} min",
                 "log_tail": tail}
-    return {"status": "crash", "secs": secs, "error": f"process exited with code {code} before reporting",
+    return {"status": "crash", "secs": secs, "error": f"process {exit_reason(code)} before reporting",
             "log_tail": tail}
+
+
+# Exit codes worth naming: native crashes and kills, which leave no Python traceback.
+WINDOWS_CODES = {0xC0000005: "access violation", 0xC000001D: "illegal CPU instruction",
+                 0xC00000FD: "stack overflow", 0xC0000409: "stack buffer overrun",
+                 0xC0000094: "integer divide by zero", 0xC0000374: "heap corruption"}
+SIGNALS = {4: "illegal CPU instruction (SIGILL)", 6: "aborted (SIGABRT)", 7: "bus error (SIGBUS)",
+           8: "floating point exception (SIGFPE)", 9: "killed (SIGKILL), often out of memory",
+           11: "segmentation fault (SIGSEGV)"}
+
+
+def exit_reason(code):
+    """'exited with code 3221225501 (0xC000001D, illegal CPU instruction)' and the like."""
+    if code is not None and code < 0 and -code in SIGNALS:
+        return f"was killed by signal {-code}: {SIGNALS[-code]}"
+    if code is not None and code > 128 and code - 128 in SIGNALS and sys.platform != "win32":
+        return f"exited with code {code}: {SIGNALS[code - 128]}"
+    unsigned = code & 0xFFFFFFFF if code is not None else None
+    if unsigned in WINDOWS_CODES:
+        return f"exited with code {code} (0x{unsigned:08X}, {WINDOWS_CODES[unsigned]})"
+    return f"exited with code {code}"
 
 
 def write_part(out, kind, arg, data):

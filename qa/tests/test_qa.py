@@ -10,6 +10,7 @@ QA = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, QA)
 
 import plan  # noqa: E402
+import run_target  # noqa: E402
 import report  # noqa: E402
 from qa_common import (CHANGED, FAILED, NO_RESULT, PASSED, UNSUPPORTED,  # noqa: E402
                        classify, normalize_words, wer)
@@ -128,6 +129,15 @@ class Classify(unittest.TestCase):
 
     def test_job_without_install_record_is_no_result(self):
         self.assertEqual(classify({"spec": spec()})[0], NO_RESULT)
+
+
+class ExitReason(unittest.TestCase):
+    def test_native_crashes_are_named(self):
+        self.assertIn("0xC000001D, illegal CPU instruction", run_target.exit_reason(3221225501))
+        self.assertIn("0xC0000005, access violation", run_target.exit_reason(-1073741819))
+        self.assertIn("segmentation fault", run_target.exit_reason(-11))
+        self.assertIn("out of memory", run_target.exit_reason(-9))
+        self.assertEqual(run_target.exit_reason(1), "exited with code 1")
 
 
 class Wer(unittest.TestCase):
