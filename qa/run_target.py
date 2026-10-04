@@ -255,6 +255,7 @@ def child_model(spec, key, out):
         res["audio_s"] = check_audio(audio, sr, text)
         print(f"generate #{i + 1}: {times[-1]:.2f}s for {res['audio_s']}s of audio", flush=True)
     sf.write(wav, np.asarray(audio), sr)
+    res["peak_rss_mb"] = peak_rss_mb()   # load + generate; the checks below can load more
     res["first_s"] = round(times[0], 3)
     res["warm_s"] = [round(t, 3) for t in times[1:]]
     res["wav"] = os.path.relpath(wav, out)
@@ -306,7 +307,7 @@ def child_model(spec, key, out):
     if failed:
         res["status"] = "fail"
         res["error"] = "failed checks: " + ", ".join(failed)
-    res["peak_rss_mb"] = peak_rss_mb()
+    res["peak_rss_checks_mb"] = peak_rss_mb()
     write_part(out, "model", key, res)
 
 

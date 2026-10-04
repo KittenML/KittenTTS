@@ -266,6 +266,10 @@ def details_section(results):
             f"{k} {v[k]}" for k in ("kittenml", "torch", "onnxruntime") if v.get(k)]
         if r.get("secs"):
             meta.append(f"job {r['secs'] / 60:.0f} min")
+        for m in r["models"]:
+            extra = m.get("peak_rss_checks_mb") or 0
+            if extra > (m.get("peak_rss_mb") or 0) * 1.2:
+                meta.append(f"{m['label']} peaks at {extra / 1024:.1f} GB during its checks")
         if audio:
             meta.append(f"[Audio files]({audio})")
         perf = []
