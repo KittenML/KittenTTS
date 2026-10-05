@@ -393,6 +393,10 @@ def platforms_section(results, slow_minutes):
     if fixed:
         notes.append("**Works now, did not before:** " + "; ".join(
             f"{platform_name(r)} ({', '.join(test_title(r, k) for k in r['fixed'][:3])})" for r in fixed))
+    flaky = [(r, m) for r in results for m in r.get("models", []) if m.get("flaky")]
+    if flaky:
+        notes.append("**Flaky** (crashed, then passed when run again; does not fail the run): " + "; ".join(
+            f"{platform_name(r)} · {m['label']} ({m['flaky']})" for r, m in flaky))
     unclear = [r for r in results if r["masked"]]
     if unclear:
         notes.append("**On a CPU the baseline never drew**, so not counted as broken: " + ", ".join(

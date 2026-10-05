@@ -307,6 +307,13 @@ class Report(unittest.TestCase):
         self.assertIn("````\n```\nKilled\n````", md)
         self.assertTrue(md.rstrip().endswith("</details>"))
 
+    def test_flaky_crash_is_listed_not_failed(self):
+        now = [result(models=[model(flaky="process was killed by signal 11 on the first run; passed on the second")])]
+        md, code = self.run_report(now, baseline=[result()])
+        self.assertEqual(code, 0)
+        self.assertIn("**Flaky** (crashed, then passed when run again; does not fail the run): Linux x64 · py3.12 · "
+                      "Nano (process was killed by signal 11 on the first run; passed on the second)", md)
+
     def test_comment_stays_under_github_limit(self):
         models = [{"key": f"m{j}", "label": f"M{j}", "repo": "KittenML/x", "checks": []} for j in range(5)]
 

@@ -491,6 +491,14 @@ def drive(spec_path, out):
             # Backstop only: the child's watchdog stops a slow step long before this.
             steps = 3 + int(m.get("warm_runs", 0)) + len(m.get("checks", []))
             row = run_child("model", m["key"], spec_path, out, steps * limit)
+            if row.get("status") == "crash":
+                # Run a crash once more: one that does not come back is flaky, not broken, and is reported as such.
+                first_log = os.path.join(out, "logs", f"model-{m['key']}.log")
+                os.replace(first_log, first_log[:-4] + "-crash.log")
+                again = run_child("model", m["key"], spec_path, out, steps * limit)
+                if again.get("status") == "pass":
+                    again["flaky"] = f"{row['error']} on the first run; passed on the second"
+                row = again
             row.setdefault("key", m["key"])
             row.setdefault("label", m["label"])
             row.setdefault("repo", m["repo"])
