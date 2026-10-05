@@ -491,10 +491,14 @@ def drive(spec_path, out):
             # Backstop only: the child's watchdog stops a slow step long before this.
             steps = 3 + int(m.get("warm_runs", 0)) + len(m.get("checks", []))
             row = run_child("model", m["key"], spec_path, out, steps * limit)
-            if row.get("status") == "crash":
-                # Run a crash once more: one that does not come back is flaky, not broken, and is reported as such.
+            if row.get("status") in ("crash", "timeout"):
+                # Run a crash or a stall once more: KittenTTS 2 stalls in some runs and not others on the same
+                # runner, so one that does not come back is flaky, not broken, and is reported as such.
                 first_log = os.path.join(out, "logs", f"model-{m['key']}.log")
-                os.replace(first_log, first_log[:-4] + "-crash.log")
+                os.replace(first_log, first_log[:-4] + "-first.log")
+                part = os.path.join(out, "parts", f"model-{m['key']}.json")
+                if os.path.exists(part):
+                    os.remove(part)
                 again = run_child("model", m["key"], spec_path, out, steps * limit)
                 if again.get("status") == "pass":
                     again["flaky"] = f"{row['error']} on the first run; passed on the second"

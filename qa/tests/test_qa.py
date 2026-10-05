@@ -291,6 +291,26 @@ class Report(unittest.TestCase):
         self.assertIn("| KittenTTS 2: streaming (`generate_stream`) | ⏱️ |", md)
         self.assertIn("| KittenTTS 2: voice cloning with a transcript | ⏱️ |", md)
 
+    def test_timeouts_count_only_as_a_clear_slowdown(self):
+        s = spec(models=[TTS2])
+
+        def tts2_job(first_s, stream):
+            return result(s, models=[model("KittenTTS 2", key="tts2", wav="audio/tts2.wav", first_s=first_s, load_s=10.0,
+                                           status="pass" if stream == "pass" else "timeout",
+                                           checks=[{"name": "stream", "status": stream, "secs": first_s},
+                                                   {"name": "clone", "status": "pass" if stream == "pass" else "skipped",
+                                                    "secs": first_s}])])
+        slow_main, fast_main = tts2_job(500.0, "pass"), tts2_job(30.0, "pass")
+        now = tts2_job(500.0, "timeout")
+        md, code = self.run_report([now], baseline=[slow_main])
+        self.assertEqual(code, 0)                                         # 8 min on main: runner speed
+        self.assertIn("**Timed out, but slow on the baseline too** (runner speed, does not fail the run): "
+                      "Linux x64 · py3.12 · KittenTTS 2: streaming (`generate_stream`) (took 8 min there)", md)
+        md, code = self.run_report([now], baseline=[fast_main])
+        self.assertEqual(code, 1)                                         # 30 s on main: a slowdown
+        self.assertIn("## ❌ 1 test broke", md)                            # the skipped clone does not count
+        self.assertIn("| KittenTTS 2: voice cloning with a transcript | ⏱️ |", md)
+
     def test_wer_failure_and_log_link(self):
         rows = [{"wav": "audio/nano.wav", "label": "Nano", "wer": 0.9, "transcript": "something else"}]
         jobs = [{"name": "Linux x64 · py3.12", "html_url": "https://example.test/1",
@@ -311,7 +331,7 @@ class Report(unittest.TestCase):
         now = [result(models=[model(flaky="process was killed by signal 11 on the first run; passed on the second")])]
         md, code = self.run_report(now, baseline=[result()])
         self.assertEqual(code, 0)
-        self.assertIn("**Flaky** (crashed, then passed when run again; does not fail the run): Linux x64 · py3.12 · "
+        self.assertIn("**Flaky** (crashed or stalled, then passed when run again; does not fail the run): Linux x64 · py3.12 · "
                       "Nano (process was killed by signal 11 on the first run; passed on the second)", md)
 
     def test_comment_stays_under_github_limit(self):

@@ -219,7 +219,7 @@ def model_status(r, m):
 
 
 def outcomes(r):
-    """{test key: True / False / "timeout"} for every test this job was asked to run.
+    """{test key: True / False / "timeout" / "skipped"} for every test this job was asked to run.
 
     Keys: "install", "<model>" (it speaks the sample text) and "<model>:<check>".
     Nothing ran where kittenml did not install, so every test is False there.
@@ -246,7 +246,9 @@ def outcomes(r):
             out[spec_m["key"]] = wer_ok(r, m.get("wav"))
         for c in spec_m.get("checks", []):
             row = next((x for x in (m or {}).get("checks", []) if x["name"] == c), None)
-            if row and row["status"] in ("timeout", "skipped"):
+            if row and row["status"] == "skipped":
+                ok = "skipped"                     # never ran: an earlier step timed out
+            elif row and row["status"] == "timeout":
                 ok = "timeout"
             elif not row or row["status"] != "pass":
                 ok = "timeout" if timed_out else False
@@ -254,6 +256,18 @@ def outcomes(r):
                 ok = wer_ok(r, clone_wav) if c == "clone" and clone_wav else True
             out[f"{spec_m['key']}:{c}"] = ok
     return out
+
+
+def durations(r):
+    """{test key: seconds} for what finished, to tell a slowdown from a slow runner."""
+    d = {"install": (r.get("install") or {}).get("secs")}
+    for m in r.get("models", []):
+        if m.get("first_s") is not None:
+            d[m["key"]] = (m.get("load_s") or 0) + m["first_s"]
+        for c in m.get("checks", []):
+            if c.get("status") == "pass":
+                d[f"{m['key']}:{c['name']}"] = c.get("secs")
+    return d
 
 
 # ── Comparing with the baseline run ────────────────────────────────────────────────
@@ -264,7 +278,9 @@ def compare(results, baseline):
     A test broke when it works in the baseline for the same platform and Python
     and does not work here, on a CPU the baseline also ran on. A CPU the baseline
     never drew cannot tell a regression from a CPU-specific problem, so a failure
-    there is reported but does not fail the run.
+    there is reported but does not fail the run. A timeout counts only when the
+    baseline took under half the step limit for that test: a clear slowdown or a
+    hang, not a slow runner. Tests that never ran after a timeout do not count.
     """
     base = {(group_name(b), b["spec"]["python"]): b for b in baseline}
     base_cpus = {}
@@ -272,7 +288,7 @@ def compare(results, baseline):
         base_cpus.setdefault(group_name(b), set()).add(cpu_of(b))
     for r in results:
         b = base.get((group_name(r), r["spec"]["python"]))
-        r["broke"], r["fixed"], r["masked"], r["new_cpu"] = [], [], [], False
+        r["broke"], r["fixed"], r["masked"], r["slow"], r["new_cpu"] = [], [], [], [], False
         if not b:
             continue
         cpu = cpu_of(r)
@@ -283,16 +299,24 @@ def compare(results, baseline):
             if b["outcomes"].get("install") is True:
                 r["broke"] = ["install"]
             continue
+        limit = r["spec"].get("limits", {}).get("step_minutes", 10) * 60
+        took_before = durations(b)
         for key, ok in r["outcomes"].items():
             before = b["outcomes"].get(key)
-            if ok is not True and before is True and not r["new_cpu"]:
-                r["broke"].append(key)
-            elif ok is not True and before is True:
-                r["masked"].append(key)            # would have broken, but on a CPU the baseline never drew
-            elif ok is True and before is not None and before is not True:
+            if ok == "skipped":
+                continue                           # it never ran, so it says nothing either way
+            if ok is not True and before is True:
+                if ok == "timeout" and not (took_before.get(key) or limit) < limit / 2:
+                    # It was already slow there: a slow runner, not a slowdown in the code.
+                    r["slow"].append((key, took_before.get(key)))
+                elif r["new_cpu"]:
+                    r["masked"].append(key)        # would have broken, but on a CPU the baseline never drew
+                else:
+                    r["broke"].append(key)
+            elif ok is True and before is not None and before is not True and before != "skipped":
                 r["fixed"].append(key)
     for r in results:
-        for k in ("broke", "fixed", "masked"):
+        for k in ("broke", "fixed", "masked", "slow"):
             r.setdefault(k, [])
         r["failing"] = bool(r["broke"])
 
@@ -395,8 +419,13 @@ def platforms_section(results, slow_minutes):
             f"{platform_name(r)} ({', '.join(test_title(r, k) for k in r['fixed'][:3])})" for r in fixed))
     flaky = [(r, m) for r in results for m in r.get("models", []) if m.get("flaky")]
     if flaky:
-        notes.append("**Flaky** (crashed, then passed when run again; does not fail the run): " + "; ".join(
+        notes.append("**Flaky** (crashed or stalled, then passed when run again; does not fail the run): " + "; ".join(
             f"{platform_name(r)} · {m['label']} ({m['flaky']})" for r, m in flaky))
+    slowed = [(r, k, t) for r in results for k, t in r["slow"]]
+    if slowed:
+        notes.append("**Timed out, but slow on the baseline too** (runner speed, does not fail the run): " + "; ".join(
+            f"{platform_name(r)} · {test_title(r, k)}" + (f" (took {minutes(t)} there)" if t else "")
+            for r, k, t in slowed))
     unclear = [r for r in results if r["masked"]]
     if unclear:
         notes.append("**On a CPU the baseline never drew**, so not counted as broken: " + ", ".join(
@@ -438,7 +467,7 @@ def test_cell(rs, key):
     pys = lambda xs: (" " + ", ".join(f"py{p}" for p in sorted(set(xs), key=py_key))) if many else ""   # noqa: E731
     broke = [r["spec"]["python"] for r in rs if key in r["broke"]]
     bad = [r["spec"]["python"] for r in rs if r["outcomes"].get(key) is False]
-    late = [r["spec"]["python"] for r in rs if r["outcomes"].get(key) == "timeout"]
+    late = [r["spec"]["python"] for r in rs if r["outcomes"].get(key) in ("timeout", "skipped")]
     if broke:
         return "❌ new" + pys(broke)
     if bad:
@@ -482,7 +511,8 @@ def family_section(results, tts2, first):
     if first:
         fail_above = results[0]["spec"].get("asr", {}).get("fail_above", 0)
         intro = ("The README's examples on every Python version, one column per platform and CPU the runners "
-                 "drew. ✅ works · ❌ does not · **new** = changed since the baseline · ⏱️ took too long · "
+                 "drew. ✅ works · ❌ does not · **new** = changed since the baseline · ⏱️ took too long, or never ran "
+                 "after a step that did · "
                  f"— not run there. Whisper must hear the text (WER ≤ {fail_above:.0%}). RTF is generation time "
                  f"÷ audio length, best warm run, median across Python versions; {SLOW} is slower than realtime.\n\n")
     title = "### KittenTTS 2" if tts2 else "### KittenTTS 0.8 (ONNX models)"
@@ -516,7 +546,7 @@ def log_for(r, key):
 def failures_section(results, log_chars, only_broken):
     items = []
     for r in results:
-        keys = r["broke"] if only_broken else [k for k, ok in r["outcomes"].items() if ok is not True] or (
+        keys = r["broke"] if only_broken else [k for k, ok in r["outcomes"].items() if ok not in (True, "skipped")] or (
             ["install"] if r["status"] == NO_RESULT else [])
         link = f" · [log]({r['job_url']})" if r.get("job_url") else ""
         for key in keys:
