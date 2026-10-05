@@ -51,7 +51,7 @@ overrides = { big = { weights = "emb4", warm_runs = 0 } }
 def spec(**kw):
     s = {"id": "linux-x64-py3.12", "name": "Linux x64", "runner": "ubuntu-24.04", "python": "3.12",
          "expect": "works", "gating": True, "reason": "", "text": "Hello there.", "voice": "Bruno",
-         "models": [], "asr": ASR}
+         "models": [{"key": "nano", "label": "Nano", "checks": []}], "asr": ASR}
     s.update(kw)
     return s
 
@@ -65,11 +65,13 @@ def model(label="Nano", status="pass", **kw):
 
 
 def result(s=None, ok=True, models=None, asr_rows=None, **install):
+    """A result.json as run_target.py writes it: nothing past the install when that fails."""
     inst = {"ok": ok, "refused": False, "secs": 90.0, "versions": {"kittenml": "0.9.3"}}
     inst.update(install)
-    r = {"spec": s or spec(), "env": {"cpu": "AMD EPYC 7763", "cpu_count": 4, "ram_gb": 15.6},
-         "install": inst, "package": {"checks": [{"name": "import", "status": "pass"}]},
-         "models": models if models is not None else [model()]}
+    r = {"spec": s or spec(), "env": {"cpu": "AMD EPYC 7763", "cpu_count": 4, "ram_gb": 15.6}, "install": inst}
+    if ok:
+        r["package"] = {"checks": [{"name": "import", "status": "pass"}]}
+        r["models"] = models if models is not None else [model()]
     if asr_rows is not None:
         r["asr"] = {"status": "done", "rows": asr_rows}
     return r
@@ -207,8 +209,24 @@ class Plan(unittest.TestCase):
         self.assertEqual([m["key"] for m in json.loads(jobs[0]["spec"])["models"]], ["small"])
 
 
+class Events(unittest.TestCase):
+    def test_targets_run_only_for_their_events(self):
+        cfg = plan.load(os.path.join(QA, "config.toml"))
+        cfg = {**cfg, "target": [
+            {"name": "PR only", "runner": "macos-15", "pythons": ["3.12"], "models": [], "events": ["pull_request"]},
+            {"name": "Main only", "runner": "macos-15", "pythons": ["3.12"], "models": [], "events": ["push"]},
+            {"name": "Always", "runner": "ubuntu-24.04", "pythons": ["3.12"], "models": []}]}
+        old = os.environ.get("GITHUB_EVENT_NAME")
+        try:
+            for event, want in (("pull_request", ["PR only", "Always"]), ("push", ["Main only", "Always"])):
+                os.environ["GITHUB_EVENT_NAME"] = event
+                self.assertEqual([j["name"] for j in plan.expand(cfg)], want)
+        finally:
+            os.environ.pop("GITHUB_EVENT_NAME", None) if old is None else os.environ.__setitem__("GITHUB_EVENT_NAME", old)
+
+
 class Report(unittest.TestCase):
-    def run_report(self, results, planned=None):
+    def run_report(self, results, planned=None, jobs=None, slow_minutes=30):
         d = tempfile.mkdtemp()
         for i, r in enumerate(results):
             os.makedirs(os.path.join(d, "results", str(i)))
@@ -216,24 +234,71 @@ class Report(unittest.TestCase):
                 json.dump(r, f)
         plan_path = os.path.join(d, "plan.json")
         with open(plan_path, "w") as f:
-            json.dump({"jobs": planned or [r["spec"] for r in results]}, f)
-        out = os.path.join(d, "out")
-        subprocess.run([sys.executable, os.path.join(QA, "report.py"), os.path.join(d, "results"), out,
-                        "--plan", plan_path], check=True, capture_output=True)
+            json.dump({"report": {"slow_job_minutes": slow_minutes},
+                       "jobs": planned or [r["spec"] for r in results]}, f)
+        args = [sys.executable, os.path.join(QA, "report.py"), os.path.join(d, "results"),
+                os.path.join(d, "out"), "--plan", plan_path]
+        if jobs is not None:
+            with open(os.path.join(d, "jobs.json"), "w") as f:
+                json.dump(jobs, f)
+            args += ["--jobs", os.path.join(d, "jobs.json")]
+        subprocess.run(args, check=True, capture_output=True)
         gate = subprocess.run([sys.executable, os.path.join(QA, "report.py"), "--gate",
-                               os.path.join(out, "summary.json")], capture_output=True, text=True)
-        with open(os.path.join(out, "pr-comment.md")) as f:
-            return f.read(), gate.returncode, gate.stdout
+                               os.path.join(d, "out", "summary.json")], capture_output=True, text=True)
+        with open(os.path.join(d, "out", "pr-comment.md")) as f:
+            md = f.read()
+        with open(os.path.join(d, "out", "summary.md")) as f:
+            self.summary = f.read()
+        return md, gate.returncode, gate.stdout
+
+    def row(self, md, first_cell):
+        return next(l for l in md.splitlines() if l.startswith(f"| {first_cell} |"))
 
     def test_all_pass(self):
         rows = [{"wav": "audio/nano.wav", "label": "Nano", "wer": 0.0, "transcript": "Hello there."}]
         md, code, _ = self.run_report([result(asr_rows=rows)])
         self.assertEqual(code, 0)
-        self.assertIn("✅ **All 1 supported platform jobs passed.**", md)
-        self.assertIn("| Linux x64 · py3.12 |", md)
-        self.assertIn("| 0.100 |", md)       # best warm run 0.4 s for 4 s of audio
-        self.assertIn("| AMD EPYC 7763<br>4 cores · 16 GB |", md)
-        self.assertIn("The clip transcribes word for word (WER 0%).", md)
+        self.assertIn("## ✅ All 1 supported platform jobs passed", md)
+        self.assertIn("| Linux x64 | AMD EPYC 7763 |", md)
+        self.assertIn("| Nano: speaks the sample text | ✅ |", md)
+        self.assertIn("| Linux x64 | 0.10 |", md)            # best warm run 0.4 s for 4 s of audio
+        self.assertNotIn("### Failures", md)
+        self.assertIn("The clip transcribes word for word.", self.summary)   # details live in the summary
+        self.assertNotIn("### Every job", md)          # per-job details: summary only
+
+    def test_tests_table_has_a_row_per_check_and_dash_where_not_run(self):
+        s_full = spec(models=[{"key": "tts2", "label": "KittenTTS 2", "checks": ["stream", "clone"]}])
+        s_quick = spec(id="mac", name="macOS Apple Silicon", runner="macos-15",
+                       models=[{"key": "tts2", "label": "KittenTTS 2", "checks": []}])
+        tts2 = model("KittenTTS 2", key="tts2", wav="audio/tts2.wav", status="fail", error="failed checks: clone",
+                     checks=[{"name": "stream", "status": "pass"}, {"name": "clone", "status": "fail", "error": "boom"}])
+        md, code, _ = self.run_report([result(s_full, models=[tts2]),
+                                       result(s_quick, models=[model("KittenTTS 2", key="tts2", wav="audio/tts2.wav")])])
+        self.assertEqual(code, 1)
+        self.assertEqual(self.row(md, "KittenTTS 2: streaming (`generate_stream`)"),
+                         "| KittenTTS 2: streaming (`generate_stream`) | ✅ | — |")
+        self.assertEqual(self.row(md, "KittenTTS 2: voice cloning with a transcript"),
+                         "| KittenTTS 2: voice cloning with a transcript | ❌ py3.12 | — |")
+        self.assertIn("KittenTTS 2 · voice cloning with a transcript: boom", md)
+
+    def test_platforms_table_has_a_column_per_python(self):
+        a = result(spec(id="a", python="3.11"))
+        b = result(spec(id="b", python="3.12"), models=[model(status="fail", error="bad")])
+        md, code, _ = self.run_report([a, b])
+        self.assertEqual(code, 1)
+        self.assertIn("| Platform | CPUs | py3.11 | py3.12 | Job time |", md)
+        self.assertTrue(self.row(md, "Linux x64").startswith("| Linux x64 | AMD EPYC 7763 | ✅ | ❌ |"))
+        self.assertIn("## ❌ 1 of 2 supported platform jobs failed", md)
+
+    def test_slow_jobs_are_flagged_and_failures_link_their_log(self):
+        r = result(models=[model(status="fail", error="ValueError: bad audio", trace="Traceback...")])
+        jobs = [{"name": "Linux x64 · py3.12", "html_url": "https://example.test/job/1",
+                 "started_at": "2026-10-05T10:00:00Z", "completed_at": "2026-10-05T10:45:00Z"}]
+        md, code, _ = self.run_report([r], jobs=jobs, slow_minutes=30)
+        self.assertEqual(code, 1)
+        self.assertIn("🐢 45 min", md)
+        self.assertIn("🐢 slower than 30 min: Linux x64 · py3.12 took 45 min", md)
+        self.assertIn("**Linux x64 · py3.12** · Nano: ValueError: bad audio · [log](https://example.test/job/1)", md)
 
     def test_cpu_names_are_shortened(self):
         for raw, short in (("AMD EPYC 7763 64-Core Processor", "AMD EPYC 7763"),
@@ -243,33 +308,29 @@ class Report(unittest.TestCase):
                            ("Neoverse-N2", "Neoverse-N2")):
             self.assertEqual(report.short_cpu(raw), short)
 
-    def test_failure_and_missing_job_fail_the_gate(self):
-        bad = result(spec(id="win-py3.12", name="Windows x64", runner="windows-2025"),
-                     models=[model(status="fail", error="ValueError: bad audio", trace="Traceback...")])
+    def test_missing_job_fails_the_gate(self):
+        ok = result()
         missing = spec(id="mac-py3.12", name="macOS", runner="macos-15")
-        md, code, out = self.run_report([bad], planned=[bad["spec"], missing])
+        md, code, out = self.run_report([ok], planned=[ok["spec"], missing])
         self.assertEqual(code, 1)
-        self.assertIn("❌ **2 platform jobs failed.**", md)
-        self.assertIn("ValueError: bad audio", md)
-        self.assertIn("macOS · py3.12: no result", md)
-        self.assertIn("FAILED Windows x64 · py3.12", out)
+        self.assertIn("**macOS · py3.12**: no result", md)
+        self.assertIn("FAILED macOS · py3.12", out)
 
     def test_wer_failure_marks_the_model_failed(self):
         rows = [{"wav": "audio/nano.wav", "label": "Nano", "wer": 0.9, "transcript": "something else"}]
         md, code, _ = self.run_report([result(asr_rows=rows)])
         self.assertEqual(code, 1)
-        self.assertIn("❌ **1 platform job failed.**", md)
-        self.assertIn("| Nano | Failed (WER) |", md)
-        self.assertIn("| 0/1 |", md)
-        self.assertIn("\n\n- Linux x64 · py3.12 · Nano: WER 90% is above 50%", md)
+        self.assertIn("| Nano: speaks the sample text | ❌ py3.12 |", md)
+        self.assertIn("Nano: WER 90.0% — Whisper heard “something else”", md)
+        self.assertIn("| Nano | Failed (WER) |", self.summary)
 
     def test_non_gating_failure_is_labelled_and_passes_the_gate(self):
         s = spec(id="next", name="Linux x64 · next Python", python="3.15", gating=False, reason="pre-release")
         md, code, _ = self.run_report([result(), result(s, ok=False, error="ERROR: no torch for 3.15")])
         self.assertEqual(code, 0)
-        self.assertIn("1 passed / 1 failed (non-gating)", md)
-        self.assertIn("ERROR: no torch for 3.15; pre-release", md)
-        self.assertIn("py3.15 (non-gating): install failed", md)
+        self.assertTrue(self.row(md, "Linux x64").startswith("| Linux x64 | AMD EPYC 7763 | ✅ | ⚠️ |"))
+        self.assertIn("⚠️ failed, but does not fail the run: Linux x64 · next Python · py3.15 (pre-release)", md)
+        self.assertIn("| Install and import | ✅ |", md)     # non-gating install failures stay out of Tests
 
     def test_crashed_transcription_is_shown_with_its_log(self):
         r = result()
@@ -278,22 +339,24 @@ class Report(unittest.TestCase):
         md, code, _ = self.run_report([r])
         self.assertEqual(code, 1)
         self.assertIn("WER transcription: process exited with code -9", md)
-        self.assertIn("Killed", md)
+        self.assertIn("````\nKilled\n````", md)
+        self.assertTrue(md.rstrip().endswith("</details>"))      # the log block did not swallow the footer
 
     def test_unsupported_platforms_are_listed_and_pass(self):
         s = spec(id="mac-intel", name="macOS Intel", runner="macos-15-intel", expect="install-fails",
                  reason="no torch wheels")
-        md, code, _ = self.run_report([result(s, ok=False, error="ERROR: No matching distribution found for torch>=2.6")])
+        md, code, _ = self.run_report([result(), result(s, ok=False, error="ERROR: No matching distribution")])
         self.assertEqual(code, 0)
-        self.assertIn("## Not Supported (expected)", md)
-        self.assertIn("no torch wheels", md)
+        self.assertIn("| macOS Intel | AMD EPYC 7763 | ➖ | — |", md)
+        self.assertNotIn("| macOS Intel | 0", md)               # no speed row: nothing ran
+        self.assertIn("➖ not supported, as expected: macOS Intel (no torch wheels)", md)
 
     def test_comment_stays_under_github_limit(self):
         big = [result(spec(id=f"p{i}", name=f"Platform {i}"),
                       models=[model(label=f"M{j}", status="fail", error="x" * 300, trace="t" * 5000)
                               for j in range(5)]) for i in range(40)]
         md, code, _ = self.run_report(big)
-        self.assertLessEqual(len(md), report.COMMENT_LIMIT + 200)
+        self.assertLessEqual(len(md), report.COMMENT_LIMIT)
         self.assertEqual(code, 1)
 
 

@@ -10,6 +10,7 @@ the transcription run in their own process with a timeout, so a model that
 hangs, segfaults or exit()s (espeak does) is reported, not fatal.
 """
 import argparse
+import gc
 import json
 import os
 import platform
@@ -321,9 +322,21 @@ def child_model(spec, key, out):
         a = model.generate(CLONE_TEXT, reference=wav)
         return {"audio_s": check_audio(a, sr, CLONE_TEXT)}
 
+    def emb4():
+        # README: KittenTTS("KittenML/kitten-tts-2", weights="emb4"). Drop the main
+        # model first so the two never sit in memory together.
+        nonlocal model
+        model = None
+        gc.collect()
+        t0 = time.time()
+        small = KittenTTS(m_spec["repo"], weights="emb4")
+        load_s = round(time.time() - t0, 2)
+        return {"load_s": load_s, "audio_s": check_audio(small.generate(text, voice=voice), sr, text)}
+
     known = {"stream": stream, "speed": speed, "to_file": to_file, "expression": expression,
-             "clone": clone, "clone_whisper": clone_whisper}
-    for name in m_spec.get("checks", []):
+             "clone": clone, "clone_whisper": clone_whisper, "emb4": emb4}
+    wanted = m_spec.get("checks", [])
+    for name in [c for c in wanted if c != "emb4"] + [c for c in wanted if c == "emb4"]:   # emb4 drops the model
         checks.run(name, known[name])
     res["checks"] = checks.rows
     failed = [c["name"] for c in checks.rows if c["status"] != "pass"]

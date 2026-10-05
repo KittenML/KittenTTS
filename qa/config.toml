@@ -10,6 +10,9 @@
 text = "Kitten TTS runs fully on your device and creates clear speech quickly. This benchmark compares every model for speed, quality, and consistency."
 voice = "Bruno"
 
+[report]
+slow_job_minutes = 30   # a platform job slower than this is flagged in the report
+
 [asr]
 # Each runner transcribes its own audio to measure word error rate.
 enabled = true
@@ -19,9 +22,10 @@ fail_above = 0.50   # WER above this fails the run (the audio is not the text)
 
 # ── Models ─────────────────────────────────────────────────────────────────────
 # warm_runs: generations after the first one, timed for p50/p95.
-# checks: extra API checks beyond load + generate. Known checks:
-#   stream, speed, to_file          (any model)
-#   expression, clone, clone_whisper (KittenTTS 2)
+# checks: README features to test beyond load + generate. Known checks:
+#   stream, to_file                        (any model)
+#   speed                                  (ONNX models)
+#   expression, clone, clone_whisper, emb4 (KittenTTS 2)
 # timeout_minutes: per model, so a hang is reported instead of eating the job.
 
 [models.nano]
@@ -56,8 +60,8 @@ timeout_minutes = 10
 repo = "KittenML/kitten-tts-2"
 label = "KittenTTS 2"
 warm_runs = 1
-checks = ["stream", "expression", "clone", "clone_whisper"]
-timeout_minutes = 40
+checks = ["to_file", "stream", "expression", "clone", "clone_whisper", "emb4"]
+timeout_minutes = 45
 # weights = "emb4"   # the 506 MiB variant; default is the 947 MiB one
 
 # ── Platforms ──────────────────────────────────────────────────────────────────
@@ -68,6 +72,8 @@ timeout_minutes = 40
 # gating:  false reports results without failing the run.
 # overrides: per-model settings for this platform only.
 # text:    a different sample text for this platform.
+# events:  run only for these triggers (pull_request, push, workflow_dispatch);
+#          all of them when left out.
 
 [[target]]
 name = "Linux x64"
@@ -94,16 +100,28 @@ pythons = ["3.10", "3.11", "3.12", "3.13", "3.14"]
 models = ["nano", "nano-int8", "micro", "mini"]
 
 [[target]]
-# KittenTTS 2 peaks near 6 GB, so on the 7 GB runner it swaps and runs far below
-# realtime. One Python, one short generation, the smaller weights: enough to show
-# it works on Apple Silicon without holding the run up for an hour.
+# GitHub's M1 runner runs KittenTTS 2 about 200x slower than realtime, so a pull
+# request only checks that it loads and speaks one short line (about 15 min).
 name = "macOS Apple Silicon · KittenTTS 2"
 runner = "macos-15"
 pythons = ["3.12"]
 models = ["tts2"]
+events = ["pull_request"]
 text = "Kitten TTS runs fully on your device."
 timeout_minutes = 75
 overrides = { tts2 = { weights = "emb4", warm_runs = 0, checks = [], timeout_minutes = 60 } }
+
+[[target]]
+# Pushes to main and manual runs test every KittenTTS 2 feature on macOS too
+# (about 90 min).
+name = "macOS Apple Silicon · KittenTTS 2 (all tests)"
+runner = "macos-15"
+pythons = ["3.12"]
+models = ["tts2"]
+events = ["push", "workflow_dispatch"]
+text = "Kitten TTS runs fully on your device."
+timeout_minutes = 180
+overrides = { tts2 = { warm_runs = 0, timeout_minutes = 160 } }
 
 [[target]]
 name = "macOS Intel"

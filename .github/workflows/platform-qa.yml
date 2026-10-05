@@ -146,6 +146,7 @@ jobs:
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
     runs-on: ubuntu-24.04
     permissions:
+      actions: read          # job log links and times for the report
       contents: read
       pull-requests: write
     steps:
@@ -167,9 +168,13 @@ jobs:
 
       - name: Build report
         env:
+          GH_TOKEN: ${{ github.token }}
           QA_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
-          python qa/report.py results report --plan plan/plan.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" --paginate \
+            --jq '.jobs[] | {name, html_url, started_at, completed_at}' | jq -s . > jobs.json
+          started=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq .run_started_at)
+          python qa/report.py results report --plan plan/plan.json --jobs jobs.json --run-started "$started"
           cat report/summary.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record the pull request for the fork commenter

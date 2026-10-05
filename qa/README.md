@@ -7,18 +7,26 @@ supported Python version. It runs each model and posts one report to the pull re
 It runs on pull requests and pushes to `main` that touch the package, its dependencies or
 this folder. You can also start it from the Actions tab.
 
+macOS runs every KittenTTS 2 test only on pushes to `main` and manual runs. GitHub's M1
+runner is about 200× slower than realtime for KittenTTS 2, so on a pull request it only
+checks that KittenTTS 2 loads and speaks one line.
+
 ## What the report shows
 
-- **Platform Status:** pass or fail for each platform and Python, with the runner's CPU,
-  install time, the slowest model, average WER and peak memory.
-- **RTF by Platform:** each model's best warm real-time factor on each CPU. RTF is
-  generation time ÷ audio length, so below 1 is faster than realtime.
-- **Not Supported (expected):** platforms that `config.toml` says cannot install, with
-  pip's error.
-- **Failures:** each failure with its traceback or install log.
-- **Platform Details** (job summary, and the PR comment when it fits): per-model load
-  time, first and warm generation times, RTF, peak RAM, the Whisper transcript, WER and
-  every API check. There is a link to download that platform's audio.
+The pull request gets one short comment for each commit:
+
+- **Platforms:** one row per platform and one column per Python version, with the CPUs the
+  runners drew and how long the jobs took. Jobs over `report.slow_job_minutes` get 🐢.
+- **Tests:** one row per README example (install and import; each model speaks the sample
+  text; streaming, speed, `generate_to_file`, expression tags, both kinds of voice cloning,
+  `weights="emb4"`) and one column per platform. A failure names the Python versions it
+  failed on. — means that test does not run on that platform for this trigger.
+- **Speed:** each model's real-time factor (generation time ÷ audio length) per platform.
+  🐢 means slower than realtime.
+- **Failures:** one line each, with a link to the job's log and the log's tail.
+
+The run summary has everything above plus every job's numbers: load time, first and warm
+generation times, peak RAM, what Whisper heard, every test's result and an audio download.
 
 The run fails when a supported platform fails, a job produces no result, or a model's WER
 is above `asr.fail_above`.
@@ -35,6 +43,8 @@ Edit [`config.toml`](config.toml). The workflow needs no changes.
 | Report a platform without failing the run | `gating = false` |
 | Add a model | Add a `[models.<key>]` and list the key in a target's `models` |
 | Change one model on one platform | `overrides = { tts2 = { weights = "emb4", warm_runs = 0 } }` |
+| Run a platform only on PRs, or only on `main` | `events = ["pull_request"]` or `events = ["push", "workflow_dispatch"]` |
+| Change when a job counts as slow | `[report] slow_job_minutes` |
 | Change the spoken text or voice | `[sample]`, or `text = "..."` on a target |
 | Change the WER thresholds or ASR model | `[asr]` |
 

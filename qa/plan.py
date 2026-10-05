@@ -2,6 +2,8 @@
 
     python qa/plan.py [--config qa/config.toml] [--out plan.json]
 
+Targets with `events` run only for those triggers ($GITHUB_EVENT_NAME).
+
 Narrowing a run (all optional, comma-separated, from workflow_dispatch inputs):
     QA_TARGETS  keep targets whose name or runner contains one of these
     QA_PYTHONS  run only these Python versions
@@ -17,12 +19,13 @@ import re
 import sys
 import tomllib
 
-KNOWN_CHECKS = {"stream", "speed", "to_file", "expression", "clone", "clone_whisper"}
-TTS2_ONLY = {"expression", "clone", "clone_whisper"}
+KNOWN_CHECKS = {"stream", "speed", "to_file", "expression", "clone", "clone_whisper", "emb4"}
+TTS2_ONLY = {"expression", "clone", "clone_whisper", "emb4"}
+EVENTS = {"pull_request", "push", "workflow_dispatch"}
 EXPECTS = {"works", "install-fails", "refused"}
 MODEL_KEYS = {"repo", "label", "warm_runs", "checks", "timeout_minutes", "weights"}
 TARGET_KEYS = {"name", "runner", "pythons", "models", "expect", "gating", "reason",
-               "overrides", "text", "timeout_minutes", "voice"}
+               "overrides", "text", "timeout_minutes", "voice", "events"}
 
 
 def csv_env(name):
@@ -61,6 +64,9 @@ def load(path):
         if t.get("name") in names:
             errors.append(f"{where}: duplicate name")
         names.add(t.get("name"))
+        for e in t.get("events", []):
+            if e not in EVENTS:
+                errors.append(f"{where}: unknown event {e!r} (known: {sorted(EVENTS)})")
         if t.get("expect", "works") not in EXPECTS:
             errors.append(f"{where}: expect must be one of {sorted(EXPECTS)}")
         for m in t.get("models", []) + list(t.get("overrides", {})):
@@ -78,8 +84,11 @@ def expand(cfg):
     only_targets = [v.lower() for v in csv_env("QA_TARGETS")]
     only_pythons = csv_env("QA_PYTHONS")
     only_models = csv_env("QA_MODELS")
+    event = os.environ.get("GITHUB_EVENT_NAME")   # unset locally: plan every target
     jobs = []
     for t in cfg["target"]:
+        if event and t.get("events") and event not in t["events"]:
+            continue
         if only_targets and not any(v in t["name"].lower() or v in t["runner"] for v in only_targets):
             continue
         models = [m for m in t.get("models", []) if not only_models or m in only_models]
@@ -125,9 +134,10 @@ def main():
     ap.add_argument("--config", default="qa/config.toml")
     ap.add_argument("--out", default="plan.json")
     args = ap.parse_args()
-    jobs = expand(load(args.config))
+    cfg = load(args.config)
+    jobs = expand(cfg)
     with open(args.out, "w") as f:
-        json.dump({"jobs": [json.loads(j["spec"]) for j in jobs]}, f, indent=1)
+        json.dump({"report": cfg.get("report", {}), "jobs": [json.loads(j["spec"]) for j in jobs]}, f, indent=1)
     out = os.environ.get("GITHUB_OUTPUT")
     if out:
         with open(out, "a") as f:
