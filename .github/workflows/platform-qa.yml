@@ -188,19 +188,28 @@ jobs:
           BASE: ${{ github.base_ref || github.ref_name }}
           HEAD: ${{ github.head_ref }}
         run: |
-          latest() {
+          # Finished runs on a branch, newest first. One that stopped before any job
+          # reported (a failed Plan) has nothing to compare with, so try the next.
+          runs() {
             gh run list -R "$GITHUB_REPOSITORY" --workflow platform-qa.yml --branch "$1" --limit 30 \
               --json databaseId,status,conclusion \
-              --jq "[.[] | select(.status == \"completed\" and (.conclusion == \"success\" or .conclusion == \"failure\") and .databaseId != $GITHUB_RUN_ID)][0].databaseId // empty"
+              --jq ".[] | select(.status == \"completed\" and .conclusion != \"skipped\" and .databaseId != $GITHUB_RUN_ID) | .databaseId"
           }
-          id=$(latest "$BASE"); label="$BASE"
-          if [ -z "$id" ] && [ -n "$HEAD" ]; then id=$(latest "$HEAD"); label="this branch's previous run"; fi
           mkdir -p baseline
-          if [ -n "$id" ] && gh run download "$id" -R "$GITHUB_REPOSITORY" -p 'qa-result-*' -D baseline; then
-            printf '{"run_id": %s, "label": "%s"}' "$id" "$label" > baseline/about.json
-          else
-            echo "Nothing to compare with yet."
-          fi
+          for branch in "$BASE" "$HEAD"; do
+            [ -n "$branch" ] || continue
+            for id in $(runs "$branch" | head -5); do
+              if gh run download "$id" -R "$GITHUB_REPOSITORY" -p 'qa-result-*' -D baseline 2>/dev/null \
+                  && [ -n "$(find baseline -name result.json | head -1)" ]; then
+                label="$branch"; [ "$branch" = "$BASE" ] || label="this branch's previous run"
+                printf '{"run_id": %s, "label": "%s"}' "$id" "$label" > baseline/about.json
+                echo "Comparing with run $id ($label)"
+                break 2
+              fi
+              rm -rf baseline && mkdir -p baseline
+            done
+          done
+          [ -f baseline/about.json ] || echo "Nothing to compare with yet."
 
       - name: Build report
         env:
