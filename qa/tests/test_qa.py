@@ -201,7 +201,9 @@ class Report(unittest.TestCase):
             with open(os.path.join(d, "jobs.json"), "w") as f:
                 json.dump(jobs, f)
             args += ["--jobs", os.path.join(d, "jobs.json")]
-        subprocess.run(args, check=True, capture_output=True)
+        # Without the runner's GITHUB_* variables, so the report reads the same locally and in CI.
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GITHUB_")}
+        subprocess.run(args, check=True, capture_output=True, env=env)
         gate = subprocess.run([sys.executable, os.path.join(QA, "report.py"), "--gate",
                                os.path.join(d, "out", "summary.json")], capture_output=True, text=True)
         with open(os.path.join(d, "out", "pr-comment.md")) as f:

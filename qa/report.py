@@ -272,7 +272,7 @@ def compare(results, baseline):
         base_cpus.setdefault(group_name(b), set()).add(cpu_of(b))
     for r in results:
         b = base.get((group_name(r), r["spec"]["python"]))
-        r["broke"], r["fixed"], r["new_cpu"] = [], [], False
+        r["broke"], r["fixed"], r["masked"], r["new_cpu"] = [], [], [], False
         if not b:
             continue
         cpu = cpu_of(r)
@@ -287,11 +287,13 @@ def compare(results, baseline):
             before = b["outcomes"].get(key)
             if ok is not True and before is True and not r["new_cpu"]:
                 r["broke"].append(key)
+            elif ok is not True and before is True:
+                r["masked"].append(key)            # would have broken, but on a CPU the baseline never drew
             elif ok is True and before is not None and before is not True:
                 r["fixed"].append(key)
     for r in results:
-        r.setdefault("broke", [])
-        r.setdefault("fixed", [])
+        for k in ("broke", "fixed", "masked"):
+            r.setdefault(k, [])
         r["failing"] = bool(r["broke"])
 
 
@@ -391,7 +393,7 @@ def platforms_section(results, slow_minutes):
     if fixed:
         notes.append("**Works now, did not before:** " + "; ".join(
             f"{platform_name(r)} ({', '.join(test_title(r, k) for k in r['fixed'][:3])})" for r in fixed))
-    unclear = [r for r in results if r["new_cpu"] and r["status"] != PASSED]
+    unclear = [r for r in results if r["masked"]]
     if unclear:
         notes.append("**On a CPU the baseline never drew**, so not counted as broken: " + ", ".join(
             f"{platform_name(r)} on {cpu_of(r)}" for r in unclear))
