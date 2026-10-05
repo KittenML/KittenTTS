@@ -20,7 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from qa_common import (CHANGED, FAILED, NO_RESULT, PASSED, STATUS_LABEL,  # noqa: E402
-                       UNSUPPORTED, classify)
+                       UNSUPPORTED, classify, known_issue)
 
 COMMENT_LIMIT = 60000
 ICON = {PASSED: "✅", FAILED: "❌", UNSUPPORTED: "➖", CHANGED: "🆕", NO_RESULT: "⏱️"}
@@ -233,6 +233,16 @@ def headline(results, ctx):
     return f"## {verdict}\n\n{' · '.join(bits)}"
 
 
+def known_failures(r):
+    """[(model label, known issue)] for models that failed in a way the config lists as known."""
+    out = []
+    for m in r.get("models", []):
+        k = known_issue(r, m.get("key"))
+        if k and (m.get("status") != "pass" or not wer_ok(r, m.get("wav"))):
+            out.append((m["label"], k))
+    return out
+
+
 def cell_for(rs):
     """One table cell for the jobs of one platform on one Python."""
     if not rs:
@@ -240,7 +250,7 @@ def cell_for(rs):
     statuses = [r["status"] for r in rs]
     if any(r["failing"] for r in rs):
         return "⏱️" if NO_RESULT in statuses and FAILED not in statuses else "❌"
-    if FAILED in statuses:
+    if FAILED in statuses or any(known_failures(r) for r in rs):
         return "⚠️"
     if CHANGED in statuses:
         return "🆕"
@@ -285,6 +295,11 @@ def platforms_section(results, slow_minutes):
     if soft:
         notes.append("⚠️ failed, but does not fail the run: " + "; ".join(
             f"{platform_name(r)} ({(r['spec'].get('reason') or '').rstrip('.')})" for r in soft))
+    known = [(r, label, k) for r in results for label, k in known_failures(r)]
+    if known:
+        notes.append("⚠️ known issue, does not fail the run: " + "; ".join(
+            f"{platform_name(r)} on {short_cpu(r['env'].get('cpu', ''))} ({k['reason'].rstrip('.')})"
+            for r, label, k in known))
     changed = [r for r in results if r["status"] == CHANGED]
     if changed:
         notes.append("🆕 installs now, though `qa/config.toml` expects it not to: "
@@ -351,8 +366,11 @@ def tests_section(results):
             outcomes = [(r, ok) for r, ok in outcomes if ok is not None]
             missing = [r for r in rs if r["status"] == NO_RESULT and (
                 key is None or any(m["key"] == key for m in r["spec"].get("models", [])))]
-            hard = sorted({r["spec"]["python"] for r, ok in outcomes if not ok and r["spec"].get("gating", True)}, key=py_key)
-            soft = sorted({r["spec"]["python"] for r, ok in outcomes if not ok and not r["spec"].get("gating", True)}, key=py_key)
+            is_known = lambda r: key is not None and known_issue(r, key) is not None   # noqa: E731
+            hard = sorted({r["spec"]["python"] for r, ok in outcomes
+                           if not ok and r["spec"].get("gating", True) and not is_known(r)}, key=py_key)
+            soft = sorted({r["spec"]["python"] for r, ok in outcomes
+                           if not ok and (not r["spec"].get("gating", True) or is_known(r))}, key=py_key)
             if hard:
                 row.append("❌ " + ", ".join(f"py{p}" for p in hard))
             elif missing:
@@ -422,6 +440,8 @@ def failure_items(results, trace_chars):
             if c["status"] != "pass":
                 items.append((f"{name} · {c['name']}: {cell(c.get('error', ''))}{link}", c.get("trace", "")))
         for m in r.get("models", []):
+            if known_issue(r, m.get("key")):
+                continue
             bad = [c for c in m.get("checks", []) if c["status"] != "pass"]
             w = model_wer(r, m) or {}
             if m.get("status") != "pass" and not bad:

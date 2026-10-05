@@ -21,6 +21,15 @@ STATUS_LABEL = {
 }
 
 
+def known_issue(result, model_key):
+    """The config's known issue that covers this model on this job's CPU, if any."""
+    cpu = ((result.get("env") or {}).get("cpu") or "").lower()
+    for k in result["spec"].get("known_issues", []):
+        if k["model"] == model_key and k.get("cpu", "").lower() in cpu:
+            return k
+    return None
+
+
 def classify(result):
     """(status, reasons, failing) for one platform job's result.json.
 
@@ -54,8 +63,10 @@ def classify(result):
     for chk in package.get("checks", []):
         if chk["status"] != "pass":
             reasons.append(f"{chk['name']}: {chk.get('error', chk['status'])}")
+    # A failure the config lists as a known issue is reported, but does not fail the run.
+    known = [m["label"] for m in result.get("models", []) if known_issue(result, m.get("key"))]
     for model in result.get("models", []):
-        if model["status"] != "pass":
+        if model["status"] != "pass" and model["label"] not in known:
             reasons.append(f"{model['label']}: {model.get('error') or model['status']}")
     asr = result.get("asr") or {}
     if asr.get("status") in ("crash", "timeout"):
@@ -63,6 +74,8 @@ def classify(result):
         reasons.append(f"WER transcription: {asr.get('error', asr['status'])}")
     fail_above = spec.get("asr", {}).get("fail_above")
     for row in asr.get("rows", []):
+        if any(row.get("label", "").startswith(label) for label in known):
+            continue
         if fail_above is not None and row.get("wer") is not None and row["wer"] > fail_above:
             reasons.append(f"{row['label']}: WER {row['wer']:.0%} is above {fail_above:.0%}")
 

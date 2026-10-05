@@ -154,3 +154,14 @@ pythons = ["3.15"]
 models = ["nano", "nano-int8", "micro", "mini", "tts2"]
 gating = false
 reason = "Pre-release Python; PyTorch publishes wheels for a new Python some weeks after its release."
+
+# -- Known issues ---------------------------------------------------------------
+# A failure listed here still shows in the report (as a known issue, with the
+# reason), but does not fail the run. cpu is matched as part of the runner's CPU
+# name; runner narrows it to one runner label. Remove the entry once it is fixed.
+
+[[known_issue]]
+cpu = "8573C"                      # Intel Xeon Platinum 8573C
+runner = "windows-2025"
+model = "tts2"
+reason = "KittenTTS 2 crashes with an illegal CPU instruction (0xC000001D) while loading on Windows with this CPU; Linux on the same CPU works."

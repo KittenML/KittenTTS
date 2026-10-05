@@ -24,6 +24,7 @@ TTS2_ONLY = {"expression", "clone", "clone_whisper", "emb4"}
 EVENTS = {"pull_request", "push", "workflow_dispatch"}
 EXPECTS = {"works", "install-fails", "refused"}
 MODEL_KEYS = {"repo", "label", "warm_runs", "checks", "timeout_minutes", "weights"}
+KNOWN_KEYS = {"cpu", "runner", "model", "reason"}
 TARGET_KEYS = {"name", "runner", "pythons", "models", "expect", "gating", "reason",
                "overrides", "text", "timeout_minutes", "voice", "events"}
 
@@ -75,6 +76,15 @@ def load(path):
         for m, o in t.get("overrides", {}).items():
             for k in set(o) - MODEL_KEYS:
                 errors.append(f"{where}: overrides.{m} has unknown setting {k!r}")
+    for k in cfg.get("known_issue", []):
+        where = f"known_issue {k.get('reason', '?')[:40]!r}"
+        for key in set(k) - KNOWN_KEYS:
+            errors.append(f"{where}: unknown setting {key!r}")
+        for key in ("cpu", "model", "reason"):
+            if not k.get(key):
+                errors.append(f"{where}: needs {key!r}")
+        if k.get("model") and k["model"] not in models:
+            errors.append(f"{where}: unknown model {k['model']!r}")
     if errors:
         sys.exit("qa/config.toml is invalid:\n  " + "\n  ".join(errors))
     return cfg
@@ -121,6 +131,8 @@ def expand(cfg):
                 "voice": t.get("voice", cfg["sample"]["voice"]),
                 "models": resolved,
                 "asr": cfg.get("asr", {"enabled": False}),
+                "known_issues": [k for k in cfg.get("known_issue", [])
+                                 if k.get("runner", t["runner"]) == t["runner"] and k["model"] in models],
             }
             jobs.append({"id": spec["id"], "name": t["name"], "runner": t["runner"],
                          "python": py, "timeout": timeout, "spec": json.dumps(spec)})

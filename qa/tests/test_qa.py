@@ -183,6 +183,12 @@ class Plan(unittest.TestCase):
         self.assertNotIn("weights", next(m for m in big["models"] if m["key"] == "big"))
         self.assertEqual(big["text"], "Hello there.")
 
+    def test_known_issues_reach_only_their_runner(self):
+        path = self.write(FIXTURE + '\n[[known_issue]]\ncpu = "8573C"\nrunner = "macos-15"\nmodel = "big"\nreason = "r"\n')
+        specs = {json.loads(j["spec"])["name"]: json.loads(j["spec"]) for j in plan.expand(plan.load(path))}
+        self.assertEqual([k["model"] for k in specs["Small runner"]["known_issues"]], ["big"])
+        self.assertEqual(specs["Big runner"]["known_issues"], [])
+
     def test_invalid_config_is_rejected_with_reasons(self):
         path = self.write('[sample]\ntext="x"\nvoice="Bruno"\n'
                           '[models.nano]\nrepo="KittenML/kitten-tts-nano-0.8"\nchecks=["clone", "bogus"]\n'
@@ -331,6 +337,25 @@ class Report(unittest.TestCase):
         self.assertTrue(self.row(md, "Linux x64").startswith("| Linux x64 | AMD EPYC 7763 | ✅ | ⚠️ |"))
         self.assertIn("⚠️ failed, but does not fail the run: Linux x64 · next Python · py3.15 (pre-release)", md)
         self.assertIn("| Install and import | ✅ |", md)     # non-gating install failures stay out of Tests
+
+    def test_known_issue_is_reported_but_does_not_fail(self):
+        known = [{"cpu": "8573C", "model": "nano", "reason": "illegal instruction on this CPU"}]
+        crashed = {"key": "nano", "label": "Nano", "status": "crash", "error": "exited with code 3221225501"}
+        r = result(spec(known_issues=known), models=[crashed])   # what run_target.py records for a crash
+        r["env"]["cpu"] = "INTEL(R) XEON(R) PLATINUM 8573C"
+        md, code, _ = self.run_report([r])
+        self.assertEqual(code, 0)
+        self.assertTrue(self.row(md, "Linux x64").startswith("| Linux x64 | Intel Xeon Platinum 8573C | ⚠️ |"))
+        self.assertIn("| Nano: speaks the sample text | ⚠️ py3.12 |", md)
+        self.assertIn("⚠️ known issue, does not fail the run: Linux x64 · py3.12 on Intel Xeon Platinum 8573C "
+                      "(illegal instruction on this CPU)", md)
+        self.assertNotIn("### Failures", md)
+
+    def test_known_issue_only_covers_its_cpu(self):
+        known = [{"cpu": "8573C", "model": "nano", "reason": "x"}]
+        r = result(spec(known_issues=known), models=[model(status="crash", error="boom")])   # AMD EPYC 7763
+        md, code, _ = self.run_report([r])
+        self.assertEqual(code, 1)
 
     def test_crashed_transcription_is_shown_with_its_log(self):
         r = result()

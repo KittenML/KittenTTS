@@ -45,6 +45,7 @@ Edit [`config.toml`](config.toml). The workflow needs no changes.
 | Change one model on one platform | `overrides = { tts2 = { weights = "emb4", warm_runs = 0 } }` |
 | Run a platform only on PRs, or only on `main` | `events = ["pull_request"]` or `events = ["push", "workflow_dispatch"]` |
 | Change when a job counts as slow | `[report] slow_job_minutes` |
+| Stop a known, tracked bug from failing every run | a `[[known_issue]]` with `cpu`, `runner`, `model`, `reason` |
 | Change the spoken text or voice | `[sample]`, or `text = "..."` on a target |
 | Change the WER thresholds or ASR model | `[asr]` |
 
