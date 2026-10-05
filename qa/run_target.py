@@ -502,14 +502,15 @@ def drive(spec_path, out):
             result["asr"] = run_child("asr", "all", spec_path, out, (2 + len(refs)) * limit)
 
     result["secs"] = round(time.time() - t_start, 1)
-    status, reasons, failing = classify(result)
-    result["status"], result["reasons"], result["failing"] = status, reasons, failing
+    status, reasons = classify(result)
+    result["status"], result["reasons"] = status, reasons
     with open(os.path.join(out, "result.json"), "w", encoding="utf-8") as f:
         json.dump(result, f, indent=1)
     print(f"\n{spec['name']} · py{spec['python']}: {STATUS_LABEL[status]}", flush=True)
     for r in reasons:
         print(f"  - {r}", flush=True)
-    return 1 if failing else 0
+    # The verdict (did this break something that works on main?) is the report job's.
+    return 0
 
 
 def main():

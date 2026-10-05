@@ -90,11 +90,25 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
+        id: python
+        continue-on-error: true
         with:
           python-version: ${{ matrix.python }}
           allow-prereleases: true
 
+      # No build of this Python for this runner is a result too, not an error.
+      - name: Record that this Python is not available
+        if: steps.python.outcome != 'success'
+        shell: bash
+        env:
+          QA_SPEC: ${{ matrix.spec }}
+        run: |
+          mkdir -p qa-out
+          printf '{"spec": %s, "env": {}, "status": "failed", "install": {"ok": false, "secs": 0, "error": "Python %s is not available for %s"}}' \
+            "$QA_SPEC" "${{ matrix.python }}" "${{ matrix.runner }}" > qa-out/result.json
+
       - name: Install and test
+        if: steps.python.outcome == 'success'
         shell: bash
         env:
           QA_SPEC: ${{ matrix.spec }}
@@ -166,6 +180,28 @@ jobs:
           name: qa-plan
           path: plan
 
+      # A pull request fails only if something that works there stops working here:
+      # the latest finished run on the base branch (main), else this branch's last run.
+      - name: Find the run to compare with
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.base_ref || github.ref_name }}
+          HEAD: ${{ github.head_ref }}
+        run: |
+          latest() {
+            gh run list -R "$GITHUB_REPOSITORY" --workflow platform-qa.yml --branch "$1" --limit 30 \
+              --json databaseId,status,conclusion \
+              --jq "[.[] | select(.status == \"completed\" and (.conclusion == \"success\" or .conclusion == \"failure\") and .databaseId != $GITHUB_RUN_ID)][0].databaseId // empty"
+          }
+          id=$(latest "$BASE"); label="$BASE"
+          if [ -z "$id" ] && [ -n "$HEAD" ]; then id=$(latest "$HEAD"); label="this branch's previous run"; fi
+          mkdir -p baseline
+          if [ -n "$id" ] && gh run download "$id" -R "$GITHUB_REPOSITORY" -p 'qa-result-*' -D baseline; then
+            printf '{"run_id": %s, "label": "%s"}' "$id" "$label" > baseline/about.json
+          else
+            echo "Nothing to compare with yet."
+          fi
+
       - name: Build report
         env:
           GH_TOKEN: ${{ github.token }}
@@ -174,7 +210,8 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" --paginate \
             --jq '.jobs[] | {name, html_url, started_at, completed_at}' | jq -s . > jobs.json
           started=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq .run_started_at)
-          python qa/report.py results report --plan plan/plan.json --jobs jobs.json --run-started "$started"
+          python qa/report.py results report --plan plan/plan.json --jobs jobs.json --run-started "$started" \
+            --baseline baseline
           cat report/summary.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Record the pull request for the fork commenter

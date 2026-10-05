@@ -22,11 +22,8 @@ import tomllib
 KNOWN_CHECKS = {"stream", "speed", "to_file", "expression", "clone", "clone_whisper", "emb4"}
 TTS2_ONLY = {"expression", "clone", "clone_whisper", "emb4"}
 EVENTS = {"pull_request", "push", "workflow_dispatch"}
-EXPECTS = {"works", "install-fails", "refused"}
 MODEL_KEYS = {"repo", "label", "warm_runs", "checks", "weights"}
-KNOWN_KEYS = {"cpu", "runner", "model", "reason"}
-TARGET_KEYS = {"name", "runner", "pythons", "models", "expect", "gating", "reason",
-               "overrides", "text", "timeout_minutes", "voice", "events"}
+TARGET_KEYS = {"name", "runner", "pythons", "models", "overrides", "text", "timeout_minutes", "voice", "events"}
 
 
 def csv_env(name):
@@ -59,7 +56,7 @@ def load(path):
         where = f"target {t.get('name', '?')!r}"
         for k in set(t) - TARGET_KEYS:
             errors.append(f"{where}: unknown setting {k!r}")
-        for k in ("name", "runner", "pythons"):
+        for k in ("name", "runner"):
             if k not in t:
                 errors.append(f"{where}: needs {k!r}")
         if t.get("name") in names:
@@ -68,8 +65,6 @@ def load(path):
         for e in t.get("events", []):
             if e not in EVENTS:
                 errors.append(f"{where}: unknown event {e!r} (known: {sorted(EVENTS)})")
-        if t.get("expect", "works") not in EXPECTS:
-            errors.append(f"{where}: expect must be one of {sorted(EXPECTS)}")
         for m in t.get("models", []) + list(t.get("overrides", {})):
             if m not in models:
                 errors.append(f"{where}: unknown model {m!r}")
@@ -78,15 +73,6 @@ def load(path):
                 errors.append(f"{where}: overrides.{m} has unknown setting {k!r}")
     for k in set(cfg.get("limits", {})) - {"step_minutes", "job_minutes"}:
         errors.append(f"limits: unknown setting {k!r}")
-    for k in cfg.get("known_issue", []):
-        where = f"known_issue {k.get('reason', '?')[:40]!r}"
-        for key in set(k) - KNOWN_KEYS:
-            errors.append(f"{where}: unknown setting {key!r}")
-        for key in ("cpu", "model", "reason"):
-            if not k.get(key):
-                errors.append(f"{where}: needs {key!r}")
-        if k.get("model") and k["model"] not in models:
-            errors.append(f"{where}: unknown model {k['model']!r}")
     if errors:
         sys.exit("qa/config.toml is invalid:\n  " + "\n  ".join(errors))
     return cfg
@@ -103,7 +89,7 @@ def expand(cfg):
             continue
         if only_targets and not any(v in t["name"].lower() or v in t["runner"] for v in only_targets):
             continue
-        models = [m for m in t.get("models", []) if not only_models or m in only_models]
+        models = [m for m in t.get("models") or list(cfg["models"]) if not only_models or m in only_models]
         if only_models and t.get("models") and not models:
             continue
         resolved = []
@@ -117,7 +103,7 @@ def expand(cfg):
             resolved.append(m)
         limits = {"step_minutes": 10, "job_minutes": 45, **cfg.get("limits", {})}
         timeout = t.get("timeout_minutes") or limits["job_minutes"]
-        for py in t["pythons"]:
+        for py in t.get("pythons") or cfg.get("matrix", {}).get("pythons", []):
             if only_pythons and py not in only_pythons:
                 continue
             spec = {
@@ -125,16 +111,11 @@ def expand(cfg):
                 "name": t["name"],
                 "runner": t["runner"],
                 "python": py,
-                "expect": t.get("expect", "works"),
-                "gating": t.get("gating", True),
-                "reason": t.get("reason", ""),
                 "text": t.get("text", cfg["sample"]["text"]),
                 "voice": t.get("voice", cfg["sample"]["voice"]),
                 "models": resolved,
                 "asr": cfg.get("asr", {"enabled": False}),
                 "limits": limits,
-                "known_issues": [k for k in cfg.get("known_issue", [])
-                                 if k.get("runner", t["runner"]) == t["runner"] and k["model"] in models],
             }
             jobs.append({"id": spec["id"], "name": t["name"], "runner": t["runner"],
                          "python": py, "timeout": timeout, "spec": json.dumps(spec)})

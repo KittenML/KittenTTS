@@ -5,68 +5,32 @@ it uses the standard library only and no newer syntax.
 """
 import re
 
-# A platform job ends in exactly one of these.
+# What one platform job found. Whether a failure is new is decided in the report,
+# by comparing with the latest run on main.
 PASSED = "passed"
 FAILED = "failed"
-UNSUPPORTED = "unsupported"   # failed to install, as config.toml says it should
-CHANGED = "changed"           # expected not to install, but now it does
 NO_RESULT = "no-result"       # the job died, timed out or was cancelled
 
-STATUS_LABEL = {
-    PASSED: "Passed",
-    FAILED: "Failed",
-    UNSUPPORTED: "Unsupported (expected)",
-    CHANGED: "Now installs",
-    NO_RESULT: "No result",
-}
-
-
-def known_issue(result, model_key):
-    """The config's known issue that covers this model on this job's CPU, if any."""
-    cpu = ((result.get("env") or {}).get("cpu") or "").lower()
-    for k in result["spec"].get("known_issues", []):
-        if k["model"] == model_key and k.get("cpu", "").lower() in cpu:
-            return k
-    return None
+STATUS_LABEL = {PASSED: "Works", FAILED: "Does not work", NO_RESULT: "No result"}
 
 
 def classify(result):
-    """(status, reasons, failing) for one platform job's result.json.
-
-    `failing` says whether this job should fail the run: a FAILED or NO_RESULT
-    status on a gating target, or pip accepting a Python it must refuse.
-    """
+    """(status, reasons) for one platform job's result.json."""
     spec = result["spec"]
-    expect = spec.get("expect", "works")
-    gating = spec.get("gating", True)
     install = result.get("install") or {}
-    reasons = []
-
     if not install:
-        return NO_RESULT, ["the job did not record an install"], gating
-
-    if expect == "refused":
-        if install.get("refused"):
-            return UNSUPPORTED, [], False
-        if install.get("ok"):
-            return FAILED, ["pip installed it on a Python it should refuse"], True
-        return FAILED, ["install failed, but not on Requires-Python"], gating
-
+        return NO_RESULT, ["the job did not record an install"]
     if not install.get("ok"):
-        if expect == "install-fails":
-            return UNSUPPORTED, [], False
-        return FAILED, ["install failed"], gating
-
+        return FAILED, [f"install: {install.get('error') or 'failed'}"]
+    reasons = []
     package = result.get("package") or {}
     if package.get("status") in ("crash", "timeout"):
         reasons.append(f"package checks: {package.get('error', package['status'])}")
     for chk in package.get("checks", []):
         if chk["status"] != "pass":
             reasons.append(f"{chk['name']}: {chk.get('error', chk['status'])}")
-    # A failure the config lists as a known issue is reported, but does not fail the run.
-    known = [m["label"] for m in result.get("models", []) if known_issue(result, m.get("key"))]
     for model in result.get("models", []):
-        if model["status"] != "pass" and model["label"] not in known:
+        if model["status"] != "pass":
             reasons.append(f"{model['label']}: {model.get('error') or model['status']}")
     asr = result.get("asr") or {}
     if asr.get("status") in ("crash", "timeout"):
@@ -74,17 +38,9 @@ def classify(result):
         reasons.append(f"WER transcription: {asr.get('error', asr['status'])}")
     fail_above = spec.get("asr", {}).get("fail_above")
     for row in asr.get("rows", []):
-        if any(row.get("label", "").startswith(label) for label in known):
-            continue
         if fail_above is not None and row.get("wer") is not None and row["wer"] > fail_above:
             reasons.append(f"{row['label']}: WER {row['wer']:.0%} is above {fail_above:.0%}")
-
-    if expect == "install-fails":
-        # Good news, but config.toml is now out of date; flag without failing.
-        return CHANGED, reasons, False
-    if reasons:
-        return FAILED, reasons, gating
-    return PASSED, [], False
+    return (FAILED, reasons) if reasons else (PASSED, [])
 
 
 # ── Word error rate ──────────────────────────────────────────────────────────────

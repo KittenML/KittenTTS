@@ -21,8 +21,7 @@ slow_job_minutes = 30   # a platform job slower than this is flagged in the repo
 # Each runner transcribes its own audio to measure word error rate.
 enabled = true
 model = "openai/whisper-small.en"
-warn_above = 0.15   # WER above this is flagged in the report
-fail_above = 0.50   # WER above this fails the run (the audio is not the text)
+fail_above = 0.50   # WER above this means the audio does not say the text
 
 # ── Models ─────────────────────────────────────────────────────────────────────
 # warm_runs: generations after the first one, timed for p50/p95.
@@ -64,89 +63,45 @@ checks = ["to_file", "stream", "expression", "clone", "clone_whisper", "emb4"]
 # weights = "emb4"   # the 506 MiB variant; default is the 947 MiB one
 
 # ── Platforms ──────────────────────────────────────────────────────────────────
-# runner:  a GitHub-hosted runner label (its CPU is recorded in the report).
-# expect:  "works" (default), "install-fails" (known unsupported: passes when the
-#          install fails, flags it when it starts working) or "refused" (pip must
-#          refuse it on Requires-Python).
-# gating:  false reports results without failing the run.
-# overrides: per-model settings for this platform only.
-# text:    a different sample text for this platform.
-# events:  run only for these triggers (pull_request, push, workflow_dispatch);
-#          all of them when left out.
+# Every platform runs every Python in [matrix]. Nothing here says what should
+# work: the report shows what does, and a pull request fails only when something
+# that works on main stops working.
+#
+# runner:    a GitHub-hosted runner label (its CPU is recorded in the report)
+# pythons:   this platform's own list instead of [matrix] pythons
+# models:    the models to run (all of them by default)
+# overrides: per-model settings for this platform only
+# text:      a different sample text for this platform
+# events:    run only for these triggers (pull_request, push, workflow_dispatch)
+# timeout_minutes: this platform's job limit instead of [limits] job_minutes
+
+[matrix]
+pythons = ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
 
 [[target]]
 name = "Linux x64"
 runner = "ubuntu-24.04"            # AMD EPYC or Intel Xeon, 4 vCPU, 16 GB
-pythons = ["3.10", "3.11", "3.12", "3.13", "3.14"]
-models = ["nano", "nano-int8", "micro", "mini", "tts2"]
 
 [[target]]
 name = "Linux ARM64"
 runner = "ubuntu-24.04-arm"        # Arm Neoverse, 4 vCPU, 16 GB
-pythons = ["3.10", "3.11", "3.12", "3.13", "3.14"]
-models = ["nano", "nano-int8", "micro", "mini", "tts2"]
 
 [[target]]
 name = "Windows x64"
 runner = "windows-2025"            # AMD EPYC or Intel Xeon, 4 vCPU, 16 GB
-pythons = ["3.10", "3.11", "3.12", "3.13", "3.14"]
-models = ["nano", "nano-int8", "micro", "mini", "tts2"]
 
 [[target]]
-# GitHub's 7 GB M1 runner: KittenTTS 2 uses the smaller weights here, since the default
-# ones push it into swap, and gets more time (see the known issue below).
+name = "Windows ARM64"
+runner = "windows-11-arm"          # Arm Cobalt 100, 4 vCPU, 16 GB
+
+[[target]]
+# 7 GB of RAM: KittenTTS 2's default weights push it into swap, so it uses the
+# smaller ones here and the job gets more time.
 name = "macOS Apple Silicon"
 runner = "macos-15"                # Apple M1, 3 vCPU, 7 GB
-pythons = ["3.10", "3.11", "3.12", "3.13", "3.14"]
-models = ["nano", "nano-int8", "micro", "mini", "tts2"]
 timeout_minutes = 90
 overrides = { tts2 = { weights = "emb4", warm_runs = 0 } }
 
 [[target]]
 name = "macOS Intel"
-runner = "macos-15-intel"
-pythons = ["3.12"]
-models = ["nano"]
-expect = "install-fails"
-reason = "kittenml needs torch>=2.6, and PyTorch stopped publishing Intel macOS wheels after 2.2."
-
-[[target]]
-name = "Windows ARM64"
-runner = "windows-11-arm"
-pythons = ["3.12"]
-models = ["nano"]
-expect = "install-fails"
-reason = "PyTorch publishes no Windows ARM64 wheels on PyPI."
-
-[[target]]
-name = "Linux x64 · oldest Python"
-runner = "ubuntu-24.04"
-pythons = ["3.9"]
-models = []
-expect = "refused"
-reason = "kittenml requires Python 3.10 or newer."
-
-[[target]]
-name = "Linux x64 · next Python"
-runner = "ubuntu-24.04"
-pythons = ["3.15"]
-models = ["nano", "nano-int8", "micro", "mini", "tts2"]
-gating = false
-reason = "Pre-release Python; PyTorch publishes wheels for a new Python some weeks after its release."
-
-# -- Known issues ---------------------------------------------------------------
-# A failure listed here still shows in the report (as a known issue, with the
-# reason), but does not fail the run. cpu is matched as part of the runner's CPU
-# name; runner narrows it to one runner label. Remove the entry once it is fixed.
-
-[[known_issue]]
-cpu = "8573C"                      # Intel Xeon Platinum 8573C
-runner = "windows-2025"
-model = "tts2"
-reason = "KittenTTS 2 crashes with an illegal CPU instruction (0xC000001D) while loading on Windows with this CPU; Linux on the same CPU works."
-
-[[known_issue]]
-cpu = "Apple M1"                   # GitHub's macOS runner
-runner = "macos-15"
-model = "tts2"
-reason = "GitHub's 7 GB M1 runner is too small for KittenTTS 2: it runs anywhere from about 13x to 250x slower than realtime there, so a test can pass the step limit."
+runner = "macos-15-intel"          # Intel Core i7, 4 vCPU, 14 GB

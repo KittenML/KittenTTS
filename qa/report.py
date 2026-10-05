@@ -1,13 +1,17 @@
 """Combine every platform job's result.json into the PR report.
 
-    python qa/report.py RESULTS_DIR OUT_DIR [--plan plan.json] [--jobs jobs.json] [--run-started ISO]
+    python qa/report.py RESULTS_DIR OUT_DIR [--plan plan.json] [--jobs jobs.json]
+                        [--run-started ISO] [--baseline DIR]
     python qa/report.py --gate OUT_DIR/summary.json
 
-Writes OUT_DIR/pr-comment.md (short: platforms, tests, speed, failures),
-OUT_DIR/summary.md (the same plus every job's numbers, for the run summary) and
-OUT_DIR/summary.json. jobs.json is the run's job list from the GitHub API, for
-log links and job times. --gate exits 1 when a gating platform failed or
-produced no result.
+The report says what works on which platform, CPU and Python, and what broke:
+a test that works in the baseline run (the latest run on main) and does not
+work here. Only that fails the run; something that does not work on main either
+is listed as not supported yet.
+
+Writes OUT_DIR/pr-comment.md (short), OUT_DIR/summary.md (the same plus every
+job's numbers) and OUT_DIR/summary.json. jobs.json is the run's job list from
+the GitHub API, for log links and job times. --gate exits 1 when something broke.
 """
 import argparse
 import datetime
@@ -19,11 +23,10 @@ import statistics
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from qa_common import (CHANGED, FAILED, NO_RESULT, PASSED, STATUS_LABEL,  # noqa: E402
-                       UNSUPPORTED, classify, known_issue)
+from qa_common import FAILED, NO_RESULT, PASSED, STATUS_LABEL, classify  # noqa: E402
 
 COMMENT_LIMIT = 60000
-ICON = {PASSED: "✅", FAILED: "❌", UNSUPPORTED: "➖", CHANGED: "🆕", NO_RESULT: "⏱️"}
+ICON = {PASSED: "✅", FAILED: "❌", NO_RESULT: "⏱️"}
 SLOW = "🐢"
 CHECK_TITLE = {
     "stream": "streaming (`generate_stream`)",
@@ -53,9 +56,9 @@ def load_results(results_dir, plan):
     for r in out:
         if r.get("missing"):
             r["status"], r["reasons"] = NO_RESULT, ["the job timed out, was cancelled or crashed before reporting"]
-            r["failing"] = r["spec"].get("gating", True)
         else:
-            r["status"], r["reasons"], r["failing"] = classify(r)
+            r["status"], r["reasons"] = classify(r)
+        r["outcomes"] = outcomes(r)
     return out
 
 
@@ -79,7 +82,7 @@ def attach_jobs(results, jobs):
 # ── Formatting helpers ─────────────────────────────────────────────────────────────
 
 def cell(text):
-    # <br> is the one tag kept: it puts a CPU's cores and RAM under its name.
+    # <br> is the one tag kept: it puts a platform's CPU under its name.
     return str(text).replace("|", "\\|").replace("\n", " ").strip()
 
 
@@ -104,6 +107,20 @@ def minutes(secs):
 
 def py_key(v):
     return tuple(int(x) for x in v.split("."))
+
+
+def py_list(versions, everyone):
+    """'py3.9–3.15' for a run of consecutive versions (in `everyone`), else a list."""
+    order = sorted(set(everyone), key=py_key)
+    idx = sorted(order.index(v) for v in set(versions))
+    runs, start = [], None
+    for i, n in enumerate(idx):
+        if start is None:
+            start = n
+        if i + 1 == len(idx) or idx[i + 1] != n + 1:
+            runs.append(f"py{order[start]}" if start == n else f"py{order[start]}–{order[n]}")
+            start = None
+    return ", ".join(runs)
 
 
 def describe(detail):
@@ -131,25 +148,24 @@ def short_cpu(name):
     return " ".join(words.get(w, w) for w in n.split())
 
 
-def cpu_label(r, specs=True):
-    """The runner's CPU; with specs, its cores and RAM after it."""
+def cpu_of(r):
+    return short_cpu((r.get("env") or {}).get("cpu") or "")
+
+
+def cpu_label(r):
     env = r.get("env") or {}
     if not env.get("cpu"):
         return r["spec"]["runner"]
-    bits = []
-    if env.get("cpu_count"):
-        bits.append(f"{env['cpu_count']} cores")
-    if env.get("ram_gb"):
-        bits.append(f"{round(env['ram_gb'])} GB")
-    label = short_cpu(env["cpu"])
-    return f"{label} · {' · '.join(bits)}" if specs and bits else label
+    bits = ([f"{env['cpu_count']} cores"] if env.get("cpu_count") else []) + (
+        [f"{round(env['ram_gb'])} GB"] if env.get("ram_gb") else [])
+    return " · ".join([cpu_of(r)] + bits)
 
 
 def cpus_of(rs):
     """'AMD EPYC 7763/9V45, Intel Xeon Platinum 8573C': the CPUs a platform's jobs drew."""
     families = {}
     for r in rs:
-        cpu = short_cpu((r.get("env") or {}).get("cpu") or "")
+        cpu = cpu_of(r)
         if not cpu:
             continue
         head, _, model = cpu.rpartition(" ")
@@ -162,7 +178,7 @@ def cpus_of(rs):
     return ", ".join(f"{h} {'/'.join(sorted(ms))}" if ms else h for h, ms in families.items())
 
 
-# ── Per-model numbers ──────────────────────────────────────────────────────────────
+# ── Per-test outcomes ──────────────────────────────────────────────────────────────
 
 def model_stats(m):
     audio = m.get("audio_s")
@@ -194,14 +210,97 @@ def wer_ok(r, wav):
     return True
 
 
-MODEL_STATUS = {"pass": "Passed", "fail": "Failed", "crash": "Crashed", "timeout": "Timed out", "skipped": "Not run"}
-
-
 def model_status(r, m):
-    """A model's status as shown: a WER above asr.fail_above fails it too."""
+    """A model's status as shown in the details: a WER above asr.fail_above fails it too."""
+    names = {"pass": "Passed", "fail": "Failed", "crash": "Crashed", "timeout": "Timed out", "skipped": "Not run"}
     if m.get("status") != "pass":
-        return MODEL_STATUS.get(m.get("status"), str(m.get("status")))
+        return names.get(m.get("status"), str(m.get("status")))
     return "Passed" if wer_ok(r, m.get("wav")) else "Failed (WER)"
+
+
+def outcomes(r):
+    """{test key: True / False / "timeout"} for every test this job was asked to run.
+
+    Keys: "install", "<model>" (it speaks the sample text) and "<model>:<check>".
+    Nothing ran where kittenml did not install, so every test is False there.
+    """
+    out = {}
+    tests = ["install"]
+    for m in r["spec"].get("models", []):
+        tests.append(m["key"])
+        tests += [f"{m['key']}:{c}" for c in m.get("checks", [])]
+    if r["status"] == NO_RESULT:
+        return {}
+    if not (r.get("install") or {}).get("ok"):
+        return {t: False for t in tests}
+    pkg = r.get("package") or {}
+    out["install"] = pkg.get("status") not in ("crash", "timeout") and all(
+        c["status"] == "pass" for c in pkg.get("checks", []))
+    clone_wav = next((row["wav"] for row in asr_rows(r) if row.get("label", "").endswith("· clone")), None)
+    for spec_m in r["spec"].get("models", []):
+        m = next((x for x in r.get("models", []) if x.get("key") == spec_m["key"]), None)
+        timed_out = bool(m) and m.get("status") == "timeout"
+        if not m or m.get("first_s") is None:
+            out[spec_m["key"]] = "timeout" if timed_out else False
+        else:
+            out[spec_m["key"]] = wer_ok(r, m.get("wav"))
+        for c in spec_m.get("checks", []):
+            row = next((x for x in (m or {}).get("checks", []) if x["name"] == c), None)
+            if row and row["status"] in ("timeout", "skipped"):
+                ok = "timeout"
+            elif not row or row["status"] != "pass":
+                ok = "timeout" if timed_out else False
+            else:
+                ok = wer_ok(r, clone_wav) if c == "clone" and clone_wav else True
+            out[f"{spec_m['key']}:{c}"] = ok
+    return out
+
+
+# ── Comparing with the baseline run ────────────────────────────────────────────────
+
+def compare(results, baseline):
+    """Mark what broke and what started working since the baseline run.
+
+    A test broke when it works in the baseline for the same platform and Python
+    and does not work here, on a CPU the baseline also ran on. A CPU the baseline
+    never drew cannot tell a regression from a CPU-specific problem, so a failure
+    there is reported but does not fail the run.
+    """
+    base = {(group_name(b), b["spec"]["python"]): b for b in baseline}
+    base_cpus = {}
+    for b in baseline:
+        base_cpus.setdefault(group_name(b), set()).add(cpu_of(b))
+    for r in results:
+        b = base.get((group_name(r), r["spec"]["python"]))
+        r["broke"], r["fixed"], r["new_cpu"] = [], [], False
+        if not b:
+            continue
+        cpu = cpu_of(r)
+        # Installing does not depend on the CPU; what runs after it can.
+        installed = (r.get("install") or {}).get("ok")
+        r["new_cpu"] = bool(installed and cpu) and cpu not in base_cpus.get(group_name(r), set())
+        if r["status"] == NO_RESULT:
+            if b["outcomes"].get("install") is True:
+                r["broke"] = ["install"]
+            continue
+        for key, ok in r["outcomes"].items():
+            before = b["outcomes"].get(key)
+            if ok is not True and before is True and not r["new_cpu"]:
+                r["broke"].append(key)
+            elif ok is True and before is not None and before is not True:
+                r["fixed"].append(key)
+    for r in results:
+        r.setdefault("broke", [])
+        r.setdefault("fixed", [])
+        r["failing"] = bool(r["broke"])
+
+
+def test_title(r, key):
+    if key == "install":
+        return "install and import"
+    model, _, check = key.partition(":")
+    label = next((m["label"] for m in r["spec"].get("models", []) if m["key"] == model), model)
+    return f"{label}: {CHECK_TITLE.get(check, check)}" if check else f"{label}: speaks the sample text"
 
 
 # ── Short report (the PR comment) ──────────────────────────────────────────────────
@@ -214,45 +313,46 @@ def groups_of(results):
 
 
 def headline(results, ctx):
-    failing = [r for r in results if r["failing"]]
-    supported = [r for r in results if r["spec"].get("expect", "works") == "works" and r["spec"].get("gating", True)]
-    if failing:
-        verdict = f"❌ {len(failing)} of {len(supported)} supported platform job{'s' if len(supported) != 1 else ''} failed"
+    broke = [r for r in results if r["broke"]]
+    works = sum(r["status"] == PASSED for r in results)
+    if ctx.get("baseline"):
+        against = f"[{ctx['baseline']['label']}]({ctx['baseline']['url']})" if ctx["baseline"].get("url") \
+            else ctx["baseline"]["label"]
+        n = sum(len(r["broke"]) for r in broke)
+        verdict = (f"❌ {n} test{'s' if n != 1 else ''} broke compared with {against}" if broke else
+                   f"✅ Nothing broke compared with {against}")
     else:
-        verdict = f"✅ All {len(supported)} supported platform jobs passed"
+        verdict = "✅ Report only: there is no earlier run to compare with yet"
     versions = next(((r.get("install") or {}).get("versions") for r in results
                      if (r.get("install") or {}).get("versions")), {}) or {}
-    source = "this PR" if ctx["source"] == "checkout" else f"`{ctx['source']}`"
-    if ctx["source"] == "checkout" and not ctx.get("pr"):
-        source = "this commit"
-    bits = [f"kittenml {versions.get('kittenml', '?')} installed from {source}"
-            + (f" ({ctx['sha'][:7]})" if ctx.get("sha") else "")]
+    source = "this PR" if ctx.get("pr") else "this commit"
+    if ctx["source"] != "checkout":
+        source = f"`{ctx['source']}`"
+    bits = [f"{works} of {len(results)} platform and Python combinations work fully",
+            f"kittenml {versions.get('kittenml', '?')} from {source}" + (f" ({ctx['sha'][:7]})" if ctx.get("sha") else "")]
     if ctx.get("run_url"):
         took = f" took {minutes(ctx['run_secs'])}" if ctx.get("run_secs") else ""
         bits.append(f"[run {ctx['run_id']}]({ctx['run_url']}){took}")
     return f"## {verdict}\n\n{' · '.join(bits)}"
 
 
-def known_failures(r):
-    """[(model label, known issue)] for models that failed in a way the config lists as known."""
-    out = []
-    for m in r.get("models", []):
-        k = known_issue(r, m.get("key"))
-        if k and (m.get("status") != "pass" or not wer_ok(r, m.get("wav"))):
-            out.append((m["label"], k))
-    return out
-
-
-def cell_for(rs):
+def platform_cell(rs):
     """One Platforms cell: does kittenml work for this platform on this Python?"""
     if not rs:
         return ""
-    statuses = [r["status"] for r in rs]
-    if any(s in (FAILED, UNSUPPORTED) for s in statuses) or any(known_failures(r) for r in rs):
+    if any(r["broke"] for r in rs):
+        return "❌ new"
+    if any(r["status"] == FAILED for r in rs):
         return "❌"
-    if NO_RESULT in statuses:
+    if any(r["status"] == NO_RESULT for r in rs):
         return "⏱️"
-    return "✅"
+    return "✅ new" if any(r["fixed"] for r in rs) else "✅"
+
+
+def first_problem(r):
+    """The one line that says why a job does not fully work."""
+    reason = r["reasons"][0] if r["reasons"] else r["status"]
+    return re.sub(r"\s+", " ", reason).strip()[:220]
 
 
 def platforms_section(results, slow_minutes):
@@ -273,128 +373,75 @@ def platforms_section(results, slow_minutes):
         else:
             took = "—"
         rows.append([name, cpus_of(rs) or rs[0]["spec"]["runner"]]
-                    + [cell_for([r for r in rs if r["spec"]["python"] == py]) for py in pythons] + [took])
+                    + [platform_cell([r for r in rs if r["spec"]["python"] == py]) for py in pythons] + [took])
     md = "### Platforms\n\n" + table(["Platform", "CPUs"] + [f"py{p}" for p in pythons] + ["Job time"], rows,
                                      ["---", "---"] + [":---:"] * len(pythons) + ["---:"])
-    # Every ❌ is explained here, with whether it fails the run.
     notes = []
-    unsupported = {}
+    # Why each ❌: one line per platform and reason, with the Python versions it covers.
+    problems = {}
     for r in results:
-        if r["status"] == UNSUPPORTED:
-            # 'macOS Intel' when the whole platform is unsupported, 'Linux x64 py3.9' when one Python is.
-            whole = all(x["status"] == UNSUPPORTED for x in groups[group_name(r)])
-            label = group_name(r) if whole else f"{group_name(r)} py{r['spec']['python']}"
-            unsupported.setdefault(r["spec"].get("reason") or "not supported", []).append(label)
-    if unsupported:
-        notes.append("❌ not supported, as expected (does not fail the run): " + "; ".join(
-            f"{', '.join(names)} ({reason.rstrip('.')})" for reason, names in unsupported.items()))
-    soft = [r for r in results if r["status"] == FAILED and not r["failing"]]
-    if soft:
-        notes.append("❌ does not fail the run: " + "; ".join(
-            f"{platform_name(r)} ({(r['spec'].get('reason') or '').rstrip('.')})" for r in soft))
-    known = [(r, label, k) for r in results for label, k in known_failures(r)]
-    if known:
-        notes.append("❌ known issue (does not fail the run): " + "; ".join(
-            f"{platform_name(r)} on {short_cpu(r['env'].get('cpu', ''))} ({k['reason'].rstrip('.')})"
-            for r, label, k in known))
-    failing = [r for r in results if r["failing"]]
-    if failing:
-        notes.append("❌ fails the run: " + ", ".join(platform_name(r) for r in failing) + " (see Failures)")
-    changed = [r for r in results if r["status"] == CHANGED]
-    if changed:
-        notes.append("🆕 installs now, though `qa/config.toml` expects it not to: "
-                     + ", ".join(platform_name(r) for r in changed) + " — update the config")
+        if r["status"] == FAILED and not r["broke"]:
+            where = group_name(r) + (f" on {cpu_of(r)}" if (r.get("install") or {}).get("ok") and cpu_of(r) else "")
+            problems.setdefault((where, first_problem(r)), []).append(r["spec"]["python"])
+    if problems:
+        notes.append("**Does not work** (" + ("on the baseline too, so it does not fail the run" if any(
+            r.get("compared") for r in results) else "nothing to compare with yet") + "):\n\n"
+            + "\n".join(f"- {where} {py_list(pys, pythons)}: {reason}" for (where, reason), pys in problems.items()))
+    fixed = [r for r in results if r["fixed"] and not r["broke"]]
+    if fixed:
+        notes.append("**Works now, did not before:** " + "; ".join(
+            f"{platform_name(r)} ({', '.join(test_title(r, k) for k in r['fixed'][:3])})" for r in fixed))
+    unclear = [r for r in results if r["new_cpu"] and r["status"] != PASSED]
+    if unclear:
+        notes.append("**On a CPU the baseline never drew**, so not counted as broken: " + ", ".join(
+            f"{platform_name(r)} on {cpu_of(r)}" for r in unclear))
     if slow:
         notes.append(f"{SLOW} slower than {slow_minutes} min: " + "; ".join(slow))
-    return md + ("\n\n" + "  \n".join(notes) if notes else "")
+    return md + ("\n\n" + "\n\n".join(notes) if notes else "")
 
 
 def is_tts2(m):
     return "kitten-tts-2" in (m.get("repo") or "")
 
 
-def test_rows(results, tts2):
-    """(title, model key, check) for every test of one model family, in config order."""
-    rows, seen = ([] if tts2 else [("Install and import", None, None)]), set()
+def family_keys(results, tts2):
+    """[(title, key)] for one model family's tests, in config order."""
+    keys, seen = ([] if tts2 else [("Install and import", "install")]), set()
     for r in results:
         for m in r["spec"].get("models", []):
             if is_tts2(m) != tts2:
                 continue
-            if (m["key"], None) not in seen:
-                seen.add((m["key"], None))
-                rows.append((f"{m['label']}: speaks the sample text", m["key"], None))
-            for c in m.get("checks", []):
-                if (m["key"], c) not in seen:
-                    seen.add((m["key"], c))
-                    rows.append((f"{m['label']}: {CHECK_TITLE.get(c, c)}", m["key"], c))
-    # Keep each model's tests under its own "speaks" row.
-    order = {key: i for i, (_, key, _) in enumerate(rows) if key}
-    head = [row for row in rows if row[1] is None]
-    return head + sorted([row for row in rows if row[1]], key=lambda t: (order[t[1]], t[2] is not None))
-
-
-def test_passed(r, key, check):
-    """True / False / "timeout" for one test in one job, None when the job was not asked to run it."""
-    installed = (r.get("install") or {}).get("ok")
-    if not installed:
-        return False                      # nothing works where kittenml does not install
-    if key is None:
-        pkg = r.get("package") or {}
-        return pkg.get("status") not in ("crash", "timeout") and all(
-            c["status"] == "pass" for c in pkg.get("checks", []))
-    spec_m = next((m for m in r["spec"].get("models", []) if m["key"] == key), None)
-    if not spec_m or (check and check not in spec_m.get("checks", [])):
-        return None
-    m = next((m for m in r.get("models", []) if m.get("key") == key), None)
-    if not m:
-        return False
-    if check is None:
-        if m.get("first_s") is None:
-            return "timeout" if m.get("status") == "timeout" else False
-        return wer_ok(r, m.get("wav"))
-    c = next((c for c in m.get("checks", []) if c["name"] == check), None)
-    if c and c["status"] in ("timeout", "skipped"):
-        return "timeout"
-    if not c or c["status"] != "pass":
-        return "timeout" if m.get("status") == "timeout" else False
-    clone_wav = next((row["wav"] for row in asr_rows(r) if row.get("label", "").endswith("· clone")), None)
-    return wer_ok(r, clone_wav) if check == "clone" and clone_wav else True
+            for key, title in [(m["key"], f"{m['label']}: speaks the sample text")] + [
+                    (f"{m['key']}:{c}", f"{m['label']}: {CHECK_TITLE.get(c, c)}") for c in m.get("checks", [])]:
+                if key not in seen:
+                    seen.add(key)
+                    keys.append((title, key))
+    return keys
 
 
 def cpu_columns(results):
-    """[(header, jobs)]: one column per platform and CPU the runners drew.
-
-    Jobs for a Python that pip must refuse, or a pre-release Python that cannot
-    install yet, stay in the Platforms table only.
-    """
+    """[(header, jobs)]: one column per platform and CPU the runners drew."""
     cols = {}
     for r in results:
-        spec = r["spec"]
-        if spec.get("expect") == "refused":
-            continue
-        if spec.get("expect", "works") == "works" and not spec.get("gating", True) \
-                and not (r.get("install") or {}).get("ok"):
-            continue
-        cpu = short_cpu((r.get("env") or {}).get("cpu") or "") or spec["runner"]
-        cols.setdefault((group_name(r), cpu), []).append(r)
+        cols.setdefault((group_name(r), cpu_of(r) or r["spec"]["runner"]), []).append(r)
     return [(f"{group}<br>{cpu}", rs) for (group, cpu), rs in cols.items()]
 
 
-def test_cell(rs, key, check):
+def test_cell(rs, key):
     many = len({r["spec"]["python"] for r in rs}) > 1
-    outcomes = [(r, test_passed(r, key, check)) for r in rs if r["status"] != NO_RESULT]
-    outcomes = [(r, ok) for r, ok in outcomes if ok is not None]
-    broken = sorted({r["spec"]["python"] for r, ok in outcomes if ok is False}, key=py_key)
-    slow = sorted({r["spec"]["python"] for r, ok in outcomes if ok == "timeout"}, key=py_key)
-    pys = lambda ps: (" " + ", ".join(f"py{p}" for p in ps)) if many else ""   # noqa: E731
-    if broken:
-        return "❌" + pys(broken)
-    if slow:
-        return "⏱️" + pys(slow)
-    if any(r["status"] == NO_RESULT for r in rs) and (key is None or any(
-            m["key"] == key for r in rs for m in r["spec"].get("models", []))):
+    pys = lambda xs: (" " + ", ".join(f"py{p}" for p in sorted(set(xs), key=py_key))) if many else ""   # noqa: E731
+    broke = [r["spec"]["python"] for r in rs if key in r["broke"]]
+    bad = [r["spec"]["python"] for r in rs if r["outcomes"].get(key) is False]
+    late = [r["spec"]["python"] for r in rs if r["outcomes"].get(key) == "timeout"]
+    if broke:
+        return "❌ new" + pys(broke)
+    if bad:
+        return "❌" + pys(bad)
+    if late:
+        return "⏱️" + pys(late)
+    if any(r["status"] == NO_RESULT for r in rs):
         return "⏱️"
-    return "✅" if outcomes else "—"
+    return "✅" if any(key in r["outcomes"] for r in rs) else "—"
 
 
 def speed_cell(rs, label):
@@ -407,10 +454,11 @@ def speed_cell(rs, label):
 
 
 def family_section(results, tts2, first):
+    keys = family_keys(results, tts2)
     cols = cpu_columns(results)
-    rows = [[title] + [test_cell(rs, key, check) for _, rs in cols] for title, key, check in test_rows(results, tts2)]
-    if not cols or (tts2 and not rows):
+    if not keys or not cols or (tts2 and not keys):
         return ""
+    rows = [[title] + [test_cell(rs, key) for _, rs in cols] for title, key in keys]
     labels = []
     for r in results:
         for m in r["spec"].get("models", []):
@@ -420,79 +468,68 @@ def family_section(results, tts2, first):
     if tts2:
         peaks = []
         for _, rs in cols:
-            mb = [m["peak_rss_mb"] for r in rs for m in r.get("models", []) if is_tts2_label(m, labels) and m.get("peak_rss_mb")]
+            mb = [m["peak_rss_mb"] for r in rs for m in r.get("models", []) if m.get("label") in labels and m.get("peak_rss_mb")]
             peaks.append(f"{max(mb) / 1024:.1f} GB" if mb else "—")
         speed.append(["Peak RAM"] + peaks)
     headers = [h for h, _ in cols]
-    title = "### KittenTTS 2" if tts2 else "### KittenTTS 0.8 (ONNX models)"
     intro = ""
     if first:
         fail_above = results[0]["spec"].get("asr", {}).get("fail_above", 0)
         intro = ("The README's examples on every Python version, one column per platform and CPU the runners "
-                 f"drew. ✅ works · ❌ does not · ⏱️ took too long · — not run there. Whisper must hear the text "
-                 f"(WER ≤ {fail_above:.0%}). RTF is generation time ÷ audio length, best warm run, median across "
-                 f"Python versions; {SLOW} is slower than realtime.\n\n")
+                 "drew. ✅ works · ❌ does not · **new** = changed since the baseline · ⏱️ took too long · "
+                 f"— not run there. Whisper must hear the text (WER ≤ {fail_above:.0%}). RTF is generation time "
+                 f"÷ audio length, best warm run, median across Python versions; {SLOW} is slower than realtime.\n\n")
+    title = "### KittenTTS 2" if tts2 else "### KittenTTS 0.8 (ONNX models)"
     return (f"{title}\n\n{intro}" + table(["Test"] + headers, rows, ["---"] + [":---:"] * len(headers))
             + "\n\n" + table(["Speed"] + headers, speed, ["---"] + ["---:"] * len(headers)))
 
 
-def is_tts2_label(m, labels):
-    return m.get("label") in labels
+def log_for(r, key):
+    """The error and log tail behind one failed test."""
+    install = r.get("install") or {}
+    if r["status"] == NO_RESULT:
+        return r["reasons"][0], ""
+    if not install.get("ok"):
+        return f"install failed: {install.get('error', '')}", install.get("log_tail", "")
+    if key == "install":
+        pkg = r.get("package") or {}
+        bad = [c for c in pkg.get("checks", []) if c["status"] != "pass"]
+        return (pkg.get("error") or (bad[0].get("error") if bad else "package checks failed"),
+                pkg.get("log_tail") or (bad[0].get("trace", "") if bad else ""))
+    model, _, check = key.partition(":")
+    m = next((x for x in r.get("models", []) if x.get("key") == model), {})
+    if check:
+        c = next((x for x in m.get("checks", []) if x["name"] == check), {})
+        return c.get("error") or m.get("error") or "did not run", c.get("trace") or m.get("log_tail") or ""
+    if m.get("first_s") is not None and not wer_ok(r, m.get("wav")):
+        w = model_wer(r, m) or {}
+        return f"WER {pct(w.get('wer'))}, Whisper heard “{(w.get('transcript') or '')[:120]}”", ""
+    return m.get("error") or m.get("status", "failed"), m.get("trace") or m.get("log_tail") or ""
 
 
-def failure_items(results, trace_chars):
-    """(one-line summary, log tail) for everything that fails the run, plus flagged changes."""
+def failures_section(results, log_chars, only_broken):
     items = []
     for r in results:
-        if not r["failing"]:
-            continue
-        name = f"**{platform_name(r)}**"
+        keys = r["broke"] if only_broken else [k for k, ok in r["outcomes"].items() if ok is not True] or (
+            ["install"] if r["status"] == NO_RESULT else [])
         link = f" · [log]({r['job_url']})" if r.get("job_url") else ""
-        install = r.get("install") or {}
-        if r["status"] == NO_RESULT:
-            items.append((f"{name}: no result — {r['reasons'][0]}{link}", ""))
-            continue
-        if install and not install.get("ok"):
-            items.append((f"{name}: install failed — `{cell(install.get('error', ''))}`{link}",
-                          install.get("log_tail", "")))
-            continue
-        for part, label in (("package", "package checks"), ("asr", "WER transcription")):
-            p = r.get(part) or {}
-            if p.get("status") in ("crash", "timeout"):
-                items.append((f"{name} · {label}: {cell(p.get('error', p['status']))}{link}", p.get("log_tail", "")))
-        for c in (r.get("package") or {}).get("checks", []):
-            if c["status"] != "pass":
-                items.append((f"{name} · {c['name']}: {cell(c.get('error', ''))}{link}", c.get("trace", "")))
-        for m in r.get("models", []):
-            if known_issue(r, m.get("key")):
-                continue
-            bad = [c for c in m.get("checks", []) if c["status"] not in ("pass", "skipped")]
-            w = model_wer(r, m) or {}
-            if m.get("status") != "pass" and not bad:
-                items.append((f"{name} · {m['label']}: {cell(m.get('error', m.get('status')))}{link}",
-                              m.get("trace") or m.get("log_tail") or ""))
-            for c in bad:
-                items.append((f"{name} · {m['label']} · {CHECK_TITLE.get(c['name'], c['name'])}: "
-                              f"{cell(c.get('error', ''))}{link}", c.get("trace", "")))
-            if m.get("status") == "pass" and not wer_ok(r, m.get("wav")):
-                items.append((f"{name} · {m['label']}: WER {pct(w.get('wer'))} — Whisper heard "
-                              f"“{cell((w.get('transcript') or '')[:120])}”{link}", ""))
-    return [(s, t[-trace_chars:]) for s, t in items]
-
-
-def failures_section(results, trace_chars):
-    items = failure_items(results, trace_chars)
+        for key in keys:
+            error, log = log_for(r, key)
+            items.append((f"**{platform_name(r)}** · {test_title(r, key)}: {cell(error)}{link}", log))
+            if key == "install" and not (r.get("install") or {}).get("ok"):
+                break                      # one line is enough when nothing installed
     if not items:
         return ""
     # Each log is a top-level block under its line: nested in a list item, an
-    # unindented log line ends the item and the fence swallows the rest of the
-    # comment. Four backticks so a log containing ``` cannot close it early.
+    # unindented log line ends the item and the fence swallows the rest. Four
+    # backticks so a log containing ``` cannot close it early.
     blocks = []
     for line, log in items:
         blocks.append(f"- ❌ {line}")
-        if log.strip():
-            blocks.append(f"<details><summary>Log</summary>\n\n````\n{log.strip()}\n````\n\n</details>")
-    return "### Failures\n\n" + "\n\n".join(blocks)
+        if log.strip() and log_chars:
+            blocks.append(f"<details><summary>Log</summary>\n\n````\n{log.strip()[-log_chars:]}\n````\n\n</details>")
+    title = "### Broke since the baseline" if only_broken else "### Everything that does not work"
+    return f"{title}\n\n" + "\n\n".join(blocks)
 
 
 def footer(results, ctx):
@@ -503,14 +540,15 @@ def footer(results, ctx):
     about = [f"Sample text ({len(text)} characters, voice {spec.get('voice', '?')}): “{text}”"]
     if asr.get("enabled"):
         about.append(f"WER: `{asr.get('model')}` on the runner; case and punctuation do not count, "
-                     f"KittenTTS == Kitten TTS; flagged above {asr.get('warn_above', 0):.0%}, "
-                     f"fails above {asr.get('fail_above', 0):.0%}.")
+                     f"KittenTTS == Kitten TTS; fails above {asr.get('fail_above', 0):.0%}.")
     limit = spec.get("limits", {}).get("step_minutes")
     if limit:
         about.append(f"Each install, model load, generation, test and transcription is stopped after {limit} min.")
+    about.append("Compared with the latest finished run on the base branch (main), or this branch's previous run "
+                 "when main has none. Only a test that works there and not here fails the run.")
     about.append("What runs is set in `qa/config.toml`.")
     where = f"the [run summary]({ctx['run_url']})" if ctx.get("run_url") else "the run summary"
-    return (f"Every job's numbers — load and generation times, peak RAM, transcripts, audio downloads — are in {where}."
+    return (f"Every job's numbers — load and generation times, peak RAM, transcripts, logs and audio — are in {where}."
             "\n\n<details><summary>About this run</summary>\n\n" + "\n".join(f"- {a}" for a in about) + "\n\n</details>")
 
 
@@ -519,7 +557,7 @@ def footer(results, ctx):
 def details_section(results):
     out = ["### Every job\n"]
     for r in results:
-        if r["status"] == UNSUPPORTED or not r.get("models"):
+        if not r.get("models"):
             continue
         install = r.get("install") or {}
         v = install.get("versions") or {}
@@ -530,7 +568,7 @@ def details_section(results):
         for m in r["models"]:
             extra = m.get("peak_rss_checks_mb") or 0
             if extra > (m.get("peak_rss_mb") or 0) * 1.2:
-                meta.append(f"{m['label']} peaks at {extra / 1024:.1f} GB during its checks")
+                meta.append(f"{m['label']} peaks at {extra / 1024:.1f} GB during its tests")
         if r.get("audio_url"):
             meta.append(f"[audio]({r['audio_url']})")
         if r.get("job_url"):
@@ -549,7 +587,7 @@ def details_section(results):
             for c in m.get("checks", []):
                 extra = {k: v for k, v in c.items() if k not in ("name", "status", "secs", "trace", "error")}
                 checks.append([m["label"], CHECK_TITLE.get(c["name"], c["name"]),
-                               "Passed" if c["status"] == "pass" else "Failed",
+                               {"pass": "Passed", "timeout": "Timed out", "skipped": "Not run"}.get(c["status"], "Failed"),
                                fmt(c.get("secs"), 1), c.get("error") or describe(extra)])
         heard = [[row["label"], pct(row.get("wer")), (row.get("transcript") or row.get("error") or "")[:300]]
                  for row in asr_rows(r) if row.get("wer") != 0]
@@ -577,10 +615,11 @@ def details_section(results):
 def build(results, ctx, slow_minutes):
     short = [headline(results, ctx), platforms_section(results, slow_minutes),
              family_section(results, tts2=False, first=True), family_section(results, tts2=True, first=False)]
-    comment = "\n\n".join(p for p in short + [failures_section(results, 1500), footer(results, ctx)] if p)
+    comment = "\n\n".join(p for p in short + [failures_section(results, 1500, True), footer(results, ctx)] if p)
     if len(comment) > COMMENT_LIMIT:
-        comment = "\n\n".join(p for p in short + [failures_section(results, 0), footer(results, ctx)] if p)
-    full = "\n\n".join(p for p in short + [failures_section(results, 3000), details_section(results)] if p)
+        comment = "\n\n".join(p for p in short + [failures_section(results, 0, True), footer(results, ctx)] if p)
+    full = "\n\n".join(p for p in short + [failures_section(results, 3000, True),
+                                           failures_section(results, 1500, False), details_section(results)] if p)
     return full, comment[:COMMENT_LIMIT]
 
 
@@ -591,6 +630,7 @@ def main():
     ap.add_argument("--plan")
     ap.add_argument("--jobs", help="the run's jobs from the GitHub API, for log links and job times")
     ap.add_argument("--run-started", help="the run's start time (ISO 8601), for its total time")
+    ap.add_argument("--baseline", help="result.json files of the run to compare with, and its about.json")
     ap.add_argument("--gate")
     args = ap.parse_args()
 
@@ -598,8 +638,8 @@ def main():
         with open(args.gate, encoding="utf-8") as f:
             summary = json.load(f)
         for j in summary["jobs"]:
-            if j["failing"]:
-                print(f"FAILED {j['platform']}: {STATUS_LABEL[j['status']]} — {'; '.join(j['reasons'])}")
+            for key in j["broke"]:
+                print(f"BROKE {j['platform']}: {key}")
         sys.exit(1 if summary["failing"] else 0)
 
     plan = {}
@@ -607,27 +647,37 @@ def main():
         with open(args.plan, encoding="utf-8") as f:
             plan = json.load(f)
     results = load_results(args.results_dir, plan)
+    server, repo, run_id = (os.environ.get(k, "") for k in ("GITHUB_SERVER_URL", "GITHUB_REPOSITORY", "GITHUB_RUN_ID"))
+    baseline, about = [], None
+    if args.baseline and os.path.exists(os.path.join(args.baseline, "about.json")):
+        with open(os.path.join(args.baseline, "about.json"), encoding="utf-8") as f:
+            about = json.load(f)
+        about["url"] = f"{server}/{repo}/actions/runs/{about['run_id']}" if server and about.get("run_id") else ""
+        baseline = load_results(args.baseline, {})
+    compare(results, baseline)
+    for r in results:
+        r["compared"] = bool(baseline)
     if args.jobs and os.path.exists(args.jobs):
         with open(args.jobs, encoding="utf-8") as f:
             attach_jobs(results, json.load(f))
-    server, repo, run_id = (os.environ.get(k, "") for k in ("GITHUB_SERVER_URL", "GITHUB_REPOSITORY", "GITHUB_RUN_ID"))
     started = parse_time(args.run_started)
     ctx = {"source": os.environ.get("QA_SOURCE", "checkout") or "checkout",
            "pr": os.environ.get("GITHUB_EVENT_NAME") == "pull_request",
            "sha": os.environ.get("QA_SHA") or os.environ.get("GITHUB_SHA", ""), "run_id": run_id,
            "run_url": f"{server}/{repo}/actions/runs/{run_id}" if run_id else "",
-           "run_secs": (datetime.datetime.now(datetime.timezone.utc) - started).total_seconds() if started else None}
+           "run_secs": (datetime.datetime.now(datetime.timezone.utc) - started).total_seconds() if started else None,
+           "baseline": about if baseline else None}
     full, comment = build(results, ctx, plan.get("report", {}).get("slow_job_minutes", 30))
     os.makedirs(args.out_dir, exist_ok=True)
     with open(os.path.join(args.out_dir, "summary.md"), "w", encoding="utf-8") as f:
         f.write(full)
     with open(os.path.join(args.out_dir, "pr-comment.md"), "w", encoding="utf-8") as f:
         f.write(comment)
-    jobs = [{"platform": platform_name(r), "status": r["status"], "failing": r["failing"],
+    jobs = [{"platform": platform_name(r), "status": r["status"], "broke": r["broke"], "fixed": r["fixed"],
              "reasons": r.get("reasons", [])} for r in results]
     with open(os.path.join(args.out_dir, "summary.json"), "w", encoding="utf-8") as f:
-        json.dump({"failing": sum(j["failing"] for j in jobs), "jobs": jobs}, f, indent=1)
-    print(f"{len(results)} platform jobs, {sum(j['failing'] for j in jobs)} failing; "
+        json.dump({"failing": sum(bool(j["broke"]) for j in jobs), "jobs": jobs}, f, indent=1)
+    print(f"{len(results)} platform jobs, {sum(bool(j['broke']) for j in jobs)} with something broken; "
           f"comment {len(comment)} chars, summary {len(full)} chars")
 
 
