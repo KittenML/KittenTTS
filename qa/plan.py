@@ -23,7 +23,7 @@ KNOWN_CHECKS = {"stream", "speed", "to_file", "expression", "clone", "clone_whis
 TTS2_ONLY = {"expression", "clone", "clone_whisper", "emb4"}
 EVENTS = {"pull_request", "push", "workflow_dispatch"}
 EXPECTS = {"works", "install-fails", "refused"}
-MODEL_KEYS = {"repo", "label", "warm_runs", "checks", "timeout_minutes", "weights"}
+MODEL_KEYS = {"repo", "label", "warm_runs", "checks", "weights"}
 KNOWN_KEYS = {"cpu", "runner", "model", "reason"}
 TARGET_KEYS = {"name", "runner", "pythons", "models", "expect", "gating", "reason",
                "overrides", "text", "timeout_minutes", "voice", "events"}
@@ -76,6 +76,8 @@ def load(path):
         for m, o in t.get("overrides", {}).items():
             for k in set(o) - MODEL_KEYS:
                 errors.append(f"{where}: overrides.{m} has unknown setting {k!r}")
+    for k in set(cfg.get("limits", {})) - {"step_minutes", "job_minutes"}:
+        errors.append(f"limits: unknown setting {k!r}")
     for k in cfg.get("known_issue", []):
         where = f"known_issue {k.get('reason', '?')[:40]!r}"
         for key in set(k) - KNOWN_KEYS:
@@ -112,10 +114,9 @@ def expand(cfg):
             m.setdefault("label", key)
             m.setdefault("warm_runs", 1)
             m.setdefault("checks", [])
-            m.setdefault("timeout_minutes", 20)
             resolved.append(m)
-        timeout = t.get("timeout_minutes") or min(
-            360, 25 + sum(m["timeout_minutes"] for m in resolved))
+        limits = {"step_minutes": 10, "job_minutes": 45, **cfg.get("limits", {})}
+        timeout = t.get("timeout_minutes") or limits["job_minutes"]
         for py in t["pythons"]:
             if only_pythons and py not in only_pythons:
                 continue
@@ -131,6 +132,7 @@ def expand(cfg):
                 "voice": t.get("voice", cfg["sample"]["voice"]),
                 "models": resolved,
                 "asr": cfg.get("asr", {"enabled": False}),
+                "limits": limits,
                 "known_issues": [k for k in cfg.get("known_issue", [])
                                  if k.get("runner", t["runner"]) == t["runner"] and k["model"] in models],
             }

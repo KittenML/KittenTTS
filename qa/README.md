@@ -7,9 +7,12 @@ supported Python version. It runs each model and posts one report to the pull re
 It runs on pull requests and pushes to `main` that touch the package, its dependencies or
 this folder. You can also start it from the Actions tab.
 
-macOS runs every KittenTTS 2 test only on pushes to `main` and manual runs. GitHub's M1
-runner is about 200× slower than realtime for KittenTTS 2, so on a pull request it only
-checks that KittenTTS 2 loads and speaks one line.
+Every load, generation, test and transcription is stopped after `[limits] step_minutes`
+(10 min) and reported as timed out, so no job runs for hours.
+
+On GitHub's 7 GB macOS runner, KittenTTS 2 uses the smaller `emb4` weights, and a failure
+there is listed as a known issue rather than failing the run: the runner is too small and
+too variable (from about 13x to 250x slower than realtime) for KittenTTS 2 to gate a run.
 
 ## What the report shows
 

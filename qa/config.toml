@@ -10,6 +10,10 @@
 text = "Kitten TTS runs fully on your device and creates clear speech quickly. This benchmark compares every model for speed, quality, and consistency."
 voice = "Bruno"
 
+[limits]
+step_minutes = 10   # one install, model load, generation, test or transcription; stopped and reported past this
+job_minutes = 45    # a whole platform job (GitHub cancels it after this); a target can set timeout_minutes
+
 [report]
 slow_job_minutes = 30   # a platform job slower than this is flagged in the report
 
@@ -22,46 +26,41 @@ fail_above = 0.50   # WER above this fails the run (the audio is not the text)
 
 # ── Models ─────────────────────────────────────────────────────────────────────
 # warm_runs: generations after the first one, timed for p50/p95.
+# Every load, generation and test is stopped at [limits] step_minutes.
 # checks: README features to test beyond load + generate. Known checks:
 #   stream, to_file                        (any model)
 #   speed                                  (ONNX models)
 #   expression, clone, clone_whisper, emb4 (KittenTTS 2)
-# timeout_minutes: per model, so a hang is reported instead of eating the job.
 
 [models.nano]
 repo = "KittenML/kitten-tts-nano-0.8"
 label = "Nano (fp32)"
 warm_runs = 3
 checks = ["stream", "speed", "to_file"]
-timeout_minutes = 10
 
 [models.nano-int8]
 repo = "KittenML/kitten-tts-nano-0.8-int8"
 label = "Nano (int8)"
 warm_runs = 3
 checks = []
-timeout_minutes = 10
 
 [models.micro]
 repo = "KittenML/kitten-tts-micro-0.8"
 label = "Micro"
 warm_runs = 3
 checks = []
-timeout_minutes = 10
 
 [models.mini]
 repo = "KittenML/kitten-tts-mini-0.8"
 label = "Mini"
 warm_runs = 3
 checks = []
-timeout_minutes = 10
 
 [models.tts2]
 repo = "KittenML/kitten-tts-2"
 label = "KittenTTS 2"
 warm_runs = 1
 checks = ["to_file", "stream", "expression", "clone", "clone_whisper", "emb4"]
-timeout_minutes = 45
 # weights = "emb4"   # the 506 MiB variant; default is the 947 MiB one
 
 # ── Platforms ──────────────────────────────────────────────────────────────────
@@ -94,34 +93,14 @@ pythons = ["3.10", "3.11", "3.12", "3.13", "3.14"]
 models = ["nano", "nano-int8", "micro", "mini", "tts2"]
 
 [[target]]
+# GitHub's 7 GB M1 runner: KittenTTS 2 uses the smaller weights here, since the default
+# ones push it into swap, and gets more time (see the known issue below).
 name = "macOS Apple Silicon"
 runner = "macos-15"                # Apple M1, 3 vCPU, 7 GB
 pythons = ["3.10", "3.11", "3.12", "3.13", "3.14"]
-models = ["nano", "nano-int8", "micro", "mini"]
-
-[[target]]
-# GitHub's M1 runner runs KittenTTS 2 about 200x slower than realtime, so a pull
-# request only checks that it loads and speaks one short line (about 15 min).
-name = "macOS Apple Silicon · KittenTTS 2"
-runner = "macos-15"
-pythons = ["3.12"]
-models = ["tts2"]
-events = ["pull_request"]
-text = "Kitten TTS runs fully on your device."
-timeout_minutes = 75
-overrides = { tts2 = { weights = "emb4", warm_runs = 0, checks = [], timeout_minutes = 60 } }
-
-[[target]]
-# Pushes to main and manual runs test every KittenTTS 2 feature on macOS too
-# (about 90 min).
-name = "macOS Apple Silicon · KittenTTS 2 (all tests)"
-runner = "macos-15"
-pythons = ["3.12"]
-models = ["tts2"]
-events = ["push", "workflow_dispatch"]
-text = "Kitten TTS runs fully on your device."
-timeout_minutes = 180
-overrides = { tts2 = { warm_runs = 0, timeout_minutes = 160 } }
+models = ["nano", "nano-int8", "micro", "mini", "tts2"]
+timeout_minutes = 90
+overrides = { tts2 = { weights = "emb4", warm_runs = 0 } }
 
 [[target]]
 name = "macOS Intel"
@@ -165,3 +144,9 @@ cpu = "8573C"                      # Intel Xeon Platinum 8573C
 runner = "windows-2025"
 model = "tts2"
 reason = "KittenTTS 2 crashes with an illegal CPU instruction (0xC000001D) while loading on Windows with this CPU; Linux on the same CPU works."
+
+[[known_issue]]
+cpu = "Apple M1"                   # GitHub's macOS runner
+runner = "macos-15"
+model = "tts2"
+reason = "GitHub's 7 GB M1 runner is too small for KittenTTS 2: it runs anywhere from about 13x to 250x slower than realtime there, so a test can pass the step limit."

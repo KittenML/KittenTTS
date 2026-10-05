@@ -265,26 +265,32 @@ class Report(unittest.TestCase):
         md, code, _ = self.run_report([result(asr_rows=rows)])
         self.assertEqual(code, 0)
         self.assertIn("## ✅ All 1 supported platform jobs passed", md)
-        self.assertIn("| Linux x64 | AMD EPYC 7763 |", md)
+        self.assertIn("| Linux x64 | AMD EPYC 7763 | ✅ |", md)
+        self.assertIn("| Test | Linux x64<br>AMD EPYC 7763 |", md)       # one column per platform and CPU
         self.assertIn("| Nano: speaks the sample text | ✅ |", md)
-        self.assertIn("| Linux x64 | 0.10 |", md)            # best warm run 0.4 s for 4 s of audio
+        self.assertIn("| Nano RTF | 0.10 |", md)             # best warm run 0.4 s for 4 s of audio
+        self.assertIn("### KittenTTS 0.8 (ONNX models)", md)
+        self.assertNotIn("### KittenTTS 2", md)               # no KittenTTS 2 in this run
         self.assertNotIn("### Failures", md)
         self.assertIn("The clip transcribes word for word.", self.summary)   # details live in the summary
         self.assertNotIn("### Every job", md)          # per-job details: summary only
 
     def test_tests_table_has_a_row_per_check_and_dash_where_not_run(self):
-        s_full = spec(models=[{"key": "tts2", "label": "KittenTTS 2", "checks": ["stream", "clone"]}])
-        s_quick = spec(id="mac", name="macOS Apple Silicon", runner="macos-15",
-                       models=[{"key": "tts2", "label": "KittenTTS 2", "checks": []}])
+        tts2_spec = {"key": "tts2", "label": "KittenTTS 2", "repo": "KittenML/kitten-tts-2"}
+        s_full = spec(models=[{**tts2_spec, "checks": ["stream", "clone"]}])
+        s_quick = spec(id="mac", name="macOS Apple Silicon", runner="macos-15", models=[{**tts2_spec, "checks": []}])
         tts2 = model("KittenTTS 2", key="tts2", wav="audio/tts2.wav", status="fail", error="failed checks: clone",
                      checks=[{"name": "stream", "status": "pass"}, {"name": "clone", "status": "fail", "error": "boom"}])
-        md, code, _ = self.run_report([result(s_full, models=[tts2]),
-                                       result(s_quick, models=[model("KittenTTS 2", key="tts2", wav="audio/tts2.wav")])])
+        mac = result(s_quick, models=[model("KittenTTS 2", key="tts2", wav="audio/tts2.wav")])
+        mac["env"]["cpu"] = "Apple M1 (Virtual)"
+        md, code, _ = self.run_report([result(s_full, models=[tts2]), mac])
         self.assertEqual(code, 1)
+        self.assertIn("### KittenTTS 2", md)
+        self.assertIn("| Test | Linux x64<br>AMD EPYC 7763 | macOS Apple Silicon<br>Apple M1 (Virtual) |", md)
         self.assertEqual(self.row(md, "KittenTTS 2: streaming (`generate_stream`)"),
                          "| KittenTTS 2: streaming (`generate_stream`) | ✅ | — |")
         self.assertEqual(self.row(md, "KittenTTS 2: voice cloning with a transcript"),
-                         "| KittenTTS 2: voice cloning with a transcript | ❌ py3.12 | — |")
+                         "| KittenTTS 2: voice cloning with a transcript | ❌ | — |")
         self.assertIn("KittenTTS 2 · voice cloning with a transcript: boom", md)
 
     def test_platforms_table_has_a_column_per_python(self):
@@ -326,7 +332,7 @@ class Report(unittest.TestCase):
         rows = [{"wav": "audio/nano.wav", "label": "Nano", "wer": 0.9, "transcript": "something else"}]
         md, code, _ = self.run_report([result(asr_rows=rows)])
         self.assertEqual(code, 1)
-        self.assertIn("| Nano: speaks the sample text | ❌ py3.12 |", md)
+        self.assertIn("| Nano: speaks the sample text | ❌ |", md)
         self.assertIn("Nano: WER 90.0% — Whisper heard “something else”", md)
         self.assertIn("| Nano | Failed (WER) |", self.summary)
 
@@ -334,9 +340,9 @@ class Report(unittest.TestCase):
         s = spec(id="next", name="Linux x64 · next Python", python="3.15", gating=False, reason="pre-release")
         md, code, _ = self.run_report([result(), result(s, ok=False, error="ERROR: no torch for 3.15")])
         self.assertEqual(code, 0)
-        self.assertTrue(self.row(md, "Linux x64").startswith("| Linux x64 | AMD EPYC 7763 | ✅ | ⚠️ |"))
-        self.assertIn("⚠️ failed, but does not fail the run: Linux x64 · next Python · py3.15 (pre-release)", md)
-        self.assertIn("| Install and import | ✅ |", md)     # non-gating install failures stay out of Tests
+        self.assertTrue(self.row(md, "Linux x64").startswith("| Linux x64 | AMD EPYC 7763 | ✅ | ❌ |"))
+        self.assertIn("❌ does not fail the run: Linux x64 · next Python · py3.15 (pre-release)", md)
+        self.assertIn("| Install and import | ✅ |", md)     # a pre-release Python that cannot install stays out of Tests
 
     def test_known_issue_is_reported_but_does_not_fail(self):
         known = [{"cpu": "8573C", "model": "nano", "reason": "illegal instruction on this CPU"}]
@@ -345,9 +351,9 @@ class Report(unittest.TestCase):
         r["env"]["cpu"] = "INTEL(R) XEON(R) PLATINUM 8573C"
         md, code, _ = self.run_report([r])
         self.assertEqual(code, 0)
-        self.assertTrue(self.row(md, "Linux x64").startswith("| Linux x64 | Intel Xeon Platinum 8573C | ⚠️ |"))
-        self.assertIn("| Nano: speaks the sample text | ⚠️ py3.12 |", md)
-        self.assertIn("⚠️ known issue, does not fail the run: Linux x64 · py3.12 on Intel Xeon Platinum 8573C "
+        self.assertTrue(self.row(md, "Linux x64").startswith("| Linux x64 | Intel Xeon Platinum 8573C | ❌ |"))
+        self.assertIn("| Nano: speaks the sample text | ❌ |", md)
+        self.assertIn("❌ known issue (does not fail the run): Linux x64 · py3.12 on Intel Xeon Platinum 8573C "
                       "(illegal instruction on this CPU)", md)
         self.assertNotIn("### Failures", md)
 
@@ -356,6 +362,21 @@ class Report(unittest.TestCase):
         r = result(spec(known_issues=known), models=[model(status="crash", error="boom")])   # AMD EPYC 7763
         md, code, _ = self.run_report([r])
         self.assertEqual(code, 1)
+
+    def test_a_timed_out_step_shows_a_timer_and_skips_the_rest(self):
+        s = spec(models=[{"key": "tts2", "label": "KittenTTS 2", "repo": "KittenML/kitten-tts-2",
+                          "checks": ["stream", "clone"]}])
+        timed = {"key": "tts2", "label": "KittenTTS 2", "status": "timeout", "first_s": 30.0, "audio_s": 3.0,
+                 "warm_s": [], "wav": "audio/tts2.wav", "error": "stream took longer than 10 min",
+                 "checks": [{"name": "stream", "status": "timeout", "error": "took longer than 10 min"},
+                            {"name": "clone", "status": "skipped", "error": "not run: an earlier step timed out"}]}
+        md, code, _ = self.run_report([result(s, models=[timed])])
+        self.assertEqual(code, 1)
+        self.assertIn("| KittenTTS 2: speaks the sample text | ✅ |", md)
+        self.assertIn("| KittenTTS 2: streaming (`generate_stream`) | ⏱️ |", md)
+        self.assertIn("| KittenTTS 2: voice cloning with a transcript | ⏱️ |", md)
+        self.assertIn("streaming (`generate_stream`): took longer than 10 min", md)
+        self.assertNotIn("not run: an earlier step timed out", md)
 
     def test_crashed_transcription_is_shown_with_its_log(self):
         r = result()
@@ -372,9 +393,10 @@ class Report(unittest.TestCase):
                  reason="no torch wheels")
         md, code, _ = self.run_report([result(), result(s, ok=False, error="ERROR: No matching distribution")])
         self.assertEqual(code, 0)
-        self.assertIn("| macOS Intel | AMD EPYC 7763 | ➖ | — |", md)
-        self.assertNotIn("| macOS Intel | 0", md)               # no speed row: nothing ran
-        self.assertIn("➖ not supported, as expected: macOS Intel (no torch wheels)", md)
+        self.assertIn("| macOS Intel | AMD EPYC 7763 | ❌ | — |", md)
+        self.assertIn("| Install and import | ✅ | ❌ |", md)          # its column is all red crosses
+        self.assertIn("| Nano RTF | 0.10 | — |", md)                  # and no speed: nothing ran
+        self.assertIn("❌ not supported, as expected (does not fail the run): macOS Intel (no torch wheels)", md)
 
     def test_comment_stays_under_github_limit(self):
         big = [result(spec(id=f"p{i}", name=f"Platform {i}"),

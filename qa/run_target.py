@@ -16,6 +16,7 @@ import os
 import platform
 import subprocess
 import sys
+import threading
 import time
 import traceback
 
@@ -101,23 +102,25 @@ def peak_rss_mb():
 
 # ── Install ──────────────────────────────────────────────────────────────────────
 
-def install(out):
+def install(out, limit_s):
     source = os.environ.get("QA_SOURCE", "checkout").strip() or "checkout"
     target = os.path.dirname(HERE) if source == "checkout" else source
     subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-U", "pip"],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     t0 = time.time()
-    proc = subprocess.run([sys.executable, "-m", "pip", "install", target],
-                          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                          encoding="utf-8", errors="replace")
-    log = proc.stdout
+    try:
+        proc = subprocess.run([sys.executable, "-m", "pip", "install", target],
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                              encoding="utf-8", errors="replace", timeout=limit_s)
+        log, code = proc.stdout, proc.returncode
+    except subprocess.TimeoutExpired as e:
+        partial = e.stdout.decode("utf-8", "replace") if isinstance(e.stdout, bytes) else (e.stdout or "")
+        log, code = partial + f"\nERROR: pip install took longer than {span(limit_s)}", None
     with open(os.path.join(out, "install.log"), "w", encoding="utf-8") as f:
         f.write(log)
-    refused = proc.returncode != 0 and (
-        "requires a different Python" in log or "Requires-Python" in log)
-    res = {"source": source, "ok": proc.returncode == 0, "refused": refused,
-           "secs": round(time.time() - t0, 1)}
-    if proc.returncode != 0:
+    refused = code != 0 and ("requires a different Python" in log or "Requires-Python" in log)
+    res = {"source": source, "ok": code == 0, "refused": refused, "secs": round(time.time() - t0, 1)}
+    if code != 0:
         lines = log.strip().splitlines()
         errs = [l for l in lines if l.startswith("ERROR")]
         res["error"] = (errs[-1] if errs else lines[-1] if lines else "pip failed")[:300]
@@ -162,7 +165,7 @@ def run_child(kind, arg, spec_path, out, timeout_s):
         with open(part_out, encoding="utf-8") as f:
             return json.load(f)
     if code is None:
-        return {"status": "timeout", "secs": secs, "error": f"timed out after {timeout_s // 60} min",
+        return {"status": "timeout", "secs": secs, "error": f"stopped after {span(timeout_s)}",
                 "log_tail": tail}
     return {"status": "crash", "secs": secs, "error": f"process {exit_reason(code)} before reporting",
             "log_tail": tail}
@@ -192,6 +195,43 @@ def exit_reason(code):
 def write_part(out, kind, arg, data):
     with open(os.path.join(out, "parts", f"{kind}-{arg}.json"), "w", encoding="utf-8") as f:
         json.dump(data, f, indent=1)
+
+
+def step_limit(spec):
+    return int(spec.get("limits", {}).get("step_minutes", 10) * 60)
+
+
+def span(secs):
+    return f"{secs // 60} min" if secs >= 60 else f"{secs} s"
+
+
+class Watchdog:
+    """Ends the process when one step runs past the limit, after saving what finished.
+
+    A step is one model load, generation, test or transcription. Native code can
+    hang without returning, so the only way out is to save the partial result and exit.
+    """
+
+    def __init__(self, limit_s, save):
+        self.limit_s, self.save, self.timer = limit_s, save, None
+
+    def start(self, step):
+        self.stop()
+        self.timer = threading.Timer(self.limit_s, self._fire, args=(step,))
+        self.timer.daemon = True
+        self.timer.start()
+
+    def stop(self):
+        if self.timer:
+            self.timer.cancel()
+            self.timer = None
+
+    def _fire(self, step):
+        try:
+            print(f"TIMEOUT: {step} took longer than {span(self.limit_s)}", flush=True)
+            self.save(step)
+        finally:
+            os._exit(124)
 
 
 class Checks:
@@ -245,8 +285,15 @@ def child_package(spec, out):
         assert "$" not in got and "three" in got.lower(), got
         return {"output": got}
 
-    checks.run("import", imports)
-    checks.run("normalize_text", normalize)
+    def save(step):
+        write_part(out, "package", "all", {"status": "timeout", "checks": checks.rows + [
+            {"name": step, "status": "timeout", "error": f"took longer than {span(step_limit(spec))}"}]})
+
+    dog = Watchdog(step_limit(spec), save)
+    for name, fn in (("import", imports), ("normalize_text", normalize)):
+        dog.start(name)
+        checks.run(name, fn)
+    dog.stop()
     write_part(out, "package", "all", {"checks": checks.rows})
 
 
@@ -262,10 +309,29 @@ def child_model(spec, key, out):
     wav = os.path.join(out, "audio", f"{key}.wav")
     checks = Checks()
 
+    limit = step_limit(spec)
+    pending = list(m_spec.get("checks", []))
+
+    def save(step):
+        # The step that ran out of time, then every test that never got to run.
+        res.update(status="timeout", error=f"{step} took longer than {span(limit)}", timed_out=step)
+        rows = list(checks.rows)
+        for name in pending:
+            if not any(r["name"] == name for r in rows):
+                rows.append({"name": name, "status": "timeout" if name == step else "skipped",
+                             "error": f"took longer than {span(limit)}" if name == step
+                             else "not run: an earlier step timed out"})
+        res["checks"] = rows
+        res["peak_rss_mb"] = res.get("peak_rss_mb") or peak_rss_mb()
+        write_part(out, "model", key, res)
+
+    dog = Watchdog(limit, save)
+    dog.start("load")
     t0 = time.time()
     kwargs = {"weights": m_spec["weights"]} if m_spec.get("weights") else {}
     model = KittenTTS(m_spec["repo"], **kwargs)
     res["load_s"] = round(time.time() - t0, 2)
+    dog.stop()
     sr = getattr(model, "sample_rate", 24000)
     res["sample_rate"] = sr
     res["voices"] = len(model.available_voices)
@@ -273,9 +339,13 @@ def child_model(spec, key, out):
 
     times, audio = [], None
     for i in range(1 + int(m_spec.get("warm_runs", 0))):
+        dog.start("generate" if i == 0 else f"warm run {i}")
         t0 = time.time()
         audio = model.generate(text, voice=voice)
         times.append(time.time() - t0)
+        dog.stop()
+        if i == 0:
+            res["first_s"] = round(times[0], 3)
         res["audio_s"] = check_audio(audio, sr, text)
         print(f"generate #{i + 1}: {times[-1]:.2f}s for {res['audio_s']}s of audio", flush=True)
     sf.write(wav, np.asarray(audio), sr)
@@ -337,7 +407,9 @@ def child_model(spec, key, out):
              "clone": clone, "clone_whisper": clone_whisper, "emb4": emb4}
     wanted = m_spec.get("checks", [])
     for name in [c for c in wanted if c != "emb4"] + [c for c in wanted if c == "emb4"]:   # emb4 drops the model
+        dog.start(name)
         checks.run(name, known[name])
+        dog.stop()
     res["checks"] = checks.rows
     failed = [c["name"] for c in checks.rows if c["status"] != "pass"]
     if failed:
@@ -371,9 +443,17 @@ def child_asr(spec, out):
         write_part(out, "asr", "all", {"status": "skipped", "reason": f"{e}", "rows": []})
         return
     t0 = time.time()
-    pipe = pipeline("automatic-speech-recognition", model=asr["model"], device="cpu")
     rows = []
+
+    def save(step):
+        write_part(out, "asr", "all", {"status": "timeout", "error": f"{step} took longer than {span(step_limit(spec))}",
+                                       "model": asr["model"], "secs": round(time.time() - t0, 1), "rows": rows})
+
+    dog = Watchdog(step_limit(spec), save)
+    dog.start("loading Whisper")
+    pipe = pipeline("automatic-speech-recognition", model=asr["model"], device="cpu")
     for ref in refs:
+        dog.start(f"transcribing {ref['label']}")
         try:
             audio, _ = librosa.load(os.path.join(out, ref["wav"]), sr=16000)
             hyp = pipe(audio)["text"].strip()
@@ -382,6 +462,7 @@ def child_asr(spec, out):
             print(f"{ref['label']}: WER {w:.1%} — {hyp}", flush=True)
         except Exception as e:
             rows.append({**ref, "wer": None, "error": f"{type(e).__name__}: {e}"[:300]})
+    dog.stop()
     write_part(out, "asr", "all", {"status": "done", "model": asr["model"],
                                    "secs": round(time.time() - t0, 1), "rows": rows})
 
@@ -398,15 +479,18 @@ def drive(spec_path, out):
     print(json.dumps(result["env"]), flush=True)
 
     print("Installing...", flush=True)
-    result["install"] = install(out)
+    result["install"] = install(out, step_limit(spec))
     print(json.dumps({k: v for k, v in result["install"].items() if k != "log_tail"}), flush=True)
 
     if result["install"]["ok"]:
-        result["package"] = run_child("package", "all", spec_path, out, 300)
+        limit = step_limit(spec)
+        result["package"] = run_child("package", "all", spec_path, out, 3 * limit)
         result["models"] = []
         refs = []
         for m in spec["models"]:
-            row = run_child("model", m["key"], spec_path, out, int(m["timeout_minutes"] * 60))
+            # Backstop only: the child's watchdog stops a slow step long before this.
+            steps = 3 + int(m.get("warm_runs", 0)) + len(m.get("checks", []))
+            row = run_child("model", m["key"], spec_path, out, steps * limit)
             row.setdefault("key", m["key"])
             row.setdefault("label", m["label"])
             row.setdefault("repo", m["repo"])
@@ -415,7 +499,7 @@ def drive(spec_path, out):
         if spec["asr"].get("enabled") and refs:
             with open(os.path.join(out, "parts", "asr-refs.json"), "w", encoding="utf-8") as f:
                 json.dump(refs, f)
-            result["asr"] = run_child("asr", "all", spec_path, out, 20 * 60)
+            result["asr"] = run_child("asr", "all", spec_path, out, (2 + len(refs)) * limit)
 
     result["secs"] = round(time.time() - t_start, 1)
     status, reasons, failing = classify(result)

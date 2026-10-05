@@ -194,7 +194,7 @@ def wer_ok(r, wav):
     return True
 
 
-MODEL_STATUS = {"pass": "Passed", "fail": "Failed", "crash": "Crashed", "timeout": "Timed out"}
+MODEL_STATUS = {"pass": "Passed", "fail": "Failed", "crash": "Crashed", "timeout": "Timed out", "skipped": "Not run"}
 
 
 def model_status(r, m):
@@ -244,18 +244,14 @@ def known_failures(r):
 
 
 def cell_for(rs):
-    """One table cell for the jobs of one platform on one Python."""
+    """One Platforms cell: does kittenml work for this platform on this Python?"""
     if not rs:
         return ""
     statuses = [r["status"] for r in rs]
-    if any(r["failing"] for r in rs):
-        return "⏱️" if NO_RESULT in statuses and FAILED not in statuses else "❌"
-    if FAILED in statuses or any(known_failures(r) for r in rs):
-        return "⚠️"
-    if CHANGED in statuses:
-        return "🆕"
-    if all(s == UNSUPPORTED for s in statuses):
-        return "➖"
+    if any(s in (FAILED, UNSUPPORTED) for s in statuses) or any(known_failures(r) for r in rs):
+        return "❌"
+    if NO_RESULT in statuses:
+        return "⏱️"
     return "✅"
 
 
@@ -280,6 +276,7 @@ def platforms_section(results, slow_minutes):
                     + [cell_for([r for r in rs if r["spec"]["python"] == py]) for py in pythons] + [took])
     md = "### Platforms\n\n" + table(["Platform", "CPUs"] + [f"py{p}" for p in pythons] + ["Job time"], rows,
                                      ["---", "---"] + [":---:"] * len(pythons) + ["---:"])
+    # Every ❌ is explained here, with whether it fails the run.
     notes = []
     unsupported = {}
     for r in results:
@@ -289,17 +286,20 @@ def platforms_section(results, slow_minutes):
             label = group_name(r) if whole else f"{group_name(r)} py{r['spec']['python']}"
             unsupported.setdefault(r["spec"].get("reason") or "not supported", []).append(label)
     if unsupported:
-        notes.append("➖ not supported, as expected: " + "; ".join(
+        notes.append("❌ not supported, as expected (does not fail the run): " + "; ".join(
             f"{', '.join(names)} ({reason.rstrip('.')})" for reason, names in unsupported.items()))
     soft = [r for r in results if r["status"] == FAILED and not r["failing"]]
     if soft:
-        notes.append("⚠️ failed, but does not fail the run: " + "; ".join(
+        notes.append("❌ does not fail the run: " + "; ".join(
             f"{platform_name(r)} ({(r['spec'].get('reason') or '').rstrip('.')})" for r in soft))
     known = [(r, label, k) for r in results for label, k in known_failures(r)]
     if known:
-        notes.append("⚠️ known issue, does not fail the run: " + "; ".join(
+        notes.append("❌ known issue (does not fail the run): " + "; ".join(
             f"{platform_name(r)} on {short_cpu(r['env'].get('cpu', ''))} ({k['reason'].rstrip('.')})"
             for r, label, k in known))
+    failing = [r for r in results if r["failing"]]
+    if failing:
+        notes.append("❌ fails the run: " + ", ".join(platform_name(r) for r in failing) + " (see Failures)")
     changed = [r for r in results if r["status"] == CHANGED]
     if changed:
         notes.append("🆕 installs now, though `qa/config.toml` expects it not to: "
@@ -309,11 +309,17 @@ def platforms_section(results, slow_minutes):
     return md + ("\n\n" + "  \n".join(notes) if notes else "")
 
 
-def test_rows(results):
-    """(title, model key, check) for every test any job was asked to run, in config order."""
-    rows, seen = [("Install and import", None, None)], set()
+def is_tts2(m):
+    return "kitten-tts-2" in (m.get("repo") or "")
+
+
+def test_rows(results, tts2):
+    """(title, model key, check) for every test of one model family, in config order."""
+    rows, seen = ([] if tts2 else [("Install and import", None, None)]), set()
     for r in results:
         for m in r["spec"].get("models", []):
+            if is_tts2(m) != tts2:
+                continue
             if (m["key"], None) not in seen:
                 seen.add((m["key"], None))
                 rows.append((f"{m['label']}: speaks the sample text", m["key"], None))
@@ -321,24 +327,21 @@ def test_rows(results):
                 if (m["key"], c) not in seen:
                     seen.add((m["key"], c))
                     rows.append((f"{m['label']}: {CHECK_TITLE.get(c, c)}", m["key"], c))
-    # Keep each model's checks under its own generate row.
+    # Keep each model's tests under its own "speaks" row.
     order = {key: i for i, (_, key, _) in enumerate(rows) if key}
-    return [rows[0]] + sorted(rows[1:], key=lambda t: (order[t[1]], t[2] is not None))
+    head = [row for row in rows if row[1] is None]
+    return head + sorted([row for row in rows if row[1]], key=lambda t: (order[t[1]], t[2] is not None))
 
 
 def test_passed(r, key, check):
-    """True/False for one test in one job, None when the job was not asked to run it."""
-    if r["spec"].get("expect", "works") != "works":
-        return None                       # known-unsupported: the Platforms table covers it
+    """True / False / "timeout" for one test in one job, None when the job was not asked to run it."""
     installed = (r.get("install") or {}).get("ok")
+    if not installed:
+        return False                      # nothing works where kittenml does not install
     if key is None:
-        if not installed:
-            return False if r["spec"].get("gating", True) else None
         pkg = r.get("package") or {}
         return pkg.get("status") not in ("crash", "timeout") and all(
             c["status"] == "pass" for c in pkg.get("checks", []))
-    if not installed:
-        return None                       # nothing ran; the install row already says why
     spec_m = next((m for m in r["spec"].get("models", []) if m["key"] == key), None)
     if not spec_m or (check and check not in spec_m.get("checks", [])):
         return None
@@ -346,74 +349,95 @@ def test_passed(r, key, check):
     if not m:
         return False
     if check is None:
-        return m.get("first_s") is not None and wer_ok(r, m.get("wav"))
+        if m.get("first_s") is None:
+            return "timeout" if m.get("status") == "timeout" else False
+        return wer_ok(r, m.get("wav"))
     c = next((c for c in m.get("checks", []) if c["name"] == check), None)
+    if c and c["status"] in ("timeout", "skipped"):
+        return "timeout"
     if not c or c["status"] != "pass":
-        return False
+        return "timeout" if m.get("status") == "timeout" else False
     clone_wav = next((row["wav"] for row in asr_rows(r) if row.get("label", "").endswith("· clone")), None)
     return wer_ok(r, clone_wav) if check == "clone" and clone_wav else True
 
 
-def tests_section(results):
-    groups = {name: rs for name, rs in groups_of(results).items() if any(r.get("models") for r in rs)}
-    if not groups:
+def cpu_columns(results):
+    """[(header, jobs)]: one column per platform and CPU the runners drew.
+
+    Jobs for a Python that pip must refuse, or a pre-release Python that cannot
+    install yet, stay in the Platforms table only.
+    """
+    cols = {}
+    for r in results:
+        spec = r["spec"]
+        if spec.get("expect") == "refused":
+            continue
+        if spec.get("expect", "works") == "works" and not spec.get("gating", True) \
+                and not (r.get("install") or {}).get("ok"):
+            continue
+        cpu = short_cpu((r.get("env") or {}).get("cpu") or "") or spec["runner"]
+        cols.setdefault((group_name(r), cpu), []).append(r)
+    return [(f"{group}<br>{cpu}", rs) for (group, cpu), rs in cols.items()]
+
+
+def test_cell(rs, key, check):
+    many = len({r["spec"]["python"] for r in rs}) > 1
+    outcomes = [(r, test_passed(r, key, check)) for r in rs if r["status"] != NO_RESULT]
+    outcomes = [(r, ok) for r, ok in outcomes if ok is not None]
+    broken = sorted({r["spec"]["python"] for r, ok in outcomes if ok is False}, key=py_key)
+    slow = sorted({r["spec"]["python"] for r, ok in outcomes if ok == "timeout"}, key=py_key)
+    pys = lambda ps: (" " + ", ".join(f"py{p}" for p in ps)) if many else ""   # noqa: E731
+    if broken:
+        return "❌" + pys(broken)
+    if slow:
+        return "⏱️" + pys(slow)
+    if any(r["status"] == NO_RESULT for r in rs) and (key is None or any(
+            m["key"] == key for r in rs for m in r["spec"].get("models", []))):
+        return "⏱️"
+    return "✅" if outcomes else "—"
+
+
+def speed_cell(rs, label):
+    rtfs = [model_stats(m)["rtf"] for r in rs for m in r.get("models", []) if m["label"] == label and model_stats(m)["rtf"]]
+    if not rtfs:
+        return "—"
+    v = statistics.median(rtfs)
+    text = f"{v:.2f}" if v < 10 else f"{v:.0f}"
+    return f"{SLOW} {text}" if v > 1 else text
+
+
+def family_section(results, tts2, first):
+    cols = cpu_columns(results)
+    rows = [[title] + [test_cell(rs, key, check) for _, rs in cols] for title, key, check in test_rows(results, tts2)]
+    if not cols or (tts2 and not rows):
         return ""
-    rows = []
-    for title, key, check in test_rows(results):
-        row = [title]
-        for rs in groups.values():
-            outcomes = [(r, test_passed(r, key, check)) for r in rs if r["status"] != NO_RESULT]
-            outcomes = [(r, ok) for r, ok in outcomes if ok is not None]
-            missing = [r for r in rs if r["status"] == NO_RESULT and (
-                key is None or any(m["key"] == key for m in r["spec"].get("models", [])))]
-            is_known = lambda r: key is not None and known_issue(r, key) is not None   # noqa: E731
-            hard = sorted({r["spec"]["python"] for r, ok in outcomes
-                           if not ok and r["spec"].get("gating", True) and not is_known(r)}, key=py_key)
-            soft = sorted({r["spec"]["python"] for r, ok in outcomes
-                           if not ok and (not r["spec"].get("gating", True) or is_known(r))}, key=py_key)
-            if hard:
-                row.append("❌ " + ", ".join(f"py{p}" for p in hard))
-            elif missing:
-                row.append("⏱️")
-            elif soft:
-                row.append("⚠️ " + ", ".join(f"py{p}" for p in soft))
-            elif outcomes:
-                row.append("✅")
-            else:
-                row.append("—")
-        rows.append(row)
-    return ("### Tests\n\nThe README's examples, run against this code on every Python version listed above. "
-            "A Whisper transcript must match the text (WER ≤ "
-            f"{results[0]['spec'].get('asr', {}).get('fail_above', 0):.0%}). — = not run on that platform in this run "
-            "(`qa/config.toml` says where each test runs).\n\n"
-            + table(["Test"] + list(groups), rows, ["---"] + [":---:"] * len(groups)))
-
-
-def speed_section(results):
-    groups = {name: rs for name, rs in groups_of(results).items() if any(r.get("models") for r in rs)}
     labels = []
     for r in results:
-        for m in r.get("models", []):
-            if m["label"] not in labels:
+        for m in r["spec"].get("models", []):
+            if is_tts2(m) == tts2 and m["label"] not in labels:
                 labels.append(m["label"])
-    if not labels:
-        return ""
-    rows = []
-    for name, rs in groups.items():
-        row = [name]
-        for label in labels:
-            rtfs = [model_stats(m)["rtf"] for r in rs for m in r.get("models", [])
-                    if m["label"] == label and model_stats(m)["rtf"]]
-            if not rtfs:
-                row.append("—")
-                continue
-            v = statistics.median(rtfs)
-            text = f"{v:.2f}" if v < 10 else f"{v:.0f}"
-            row.append(f"{SLOW} {text}" if v > 1 else text)
-        rows.append(row)
-    return ("### Speed\n\nReal-time factor: generation time ÷ audio length, best warm run, median across Python "
-            f"versions. Below 1 is faster than realtime; {SLOW} is slower.\n\n"
-            + table(["Platform"] + labels, rows, ["---"] + ["---:"] * len(labels)))
+    speed = [[f"{label} RTF"] + [speed_cell(rs, label) for _, rs in cols] for label in labels]
+    if tts2:
+        peaks = []
+        for _, rs in cols:
+            mb = [m["peak_rss_mb"] for r in rs for m in r.get("models", []) if is_tts2_label(m, labels) and m.get("peak_rss_mb")]
+            peaks.append(f"{max(mb) / 1024:.1f} GB" if mb else "—")
+        speed.append(["Peak RAM"] + peaks)
+    headers = [h for h, _ in cols]
+    title = "### KittenTTS 2" if tts2 else "### KittenTTS 0.8 (ONNX models)"
+    intro = ""
+    if first:
+        fail_above = results[0]["spec"].get("asr", {}).get("fail_above", 0)
+        intro = ("The README's examples on every Python version, one column per platform and CPU the runners "
+                 f"drew. ✅ works · ❌ does not · ⏱️ took too long · — not run there. Whisper must hear the text "
+                 f"(WER ≤ {fail_above:.0%}). RTF is generation time ÷ audio length, best warm run, median across "
+                 f"Python versions; {SLOW} is slower than realtime.\n\n")
+    return (f"{title}\n\n{intro}" + table(["Test"] + headers, rows, ["---"] + [":---:"] * len(headers))
+            + "\n\n" + table(["Speed"] + headers, speed, ["---"] + ["---:"] * len(headers)))
+
+
+def is_tts2_label(m, labels):
+    return m.get("label") in labels
 
 
 def failure_items(results, trace_chars):
@@ -442,7 +466,7 @@ def failure_items(results, trace_chars):
         for m in r.get("models", []):
             if known_issue(r, m.get("key")):
                 continue
-            bad = [c for c in m.get("checks", []) if c["status"] != "pass"]
+            bad = [c for c in m.get("checks", []) if c["status"] not in ("pass", "skipped")]
             w = model_wer(r, m) or {}
             if m.get("status") != "pass" and not bad:
                 items.append((f"{name} · {m['label']}: {cell(m.get('error', m.get('status')))}{link}",
@@ -481,6 +505,9 @@ def footer(results, ctx):
         about.append(f"WER: `{asr.get('model')}` on the runner; case and punctuation do not count, "
                      f"KittenTTS == Kitten TTS; flagged above {asr.get('warn_above', 0):.0%}, "
                      f"fails above {asr.get('fail_above', 0):.0%}.")
+    limit = spec.get("limits", {}).get("step_minutes")
+    if limit:
+        about.append(f"Each install, model load, generation, test and transcription is stopped after {limit} min.")
     about.append("What runs is set in `qa/config.toml`.")
     where = f"the [run summary]({ctx['run_url']})" if ctx.get("run_url") else "the run summary"
     return (f"Every job's numbers — load and generation times, peak RAM, transcripts, audio downloads — are in {where}."
@@ -548,8 +575,8 @@ def details_section(results):
 
 
 def build(results, ctx, slow_minutes):
-    short = [headline(results, ctx), platforms_section(results, slow_minutes), tests_section(results),
-             speed_section(results)]
+    short = [headline(results, ctx), platforms_section(results, slow_minutes),
+             family_section(results, tts2=False, first=True), family_section(results, tts2=True, first=False)]
     comment = "\n\n".join(p for p in short + [failures_section(results, 1500), footer(results, ctx)] if p)
     if len(comment) > COMMENT_LIMIT:
         comment = "\n\n".join(p for p in short + [failures_section(results, 0), footer(results, ctx)] if p)
