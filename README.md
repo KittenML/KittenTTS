@@ -32,6 +32,7 @@ The library also ships the original [**lightweight legacy models**](docs/onnx-mo
 - [Voice cloning](#voice-cloning)
 - [Expression controls](#expression-controls)
 - [Running on CPU](#running-on-cpu)
+- [Running with vLLM](#running-with-vllm)
 - [Long text and streaming](#long-text-and-streaming)
 - [Documentation](#documentation)
 - [System Requirements](#system-requirements)
@@ -184,6 +185,32 @@ covered.
 KittenTTS 2 runs on CPU out of the box — `device` is auto-detected — but the fastest way is
 [kitten-tts-2-cpp](https://github.com/KittenML/kitten-tts-2-cpp), our llama.cpp fork. It reads
 the GGUF weights in the model repository's `cpp/` directory.
+
+## Running with vLLM
+
+For GPU inference with vLLM on Linux and an NVIDIA CUDA GPU, install the optional backend:
+
+```bash
+pip install "kittenml[vllm]"
+```
+
+Select `backend="vllm"`:
+
+```python
+from kittenml import KittenTTS
+
+def main():
+    m = KittenTTS("KittenML/kitten-tts-2", backend="vllm")
+    m.generate_to_file("Hello there.", "output.wav", voice="Bruno")
+    print("Saved output.wav")
+
+if __name__ == "__main__":
+    main()
+```
+
+Keep the main guard when running a script: vLLM starts a worker process. The same
+voices, decoders, weight choices and generation arguments apply. See the
+[vLLM guide](docs/vllm.md) for memory settings and benchmarks.
 
 
 ## Long text and streaming

@@ -87,7 +87,7 @@ def unpack_tl2(buf, out_features, in_features):
 
 
 def _hadamard(n):
-    matrix = torch.tensor([[1.0]])
+    matrix = torch.tensor([[1.0]], dtype=torch.float32)
     for _ in range(int(round(math.log2(n)))):
         matrix = torch.cat([torch.cat([matrix, matrix], 1),
                             torch.cat([matrix, -matrix], 1)], 0)

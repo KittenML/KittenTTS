@@ -63,24 +63,34 @@ class KittenTTS(KittenTTSOnnx):
     """
 
     def __new__(cls, model_name="KittenML/kitten-tts-nano-0.8", cache_dir=None,
-                backend=None, device=None, hf_token=None, decoder=None, weights=None):
+                backend=None, device=None, hf_token=None, decoder=None, weights=None,
+                vllm_options=None):
         local_dir, repo_id, config = resolve_repo(model_name, cache_dir)
         model_type = config.get("type")
 
         if model_type == KITTEN2_TYPE:
             from .kittentts2 import KittenTTS2
+            if backend == "vllm":
+                from .kittentts2.vllm.backend import validate_environment
+                validate_environment(device)
+            elif vllm_options is not None:
+                raise ValueError("vllm_options requires backend='vllm'")
             if local_dir is None:
                 local_dir = snapshot_download(
                     repo_id=repo_id, cache_dir=cache_dir, token=hf_token,
                     allow_patterns=_kitten2_files(config, decoder, weights))
             # Returning a different class means __init__ below is never called.
             return KittenTTS2(local_dir, config, device=device, cache_dir=cache_dir,
-                              hf_token=hf_token, decoder=decoder, weights=weights)
+                              hf_token=hf_token, decoder=decoder, weights=weights,
+                              backend=backend, vllm_options=vllm_options)
 
         if model_type not in ONNX_TYPES:
             raise ValueError(
                 f"Unsupported model type {model_type!r}; expected one of "
                 f"{[*ONNX_TYPES, KITTEN2_TYPE]}")
+
+        if backend == "vllm" or vllm_options is not None:
+            raise ValueError("the vLLM backend requires a KittenTTS 2 model")
 
         instance = super().__new__(cls)
         # Hand the already-resolved repository to KittenTTSOnnx.__init__ rather

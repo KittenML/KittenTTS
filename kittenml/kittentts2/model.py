@@ -92,7 +92,7 @@ class KittenTTS2:
     """
 
     def __init__(self, repo_dir, config, device=None, cache_dir=None, hf_token=None,
-                 decoder=None, weights=None):
+                 decoder=None, weights=None, backend=None, vllm_options=None):
         self.repo_dir = pathlib.Path(repo_dir)
         self.config = config
         self.cache_dir = cache_dir
@@ -112,7 +112,12 @@ class KittenTTS2:
         self.chunk_min_chars = generation.get("chunk_min_chars", text_utils.CHUNK_MIN_CHARS)
 
         self.weights = weights or config.get("default_weights", "packed")
-        self._load_language_model()
+        self.backend = "vllm" if backend == "vllm" else "torch"
+        if self.backend == "vllm":
+            from .vllm.backend import VLLMBackend
+            self.model = VLLMBackend(self, vllm_options)
+        else:
+            self._load_language_model()
         self.decoders = config.get("decoders", {})
         self.decoder = decoder or config.get("default_decoder", "default")
         self.codec = S3Codec(device=self.device, cache_dir=cache_dir,
@@ -233,26 +238,15 @@ class KittenTTS2:
         return model
 
     def _weights_path(self, name):
-        """Where a named weight variant lives, or None to read the plain files."""
-        if name == "full":
-            return None
-        key = {"packed": "lm_packed", "emb4": "lm_emb4"}.get(name)
-        if key is None:
-            raise ValueError(f"Unknown weights {name!r}. "
-                             f"Choose from: {self.available_weights}")
-        declared = self.config.get(key)
-        if not declared:
-            raise ValueError(f"this repository declares no {name!r} weights")
-        return self.repo_dir / declared
+        """Where a named weight variant lives, or None for the plain files."""
+        from .weights import weights_path
+        return weights_path(self.repo_dir, self.config, name)
 
     @property
     def available_weights(self):
         """Weight variants this repository offers."""
-        names = ["full"]
-        for name, key in (("packed", "lm_packed"), ("emb4", "lm_emb4")):
-            if self.config.get(key):
-                names.append(name)
-        return names
+        from .weights import available_weights
+        return available_weights(self.config)
 
     def _load_lm_weights(self, lm_dir):
         """The language model's weights, in whichever packing was selected.
@@ -262,30 +256,8 @@ class KittenTTS2:
         "emb4" is smaller again but quantises the embedding, which is lossy —
         see tl2_emb4.py. "full" reads the plain bf16 files.
         """
-        from safetensors import safe_open
-        from safetensors.torch import load_file
-
-        path = self._weights_path(self.weights)
-        if path is not None:
-            if not path.is_file():
-                raise FileNotFoundError(f"{self.weights!r} weights not found: {path}")
-            if self.weights == "emb4":
-                from .tl2_emb4 import load_state_dict
-                return load_state_dict(path)
-            with safe_open(str(path), framework="pt") as handle:
-                metadata = handle.metadata() or {}
-                tensors = {k: handle.get_tensor(k) for k in handle.keys()}
-            from .ternary import unpack_state_dict
-            return unpack_state_dict(tensors, metadata)
-
-        state = {}
-        for shard in sorted(pathlib.Path(lm_dir).glob("model*.safetensors")):
-            if "-" in shard.stem:                 # a packed variant, not a plain shard
-                continue
-            state.update(load_file(str(shard)))
-        if not state:
-            raise FileNotFoundError(f"no plain model weights in {lm_dir}")
-        return state
+        from .weights import load_lm_weights
+        return load_lm_weights(self.repo_dir, self.config, self.weights, lm_dir=lm_dir)
 
     def _load_voices(self):
         voices_path = self.repo_dir / self.config.get("voices", "voices/voices.json")
@@ -384,6 +356,10 @@ class KittenTTS2:
             self.tokenizer.encode(chunk, add_special_tokens=False),
             reference_prefix=reference["prefix"] if use_reference_prompt else None,
             emotion_ids=emotion_ids)
+
+        if self.backend == "vllm":
+            return self.model.generate_tokens(prompt, reference["embedding"], settings,
+                                              max_new_tokens, advanced)
 
         processors = build_logits_processors(
             self.token_map,

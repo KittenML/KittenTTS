@@ -24,19 +24,11 @@ from .speaker_embedding import SAMPLE_RATE
 WHISPER_MODEL = "openai/whisper-large-v3"
 
 
-def attach_speaker_head(model, checkpoint_dir, device, dtype,
-                        spk_dim=SPEAKER_EMBEDDING_DIM, state=None):
-    """Restore `model.spk_proj` from the checkpoint and wire up its prefill hook.
-
-    Without this the model runs unconditioned — it still produces speech, but the
-    voice is arbitrary, so a missing head is an error rather than a warning.
-
-    `state` lets a caller pass weights it has already read, which avoids loading
-    several gigabytes twice just to find four tensors.
-    """
-    hidden = int(model.config.hidden_size)
-    model.spk_proj = nn.Sequential(nn.Linear(spk_dim, hidden, bias=True),
-                                   nn.LayerNorm(hidden)).to(dtype=dtype)
+def load_speaker_head(hidden, checkpoint_dir, device, dtype,
+                      spk_dim=SPEAKER_EMBEDDING_DIM, state=None):
+    """Restore the trained projection without constructing a language model."""
+    head = nn.Sequential(nn.Linear(spk_dim, int(hidden), bias=True),
+                         nn.LayerNorm(int(hidden))).to(dtype=dtype)
 
     if state is None:
         state = {}
@@ -48,8 +40,19 @@ def attach_speaker_head(model, checkpoint_dir, device, dtype,
         raise ValueError(
             f"no spk_proj.* weights in {checkpoint_dir} — this checkpoint cannot be "
             "speaker-conditioned, and generating from it would ignore the voice")
-    model.spk_proj.load_state_dict(head_state, strict=True)
-    model.spk_proj.to(device=device, dtype=dtype).eval()
+    head.load_state_dict(head_state, strict=True)
+    return head.to(device=device, dtype=dtype).eval()
+
+
+def attach_speaker_head(model, checkpoint_dir, device, dtype,
+                        spk_dim=SPEAKER_EMBEDDING_DIM, state=None):
+    """Restore `model.spk_proj` and inject it at prefill.
+
+    A missing head is an error: speech would otherwise ignore the chosen voice.
+    Pass an already-loaded `state` to avoid reading the checkpoint twice.
+    """
+    model.spk_proj = load_speaker_head(model.config.hidden_size, checkpoint_dir,
+                                      device, dtype, spk_dim=spk_dim, state=state)
 
     def _inject_speaker(module, args, kwargs):
         embedding = kwargs.pop("speaker_embedding", None)
