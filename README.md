@@ -89,20 +89,34 @@ Try Kitten TTS directly in your browser on [KittenML Platform](https://platform.
 
 ### Prerequisites
 
-- Python 3.9 or later
+- Python 3.10 or later
 - A CUDA GPU with roughly 8 GB free, or a CPU with about 6 GB of RAM
-- About 1 GB of disk space for the model, or 506 MiB with the smaller weights
+- About 1 GB for the default language-model weights, or 0.5 GB with smaller weights, plus a shared 1.1 GB audio decoder. Python packages require additional space.
 
 ### Installation
 
+Create a virtual environment and install the package:
+
+**Linux**
+
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install kittenml
 ```
 
-That is the whole install. KittenTTS 2 is the default model, voice cloning is included, and no
-Hugging Face login is needed -- every weight the model uses ships in its own repository. It also
-pulls the small ONNX runtime, so the [lightweight models](docs/onnx-models.md) work from the
-same install.
+**Windows (PowerShell, 64-bit Python 3.12)**
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install kittenml
+$env:PYTHONUTF8 = '1'
+```
+
+On Windows, use `.\.venv\Scripts\python.exe` to run the examples below. Set `PYTHONUTF8=1` before starting Python in each new PowerShell session; kittenml 0.9.3 needs it to read the UTF-8 voice metadata.
+
+That is the whole install. Voice cloning and the [lightweight models](docs/onnx-models.md)
+are included, and no Hugging Face login is needed.
 
 ### Basic usage
 
@@ -115,7 +129,10 @@ m = KittenTTS("KittenML/kitten-tts-2")
 audio = m.generate("One day, a little girl named Lily found a needle in her room.",
                    voice="Bruno")
 sf.write("output.wav", audio, m.sample_rate)
+print("Saved output.wav")
 ```
+
+Save this as `example.py`, then run `python example.py` on Linux or `.\.venv\Scripts\python.exe example.py` on Windows. Reuse the same virtual environment for the remaining examples.
 
 `m.available_voices` lists all 47 built-in voices, described in
 [voices and expression](docs/voices-and-expression.md). Bella, Jasper, Luna, Bruno, Rosie, Hugo,
@@ -233,7 +250,7 @@ Two consequences worth knowing:
 **KittenTTS 2**
 
 - **Operating system:** Linux, Windows or Mac
-- **Python:** 3.9 or later
+- **Python:** 3.10 or later
 
 
 A virtual environment (conda, venv, or similar) is recommended to avoid dependency conflicts.
