@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="kittenml",
-    version="0.9.3",
+    version="0.9.4",
     author="KittenML",
     author_email="",
     description="Text-to-speech with voice cloning and expression control, plus ultra-lightweight models that run on CPU",

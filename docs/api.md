@@ -14,6 +14,8 @@ Loads whichever model family the repository's `config.json` declares.
 | `hf_token` | `str` | `None` | Token, only for downloading a private model repository |
 | `decoder` | `str` | repo default | Which decoder to load; see [decoders.md](decoders.md) |
 | `weights` | `str` | `"packed"` | Which weight packing to load: `"packed"` (lossless), `"emb4"` (smaller, quantised embedding), `"full"` (bf16) |
+| `backend` | `str` | `None` | Default PyTorch inference, or `"vllm"` for optional NVIDIA GPU inference on Linux |
+| `vllm_options` | `dict` | `None` | Engine memory and context settings; see [vLLM](vllm.md) |
 
 # `model.generate(text, voice=None, reference=None, ...)`
 

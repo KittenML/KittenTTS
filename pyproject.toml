@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kittenml"
-version = "0.9.3"
+version = "0.9.4"
 description = "Text-to-speech with voice cloning and expression control, plus ultra-lightweight models that run on CPU"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -51,6 +51,12 @@ dependencies = [
 Homepage = "https://github.com/KittenML/KittenTTS"
 Repository = "https://github.com/KittenML/KittenTTS"
 Issues = "https://github.com/KittenML/KittenTTS/issues"
+
+[project.optional-dependencies]
+vllm = ["vllm==0.31.0; sys_platform == 'linux'"]
+
+[project.entry-points."vllm.general_plugins"]
+kittenml = "kittenml.kittentts2.vllm.loader:register"
 
 [tool.setuptools.packages.find]
 where = ["."]
