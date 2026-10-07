@@ -481,6 +481,11 @@ def drive(spec_path, out):
                 result["tests"].append(dict(t, status="skipped", error="not run: the job ran out of time"))
                 continue
             row = run_test(t["key"], spec, spec_path, out, min(limit, left))
+            if row["status"] == "timeout" and left < limit:
+                # Cut short by the job's deadline, not by the step limit: it says nothing either way.
+                row.update(status="skipped", error=f"stopped after {span(left)}: the job was near its time limit")
+                result["tests"].append(dict(t, **row))
+                continue
             left = deadline - time.time() - reserve
             if row["status"] in ("crash", "timeout") and left >= 60:
                 # Run a crash or a stall once more, in a fresh process. One that passes then is flaky.
