@@ -316,6 +316,13 @@ class Report(unittest.TestCase):
         self.assertIn("| Linux x64 | AMD EPYC 7763 | ✅ new |", md)
         self.assertIn("**Works now**, did not in the baseline: Linux x64 · 3.12: Install", md)
 
+    def test_a_baseline_in_the_old_format_is_not_compared(self):
+        old = result()
+        del old["tests"]
+        md, code = self.run_report([result(tests=[test(status="fail")])], baseline=[old])
+        self.assertEqual(code, 0)
+        self.assertIn("✅ **Report only**", md)
+
     def test_missing_job_that_worked_on_main_fails(self):
         md, code = self.run_report([], baseline=[result()], planned=[spec()])
         self.assertEqual(code, 1)

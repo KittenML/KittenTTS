@@ -657,6 +657,9 @@ def main():
             about = json.load(f)
         about["url"] = f"{server}/{repo}/actions/runs/{about['run_id']}" if server and about.get("run_id") else ""
         baseline = load_results(args.baseline, {})
+        if not any("tests" in b for b in baseline):
+            print("The baseline run predates per-test results; nothing to compare with.")
+            baseline = []
     limit = (results[0]["spec"].get("limits", {}).get("step_minutes", 10) if results else 10) * 60
     compare(results, baseline, limit)
     if args.jobs and os.path.exists(args.jobs):
