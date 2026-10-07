@@ -349,6 +349,8 @@ def status_cell(r):
     else:
         keys = planned_keys(r)
         text = f"❌ {sum(r['outcomes'].get(k) == 'pass' for k in keys)}/{len(keys)}"
+        skipped = sum(r["outcomes"].get(k) == "skipped" for k in keys)
+        text += f", {skipped} not run" if skipped else ""
     if r["broke"]:
         text += " new"
     elif r["fixed"] and r["status"] == PASSED:
@@ -571,6 +573,10 @@ def notes_section(results, slow_minutes):
         excused += [f"{where(r)}: {tests_text(r, keys)} {reason}" for reason, keys in reasons.items()]
     if excused:
         notes.append("**Not counted as broken**: " + " · ".join(excused))
+    unrun = [f"{where(r)}: {tests_text(r, [k for k, v in r['outcomes'].items() if v == 'skipped'])}"
+             for r in results if "skipped" in r["outcomes"].values()]
+    if unrun:
+        notes.append("**Not run**, the job was near its time limit: " + " · ".join(unrun))
     lost = [where(r) for r in results if r["status"] == NO_RESULT]
     if lost:
         notes.append(f"**No result**, GitHub did not run the job to the end (no runner, or cancelled), so it says "

@@ -360,6 +360,8 @@ class Report(unittest.TestCase):
         md, code = self.run_report([now], baseline=[result(s, tests=tts2_tests())])
         self.assertEqual(code, 0)
         self.assertIn("| Linux x64<br>AMD EPYC 7763 | ✅ | ✅ | — |", md)
+        self.assertIn("❌ 3/4, 1 not run", md)
+        self.assertIn("**Not run**, the job was near its time limit: Linux x64 · 3.12: KittenTTS 2 Clone", md)
 
     def test_python_versions_in_cells(self):
         jobs = [result(spec(python=p), tests=[test(status="fail" if p in ("3.10", "3.11", "3.13") else "pass")])
