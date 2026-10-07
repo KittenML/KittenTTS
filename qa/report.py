@@ -405,39 +405,21 @@ def family_section(results, tts2):
             header = TESTS[test_name(key)][0]
             columns.append((header if sum(test_name(key) in x.get("checks", []) for x in models) == 1
                             else f"{m['label']} {header}", key))
-    devices = {}
-    for r in results:
-        if ran_tests(r):
-            devices.setdefault((r["spec"]["name"], cpu_of(r) or r["spec"]["runner"]), []).append(r)
-    if not devices:
-        return ""
     keys = {key for _, key in columns}
-    rows, changed = [], {}
-    for (name, cpu), rs in devices.items():
-        label = name
-        settings = {k: v for r in rs for m in models for k, v in r["spec"].get("overrides", {}).get(m["key"], {}).items()}
-        if settings:
-            label += " ¹"
-            changed[name] = settings
-        cells = [test_cell(rs, key) for _, key in columns]
-        tested = [row for r in rs for k, row in r["rows"].items() if k in keys]
-        wers = [row["wer"] for row in tested if row.get("wer") is not None]
-        wer = pct(statistics.mean(wers)) if wers else "—"
-        rtfs = {}
-        for m in models:
-            vals = [r["rows"][m["key"]]["rtf"] for r in rs
-                    if r["outcomes"].get(m["key"]) == "pass" and r["rows"][m["key"]].get("rtf")]
-            if vals:
-                rtfs[m["label"]] = statistics.median(vals)
-        if tts2:
-            # The Speak test's: what generate() needs. Cloning without a transcript loads Whisper on top.
-            peaks = [r["rows"][m["key"]]["peak_rss_mb"] for r in rs for m in models
-                     if r["outcomes"].get(m["key"]) == "pass" and r["rows"][m["key"]].get("peak_rss_mb")]
-            extra = [rtf_text(next(iter(rtfs.values()), None)), f"{max(peaks) / 1024:.1f} GB" if peaks else "—", wer]
-        else:
-            extra = [rtf_text(statistics.mean(rtfs.values())) if rtfs else "—", wer]
-        rows.append([f"{label}<br>{cpu}"] + cells + extra)
+    rows, changed, nothing = [], {}, []
     metrics = ["RTF", "Peak RAM", "WER"] if tts2 else ["RTF", "WER"]
+    for name, jobs in platforms(results).items():
+        devices = {}
+        for r in jobs:
+            if ran_tests(r):
+                devices.setdefault(cpu_of(r) or r["spec"]["runner"], []).append(r)
+        if not devices:
+            # kittenml does not install here on any Python, so every test is ❌.
+            nothing.append(name)
+            rows.append([f"{name}<br>{cpus_text(jobs) or jobs[0]['spec']['runner']}"] + ["❌"] * len(columns)
+                        + ["—"] * len(metrics))
+        for cpu, rs in devices.items():
+            rows.append(device_row(name, cpu, rs, models, columns, keys, tts2, changed))
     headers = ["Platform"] + [h for h, _ in columns] + metrics
     align = ["---"] + [":---:"] * len(columns) + ["---:"] * len(metrics)
     title = "## KittenTTS 2" if tts2 else "## KittenTTS 0.8 (ONNX)"
@@ -447,15 +429,49 @@ def family_section(results, tts2):
     users = [m["label"] for m in models if m.get("checks")]
     if len(models) > 1 and len(users) == 1:
         tests = f"with {users[0]}: {tests}"
-    notes = [f"{speak}; {tests}." if tests else f"{speak}.",
-             f"RTF: generation time ÷ audio length, best run, median over Python versions"
-             + ("" if tts2 else ", averaged over the models") + f"; {SLOW} slower than realtime."]
+    notes = []
+    if nothing:
+        notes.append(f"**{', '.join(nothing)}**: ❌ on every test, because kittenml does not install there on any "
+                     "Python version (why: What Does Not Work above).")
+    if any(not ran_tests(r) for r in results if r["spec"]["name"] not in nothing):
+        notes.append("The other rows cover the Python versions where kittenml installs; Platform Status above "
+                     "shows the versions where it does not.")
+    notes += [f"{speak}; {tests}." if tests else f"{speak}.",
+              f"RTF: generation time ÷ audio length, best run, median over Python versions"
+              + ("" if tts2 else ", averaged over the models") + f"; {SLOW} slower than realtime."]
     if tts2:
         notes.append("Peak RAM: the Speak test's; the run summary has every test's.")
     for name, settings in changed.items():
         notes.append(f"¹ {name} runs these with {', '.join(f'`{k}={v!r}`' for k, v in settings.items())} "
                      "(`overrides` in qa/config.toml).")
     return f"{title}\n\n" + table(headers, rows, align) + "\n\n" + "\n".join(f"- {n}" for n in notes)
+
+
+def device_row(name, cpu, rs, models, columns, keys, tts2, changed):
+    """One platform and CPU: a cell per test, then RTF, peak RAM (KittenTTS 2) and WER."""
+    label = name
+    settings = {k: v for r in rs for m in models for k, v in r["spec"].get("overrides", {}).get(m["key"], {}).items()}
+    if settings:
+        label += " ¹"
+        changed[name] = settings
+    cells = [test_cell(rs, key) for _, key in columns]
+    tested = [row for r in rs for k, row in r["rows"].items() if k in keys]
+    wers = [row["wer"] for row in tested if row.get("wer") is not None]
+    wer = pct(statistics.mean(wers)) if wers else "—"
+    rtfs = {}
+    for m in models:
+        vals = [r["rows"][m["key"]]["rtf"] for r in rs
+                if r["outcomes"].get(m["key"]) == "pass" and r["rows"][m["key"]].get("rtf")]
+        if vals:
+            rtfs[m["label"]] = statistics.median(vals)
+    if tts2:
+        # The Speak test's: what generate() needs. Cloning without a transcript loads Whisper on top.
+        peaks = [r["rows"][m["key"]]["peak_rss_mb"] for r in rs for m in models
+                 if r["outcomes"].get(m["key"]) == "pass" and r["rows"][m["key"]].get("peak_rss_mb")]
+        extra = [rtf_text(next(iter(rtfs.values()), None)), f"{max(peaks) / 1024:.1f} GB" if peaks else "—", wer]
+    else:
+        extra = [rtf_text(statistics.mean(rtfs.values())) if rtfs else "—", wer]
+    return [f"{label}<br>{cpu}"] + cells + extra
 
 
 def test_cell(rs, key):

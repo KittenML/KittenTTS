@@ -276,6 +276,16 @@ class Report(unittest.TestCase):
         md, _ = self.run_report(jobs)
         self.assertIn(f"| Install | {why} | Linux x64, Windows x64 · every Python<br>macOS Intel · 3.15 |", md)
 
+    def test_a_platform_that_never_installs_is_a_row_of_crosses(self):
+        why = "pip finds no torch>=2.6 for this platform and Python"
+        jobs = [result(spec(models=[NANO, TTS2]), tests=[test()] + tts2_tests()),
+                result(spec(name="macOS Intel", models=[NANO, TTS2]), ok=False, reason=why, cpu="Intel Core i7-8700B")]
+        md, _ = self.run_report(jobs)
+        self.assertIn("| macOS Intel<br>Intel Core i7-8700B | ❌ | — | — |", md)
+        self.assertIn("| macOS Intel<br>Intel Core i7-8700B | ❌ | ❌ | ❌ | — | — | — |", md)
+        self.assertIn("**macOS Intel**: ❌ on every test, because kittenml does not install there on any Python "
+                      "version (why: What Does Not Work above).", md)
+
     def test_platform_settings_are_flagged(self):
         s = spec(name="macOS Apple Silicon", models=[TTS2], overrides={"tts2": {"weights": "emb4"}})
         md, _ = self.run_report([result(s, tests=tts2_tests())])

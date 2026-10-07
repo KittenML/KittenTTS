@@ -97,12 +97,9 @@ name = "Windows ARM64"
 runner = "windows-11-arm"          # Arm Cobalt 100, 4 vCPU, 16 GB
 
 [[target]]
-# 7 GB of RAM: KittenTTS 2 needs about 5 GB with its default weights and swaps,
-# so it uses the smaller ones here (the report marks this) and the job gets more time.
 name = "macOS Apple Silicon"
 runner = "macos-15"                # Apple M1, 3 vCPU, 7 GB
-timeout_minutes = 90
-overrides = { tts2 = { weights = "emb4", warm_runs = 0 } }
+timeout_minutes = 90               # KittenTTS 2 is slow on this runner
 
 [[target]]
 name = "macOS Intel"
