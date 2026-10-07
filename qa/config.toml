@@ -11,7 +11,8 @@ text = "Kitten TTS runs fully on your device and creates clear speech quickly. T
 voice = "Bruno"
 
 [limits]
-step_minutes = 10   # one install, test or transcription; stopped and reported past this
+step_minutes = 10   # one test or transcription; stopped and reported past this
+install_minutes = 20  # pip install: on Linux it unpacks about 4 GB of CUDA libraries, at disk speeds that vary a lot
 job_minutes = 45    # a whole platform job; no new test starts near the end. A target can set timeout_minutes
 
 [report]

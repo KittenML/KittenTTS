@@ -71,7 +71,7 @@ def load(path):
         for m, o in t.get("overrides", {}).items():
             for k in set(o) - MODEL_KEYS:
                 errors.append(f"{where}: overrides.{m} has unknown setting {k!r}")
-    for k in set(cfg.get("limits", {})) - {"step_minutes", "job_minutes"}:
+    for k in set(cfg.get("limits", {})) - {"step_minutes", "install_minutes", "job_minutes"}:
         errors.append(f"limits: unknown setting {k!r}")
     if errors:
         sys.exit("qa/config.toml is invalid:\n  " + "\n  ".join(errors))

@@ -237,10 +237,10 @@ class Report(unittest.TestCase):
         self.assertTrue(md.startswith("# KittenTTS Python Platform Report\n\n"))
         for heading in ("## Summary", "## Platform Status", "## KittenTTS 0.8 (ONNX)", "## KittenTTS 2"):
             self.assertIn(heading, md)
-        self.assertIn("| Platform | CPU | Speak | Avg RTF | Worst RTF | WER |", md)
-        self.assertIn("| Linux x64 | AMD EPYC 7763 | ✅ | 0.10 | 0.10 Nano | 0% |", md)
-        self.assertIn("| Platform | CPU | Speak | Stream | Clone | RTF | Peak RAM | WER |", md)
-        self.assertIn("| Linux x64 | AMD EPYC 7763 | ✅ | ✅ | ✅ | 0.10 | 0.9 GB | 0% |", md)
+        self.assertIn("| Platform | Speak | RTF | WER |", md)
+        self.assertIn("| Linux x64<br>AMD EPYC 7763 | ✅ | 0.10 | 0% |", md)
+        self.assertIn("| Platform | Speak | Stream | Clone | RTF | Peak RAM | WER |", md)
+        self.assertIn("| Linux x64<br>AMD EPYC 7763 | ✅ | ✅ | ✅ | 0.10 | 0.9 GB | 0% |", md)
         self.assertNotIn("## What Does Not Work", md)
         self.assertNotIn("## Job Details", md)
         self.assertIn("## Job Details", self.summary)
@@ -255,7 +255,7 @@ class Report(unittest.TestCase):
         self.assertIn("| Linux x64 | 3.12 | AMD EPYC 7763 | Nano · Speak | ValueError: bad audio | passed in 5 s | "
                       "[log](https://example.test/1) |", md)
         self.assertIn("| Linux x64 | AMD EPYC 7763 | ❌ 1/2 new | 20 min |", md)
-        self.assertIn("| Linux x64 | AMD EPYC 7763 | ❌ new |", md)
+        self.assertIn("| Linux x64<br>AMD EPYC 7763 | ❌ new |", md)
 
     def test_something_that_also_fails_on_main_is_listed_not_failed(self):
         no_torch = spec(name="macOS Intel", runner="macos-15-intel")
@@ -277,25 +277,25 @@ class Report(unittest.TestCase):
         self.assertIn(f"| Install | {why} | Linux x64, Windows x64 · every Python<br>macOS Intel · 3.15 |", md)
 
     def test_partial_install_shows_what_works_without_the_missing_package(self):
-        s = spec(name="macOS Intel", models=[NANO, TTS2])
         no_torch = "ModuleNotFoundError: No module named 'torch'"
-        r = result(s, ok=False, reason="pip finds no torch>=2.6 for this platform and Python",
-                   without=["torch", "torchaudio"], import_ok=True,
-                   tests=[test()] + tts2_tests(**{k: {"status": "fail", "error": no_torch}
-                                                  for k in ("tts2", "tts2:stream", "tts2:clone")}))
-        md, code = self.run_report([r])
-        self.assertIn("| macOS Intel | AMD EPYC 7763 | ❌ 1/5 |", md)
-        self.assertIn("| macOS Intel ¹ | AMD EPYC 7763 | ✅ |", md)
-        self.assertIn("| macOS Intel ¹ | AMD EPYC 7763 | ❌ | ❌ | ❌ |", md)
-        self.assertIn("¹ `pip install kittenml` fails on macOS Intel, so kittenml was installed without torch, "
-                      "torchaudio to see what works without them.", md)
-        self.assertIn(f"| KittenTTS 2: every test | {no_torch} | macOS Intel · 3.12 |", md)
+
+        def job(python):
+            return result(spec(name="macOS Intel", python=python, models=[NANO, TTS2]), ok=False,
+                          reason="pip finds no torch>=2.6 for this platform and Python", without=["torch", "torchaudio"],
+                          import_ok=True, tests=[test()] + tts2_tests(**{k: {"status": "fail", "error": no_torch}
+                                                                         for k in ("tts2", "tts2:stream", "tts2:clone")}))
+        md, code = self.run_report([job("3.11"), job("3.12")])
+        self.assertIn("| macOS Intel | Intel | ❌ install | ❌ install |", md.replace("AMD EPYC 7763", "Intel"))
+        self.assertIn("## Where pip install Fails", md)
+        self.assertIn("| macOS Intel · 3.11–3.12 | torch, torchaudio | ✅ 1/1 | ❌ 0/3 |", md)
+        self.assertNotIn("## KittenTTS 2", md)                       # no job installed as the README says
+        self.assertNotIn(no_torch, md)                               # the section above says it
 
     def test_platform_settings_are_flagged(self):
         s = spec(name="macOS Apple Silicon", models=[TTS2], overrides={"tts2": {"weights": "emb4"}})
         md, _ = self.run_report([result(s, tests=tts2_tests())])
-        self.assertIn("| macOS Apple Silicon ² | AMD EPYC 7763 | ✅ | ✅ | ✅ |", md)
-        self.assertIn("² macOS Apple Silicon runs these with `weights='emb4'` (`overrides` in qa/config.toml).", md)
+        self.assertIn("| macOS Apple Silicon ¹<br>AMD EPYC 7763 | ✅ | ✅ | ✅ |", md)
+        self.assertIn("¹ macOS Apple Silicon runs these with `weights='emb4'` (`overrides` in qa/config.toml).", md)
 
     def test_failure_on_a_cpu_main_never_drew_is_reported_not_failed(self):
         crash = test(status="crash", error="crashed: illegal CPU instruction (0xC000001D)")
@@ -323,10 +323,13 @@ class Report(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("✅ **Report only**", md)
 
-    def test_missing_job_that_worked_on_main_fails(self):
+    def test_a_job_github_never_ran_is_listed_not_failed(self):
         md, code = self.run_report([], baseline=[result()], planned=[spec()])
-        self.assertEqual(code, 1)
-        self.assertIn("| Linux x64 | ubuntu-24.04 | ❌ no result new |", md)
+        self.assertEqual(code, 0)
+        self.assertIn("| Linux x64 | ubuntu-24.04 | no result |", md)
+        self.assertIn("**No result**, GitHub did not run the job to the end (no runner, or cancelled), so it says "
+                      "nothing about this PR: Linux x64 · 3.12", md)
+        self.assertNotIn("## What Does Not Work", md)
 
     def test_timeouts_count_only_when_main_ran_clean_and_fast(self):
         s = spec(models=[TTS2])
@@ -343,18 +346,26 @@ class Report(unittest.TestCase):
         self.assertIn("tests on this platform timed out in the baseline too", md)
         self.assertIn("| KittenTTS 2: Stream | took longer than 10 min, twice | Linux x64 · 3.12 |", md)
 
+    def test_a_crash_that_was_flaky_in_the_baseline_is_not_counted(self):
+        crash = result(tests=[test(status="crash", error="crashed: segmentation fault (SIGSEGV), twice")])
+        flaky = result(tests=[test(flaky="crashed: segmentation fault (SIGSEGV) the first time; passed when run again")])
+        md, code = self.run_report([crash], baseline=[flaky])
+        self.assertEqual(code, 0)
+        self.assertIn("Linux x64 · 3.12: Nano Speak crashed; it crashed in the baseline too, then passed when run again", md)
+        self.assertEqual(self.run_report([crash], baseline=[result()])[1], 1)
+
     def test_skipped_tests_never_count(self):
         s = spec(models=[TTS2])
         now = result(s, tests=tts2_tests(**{"tts2:clone": {"status": "skipped", "error": "not run"}}))
         md, code = self.run_report([now], baseline=[result(s, tests=tts2_tests())])
         self.assertEqual(code, 0)
-        self.assertIn("| Linux x64 | AMD EPYC 7763 | ✅ | ✅ | — |", md)
+        self.assertIn("| Linux x64<br>AMD EPYC 7763 | ✅ | ✅ | — |", md)
 
     def test_python_versions_in_cells(self):
         jobs = [result(spec(python=p), tests=[test(status="fail" if p in ("3.10", "3.11", "3.13") else "pass")])
                 for p in ("3.10", "3.11", "3.12", "3.13")]
         md, _ = self.run_report(jobs)
-        self.assertIn("| Linux x64 | AMD EPYC 7763 | ❌ 3.10–3.11, 3.13 |", md)
+        self.assertIn("| Linux x64<br>AMD EPYC 7763 | ❌ 3.10–3.11, 3.13 |", md)
 
     def test_wer_failure(self):
         md, code = self.run_report([result(tests=[test(wer=0.9, transcript="something else")])],

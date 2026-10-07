@@ -188,12 +188,13 @@ jobs:
           BASE: ${{ github.base_ref || github.ref_name }}
           HEAD: ${{ github.head_ref }}
         run: |
-          # Finished runs on a branch, newest first. One that stopped before any job
+          # Finished runs on a branch, newest first; not manual runs, which may cover only some
+          # platforms. One that stopped before any job
           # reported (a failed Plan) has nothing to compare with, so try the next.
           runs() {
             gh run list -R "$GITHUB_REPOSITORY" --workflow platform-qa.yml --branch "$1" --limit 30 \
-              --json databaseId,status,conclusion \
-              --jq ".[] | select(.status == \"completed\" and .conclusion != \"skipped\" and .databaseId != $GITHUB_RUN_ID) | .databaseId"
+              --json databaseId,status,conclusion,event \
+              --jq ".[] | select(.status == \"completed\" and .conclusion != \"skipped\" and .event != \"workflow_dispatch\" and .databaseId != $GITHUB_RUN_ID) | .databaseId"
           }
           mkdir -p baseline
           for branch in "$BASE" "$HEAD"; do

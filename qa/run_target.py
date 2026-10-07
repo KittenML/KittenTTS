@@ -385,9 +385,13 @@ def child_test(spec, key, out, limit_s, res):
         res["audio_s"] = check_audio(audio, sr)
         keep(audio, "-expression", None)
     elif name in ("clone", "clone_whisper"):
-        reference = os.path.join(audio_dir, f"{model_key}.wav")
-        if not os.path.exists(reference):
-            raise RuntimeError("no reference clip to clone: the Speak test made none")
+        # Any clip of the sample text will do as the voice to clone: the first Speak test's (Nano's, made in
+        # seconds), so cloning is tested even when this model's own Speak test failed.
+        clips = [os.path.join(audio_dir, f"{x['key']}.wav") for x in spec["models"]]
+        reference = next((c for c in clips if os.path.exists(c)), None)
+        if not reference:
+            raise RuntimeError("no reference clip to clone: no Speak test made one")
+        res["reference"] = os.path.relpath(reference, out)
         kwargs = {"reference": reference}
         if name == "clone":
             kwargs["reference_text"] = text
@@ -461,7 +465,7 @@ def drive(spec_path, out):
     print(json.dumps(result["env"]), flush=True)
 
     print("Installing...", flush=True)
-    install_res = install(out, limit)
+    install_res = install(out, int(limits.get("install_minutes", limits.get("step_minutes", 10)) * 60))
     result["install"] = install_res
     print(json.dumps({k: v for k, v in install_res.items() if k != "log_tail"}), flush=True)
 
