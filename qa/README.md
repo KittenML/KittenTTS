@@ -15,20 +15,16 @@ It assumes nothing about what should work. It answers two questions:
   a test that works there stops working here. Something that does not work on `main`
   either is listed, not failed; something that starts working is marked **new**.
 
-Not counted as broken, but listed: a failure on a CPU the `main` run never drew (GitHub
-assigns runner CPUs at random, so it cannot tell a regression from a CPU-specific problem),
-a crash of a test that also crashed on `main` and passed when run again, and a timeout on a
-platform that also timed out on `main` or where `main` took over half the limit. The first run, with nothing to compare with, only reports.
+A job GitHub never ran (no runner free) is shown as "no result" and not counted. The first
+run, with nothing to compare with, only reports.
 
 It runs on pull requests and pushes to `main` that touch the package, its dependencies or
 this folder. You can also start it from the Actions tab.
 
 ## How a job runs
 
-1. `pip install` this checkout, as the README says. When that fails only because a
-   dependency has no build for the platform or Python (torch on Intel Macs, for example),
-   kittenml is installed without it, and the report's **Where pip install Fails** table
-   shows which tests pass anyway. The install itself stays ❌.
+1. `pip install` this checkout, as the README says. If that fails, the job reports
+   ❌ install with pip's error and runs nothing else.
 2. Each test is one README example in its own Python process: every model speaks the
    sample text, and each check in `config.toml` (streaming, `generate_to_file`, voice
    cloning, …) runs on its own. One that crashes or stalls cannot take the others down.
@@ -47,11 +43,9 @@ The pull request gets one comment for each commit, laid out like the React Nativ
 - **Platform Status:** one row per platform, one column per Python version: ✅, ❌ with how
   many tests pass, or ❌ install. The CPUs the runners drew and the job times (🐢 slow).
 - **What Does Not Work:** one row per reason, with every platform and Python it affects.
-- **KittenTTS 0.8 (ONNX)** and **KittenTTS 2:** one row per platform and CPU where `pip
-  install kittenml` works, one column per test, then real-time factor, peak RAM and WER.
-- **Where pip install Fails:** what was left out of the install there, and how many tests
-  pass without it.
-- **Notes:** what started working, what was flaky, what was not counted and why.
+- **KittenTTS 0.8 (ONNX)** and **KittenTTS 2:** one row per platform and CPU, one column per
+  test, then real-time factor, peak RAM and WER.
+- **Notes:** what started working, what was flaky, and what did not run.
 
 The run summary adds every job's numbers: load and generation time, RTF, peak RAM, what
 Whisper heard, and the log of every failure.

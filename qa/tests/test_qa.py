@@ -76,7 +76,7 @@ def result(s=None, ok=True, tests=None, cpu="AMD EPYC 7763 64-Core Processor", *
     inst = {"ok": ok, "secs": 90.0, "versions": {"kittenml": "0.9.3"}, "import_ok": ok}
     inst.update(install)
     r = {"spec": s or spec(), "env": {"cpu": cpu, "cpu_count": 4, "ram_gb": 15.6}, "install": inst,
-         "tests": tests if tests is not None else ([test()] if ok or "without" in install else [])}
+         "tests": tests if tests is not None else ([test()] if ok else [])}
     return r
 
 
@@ -276,34 +276,11 @@ class Report(unittest.TestCase):
         md, _ = self.run_report(jobs)
         self.assertIn(f"| Install | {why} | Linux x64, Windows x64 · every Python<br>macOS Intel · 3.15 |", md)
 
-    def test_partial_install_shows_what_works_without_the_missing_package(self):
-        no_torch = "ModuleNotFoundError: No module named 'torch'"
-
-        def job(python):
-            return result(spec(name="macOS Intel", python=python, models=[NANO, TTS2]), ok=False,
-                          reason="pip finds no torch>=2.6 for this platform and Python", without=["torch", "torchaudio"],
-                          import_ok=True, tests=[test()] + tts2_tests(**{k: {"status": "fail", "error": no_torch}
-                                                                         for k in ("tts2", "tts2:stream", "tts2:clone")}))
-        md, code = self.run_report([job("3.11"), job("3.12")])
-        self.assertIn("| macOS Intel | Intel | ❌ install | ❌ install |", md.replace("AMD EPYC 7763", "Intel"))
-        self.assertIn("## Where pip install Fails", md)
-        self.assertIn("| macOS Intel · 3.11–3.12 | torch, torchaudio | ✅ 1/1 | ❌ 0/3 |", md)
-        self.assertNotIn("## KittenTTS 2", md)                       # no job installed as the README says
-        self.assertNotIn(no_torch, md)                               # the section above says it
-
     def test_platform_settings_are_flagged(self):
         s = spec(name="macOS Apple Silicon", models=[TTS2], overrides={"tts2": {"weights": "emb4"}})
         md, _ = self.run_report([result(s, tests=tts2_tests())])
         self.assertIn("| macOS Apple Silicon ¹<br>AMD EPYC 7763 | ✅ | ✅ | ✅ |", md)
         self.assertIn("¹ macOS Apple Silicon runs these with `weights='emb4'` (`overrides` in qa/config.toml).", md)
-
-    def test_failure_on_a_cpu_main_never_drew_is_reported_not_failed(self):
-        crash = test(status="crash", error="crashed: illegal CPU instruction (0xC000001D)")
-        md, code = self.run_report([result(tests=[crash], cpu="INTEL(R) XEON(R) PLATINUM 8573C")],
-                                   baseline=[result()])
-        self.assertEqual(code, 0)
-        self.assertIn("**Not counted as broken**: Linux x64 · 3.12: Nano Speak on Intel Xeon Platinum 8573C, "
-                      "which the baseline never drew", md)
 
     def test_an_install_that_breaks_fails_even_on_a_new_cpu(self):
         md, code = self.run_report([result(ok=False, reason="ERROR: bad dependency", cpu="Some new CPU")],
@@ -331,28 +308,12 @@ class Report(unittest.TestCase):
                       "nothing about this PR: Linux x64 · 3.12", md)
         self.assertNotIn("## What Does Not Work", md)
 
-    def test_timeouts_count_only_when_main_ran_clean_and_fast(self):
-        s = spec(models=[TTS2])
+    def test_a_timeout_of_a_test_that_passed_on_main_fails_the_run(self):
+        s_ = spec(models=[TTS2])
         stalled = {"tts2:stream": {"status": "timeout", "error": "took longer than 10 min, twice"}}
-        now = result(s, tests=tts2_tests(**stalled))
-        md, code = self.run_report([now], baseline=[result(s, tests=tts2_tests())])
-        self.assertEqual(code, 1)                                  # main streamed in 5 s
-        md, code = self.run_report([now], baseline=[result(s, tests=tts2_tests(**{"tts2:stream": {"secs": 400.0}}))])
-        self.assertEqual(code, 0)                                  # 7 min on main: a slow runner
-        self.assertIn("Linux x64 · 3.12: KittenTTS 2 Stream timed out; it took 7 min in the baseline too", md)
-        other = result(spec(models=[TTS2], python="3.13"), tests=tts2_tests(**{"tts2:clone": {"status": "timeout"}}))
-        md, code = self.run_report([now], baseline=[result(s, tests=tts2_tests()), other])
-        self.assertEqual(code, 0)                                  # main stalled on this platform too
-        self.assertIn("tests on this platform timed out in the baseline too", md)
+        md, code = self.run_report([result(s_, tests=tts2_tests(**stalled))], baseline=[result(s_, tests=tts2_tests())])
+        self.assertEqual(code, 1)
         self.assertIn("| KittenTTS 2: Stream | took longer than 10 min, twice | Linux x64 · 3.12 |", md)
-
-    def test_a_crash_that_was_flaky_in_the_baseline_is_not_counted(self):
-        crash = result(tests=[test(status="crash", error="crashed: segmentation fault (SIGSEGV), twice")])
-        flaky = result(tests=[test(flaky="crashed: segmentation fault (SIGSEGV) the first time; passed when run again")])
-        md, code = self.run_report([crash], baseline=[flaky])
-        self.assertEqual(code, 0)
-        self.assertIn("Linux x64 · 3.12: Nano Speak crashed; it crashed in the baseline too, then passed when run again", md)
-        self.assertEqual(self.run_report([crash], baseline=[result()])[1], 1)
 
     def test_skipped_tests_never_count(self):
         s = spec(models=[TTS2])

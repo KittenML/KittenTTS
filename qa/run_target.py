@@ -133,9 +133,7 @@ def pip(args, timeout_s):
 
 
 def install(out, limit_s):
-    """pip install kittenml as the README says. If that fails only because a dependency
-    has no build for this platform or Python, kittenml is installed without it, so the
-    tests can show what works anyway; the install itself still counts as failed."""
+    """pip install kittenml as the README says."""
     source = os.environ.get("QA_SOURCE", "checkout").strip() or "checkout"
     target = os.path.dirname(HERE) if source == "checkout" else source
     pip(["install", "-q", "-U", "pip"], limit_s)
@@ -154,38 +152,13 @@ def install(out, limit_s):
             res["reason"] = f"pip install took longer than {span(limit_s)}"
         elif missing:
             res["reason"] = f"pip finds no {missing[0]} for this platform and Python"
-            if source == "checkout":
-                log += partial_install(res, target, limit_s)
         else:
             res["reason"] = res["error"]
     with open(os.path.join(out, "install.log"), "w", encoding="utf-8") as f:
         f.write(log)
-    if res["ok"] or res.get("without") is not None:
+    if res["ok"]:
         res["versions"] = installed_versions()
     return res
-
-
-def partial_install(res, target, limit_s):
-    """kittenml with every dependency that installs here; records the ones that do not."""
-    t0 = time.time()
-    code, log = pip(["install", "--no-deps", target], limit_s)
-    if code != 0:
-        return log
-    reqs = _run([sys.executable, "-c", "from importlib.metadata import requires\n"
-                 "print('\\n'.join(r for r in requires('kittenml') or [] if 'extra ==' not in r))"]).splitlines()
-    without = []
-    for req in reqs:
-        left = limit_s - (time.time() - t0)
-        if left < 20:
-            without.append(req)
-            continue
-        code, more = pip(["install", req], min(left, 300))
-        log += more
-        if code != 0:
-            without.append(req)
-    res["without"] = [re.split(r"[<>=!~;\[ ]", r, 1)[0] for r in without]
-    print(f"kittenml installed without: {', '.join(res['without'])}", flush=True)
-    return log
 
 
 def installed_versions():
@@ -469,7 +442,7 @@ def drive(spec_path, out):
     result["install"] = install_res
     print(json.dumps({k: v for k, v in install_res.items() if k != "log_tail"}), flush=True)
 
-    if install_res["ok"] or install_res.get("without") is not None:
+    if install_res["ok"]:
         data, code, tail, _ = run_child("import", "all", spec_path, out, limit)
         install_res["import_ok"] = bool(data and data.get("ok"))
         if not install_res["import_ok"]:
