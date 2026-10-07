@@ -11,8 +11,8 @@ text = "Kitten TTS runs fully on your device and creates clear speech quickly. T
 voice = "Bruno"
 
 [limits]
-step_minutes = 10   # one install, model load, generation, test or transcription; stopped and reported past this
-job_minutes = 45    # a whole platform job (GitHub cancels it after this); a target can set timeout_minutes
+step_minutes = 10   # one install, test or transcription; stopped and reported past this
+job_minutes = 45    # a whole platform job; no new test starts near the end. A target can set timeout_minutes
 
 [report]
 slow_job_minutes = 30   # a platform job slower than this is flagged in the report
@@ -24,12 +24,13 @@ model = "openai/whisper-small.en"
 fail_above = 0.50   # WER above this means the audio does not say the text
 
 # ── Models ─────────────────────────────────────────────────────────────────────
-# warm_runs: generations after the first one, timed for p50/p95.
-# Every load, generation and test is stopped at [limits] step_minutes.
-# checks: README features to test beyond load + generate. Known checks:
+# Every model gets a Speak test: load it and generate() the sample text. Each
+# check is one more README example. Every test runs in its own Python process
+# and is stopped at [limits] step_minutes. Known checks:
 #   stream, to_file                        (any model)
 #   speed                                  (ONNX models)
 #   expression, clone, clone_whisper, emb4 (KittenTTS 2)
+# warm_runs: generations after the first in the Speak test; RTF uses the fastest.
 
 [models.nano]
 repo = "KittenML/kitten-tts-nano-0.8"
@@ -95,8 +96,8 @@ name = "Windows ARM64"
 runner = "windows-11-arm"          # Arm Cobalt 100, 4 vCPU, 16 GB
 
 [[target]]
-# 7 GB of RAM: KittenTTS 2's default weights push it into swap, so it uses the
-# smaller ones here and the job gets more time.
+# 7 GB of RAM: KittenTTS 2 needs about 5 GB with its default weights and swaps,
+# so it uses the smaller ones here (the report marks this) and the job gets more time.
 name = "macOS Apple Silicon"
 runner = "macos-15"                # Apple M1, 3 vCPU, 7 GB
 timeout_minutes = 90

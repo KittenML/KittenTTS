@@ -45,6 +45,7 @@ runner = "macos-15"
 pythons = ["3.12"]
 models = ["big"]
 text = "Short."
+timeout_minutes = 90
 overrides = { big = { weights = "emb4", warm_runs = 0 } }
 
 [[target]]
@@ -56,78 +57,85 @@ events = ["push"]
 
 def spec(**kw):
     s = {"id": "linux-x64-py3.12", "name": "Linux x64", "runner": "ubuntu-24.04", "python": "3.12",
-         "text": "Hello there.", "voice": "Bruno", "models": [NANO], "asr": ASR}
+         "text": "Hello there.", "voice": "Bruno", "models": [NANO], "asr": ASR, "limits": {"step_minutes": 10}}
     s.update(kw)
+    s["id"] = kw.get("id") or f"{s['name'].lower().replace(' ', '-')}-py{s['python']}"
     return s
 
 
-def model(label="Nano", status="pass", **kw):
-    m = {"key": label.lower(), "label": label, "status": status, "load_s": 1.0, "first_s": 1.2,
-         "warm_s": [0.5, 0.4, 0.6], "audio_s": 4.0, "wav": f"audio/{label.lower()}.wav",
-         "peak_rss_mb": 900, "checks": []}
-    m.update(kw)
-    return m
+def test(key="nano", title="Nano · Speak", status="pass", **kw):
+    """One test row as run_target.py writes it."""
+    t = {"key": key, "title": title, "status": status, "secs": 5.0, "load_s": 1.0, "gen_s": 0.4, "audio_s": 4.0,
+         "rtf": 0.1, "peak_rss_mb": 900, "wer": 0.0}
+    t.update(kw)
+    return t
 
 
-def result(s=None, ok=True, models=None, asr_rows=None, cpu="AMD EPYC 7763 64-Core Processor", **install):
-    """A result.json as run_target.py writes it: nothing past the install when that fails."""
-    inst = {"ok": ok, "secs": 90.0, "versions": {"kittenml": "0.9.3"}}
+def result(s=None, ok=True, tests=None, cpu="AMD EPYC 7763 64-Core Processor", **install):
+    """A result.json as run_target.py writes it: no tests when nothing installs."""
+    inst = {"ok": ok, "secs": 90.0, "versions": {"kittenml": "0.9.3"}, "import_ok": ok}
     inst.update(install)
-    r = {"spec": s or spec(), "env": {"cpu": cpu, "cpu_count": 4, "ram_gb": 15.6}, "install": inst}
-    if ok:
-        r["package"] = {"checks": [{"name": "import", "status": "pass"}]}
-        r["models"] = models if models is not None else [model()]
-    if asr_rows is not None:
-        r["asr"] = {"status": "done", "rows": asr_rows}
+    r = {"spec": s or spec(), "env": {"cpu": cpu, "cpu_count": 4, "ram_gb": 15.6}, "install": inst,
+         "tests": tests if tests is not None else ([test()] if ok or "without" in install else [])}
     return r
+
+
+def tts2_tests(**by_key):
+    """KittenTTS 2's three tests, all passing unless given."""
+    rows = []
+    for key, title in (("tts2", "KittenTTS 2 · Speak"), ("tts2:stream", "KittenTTS 2 · Stream"),
+                       ("tts2:clone", "KittenTTS 2 · Clone")):
+        rows.append(test(key, title, **by_key.get(key, {})))
+    return rows
 
 
 class Classify(unittest.TestCase):
     def test_works(self):
         self.assertEqual(classify(result()), (PASSED, []))
 
-    def test_failed_model(self):
-        status, reasons = classify(result(models=[model(status="fail", error="boom")]))
-        self.assertEqual(status, FAILED)
-        self.assertIn("boom", reasons[0])
+    def test_failed_test(self):
+        status, reasons = classify(result(tests=[test(status="fail", error="ValueError: boom")]))
+        self.assertEqual((status, reasons), (FAILED, ["Nano · Speak: ValueError: boom"]))
 
     def test_install_failure_says_why(self):
-        self.assertEqual(classify(result(ok=False, error="ERROR: no torch")), (FAILED, ["install: ERROR: no torch"]))
+        r = result(ok=False, error="ERROR: No matching distribution found for torch>=2.6",
+                   reason="pip finds no torch>=2.6 for this platform and Python")
+        self.assertEqual(classify(r), (FAILED, ["install: pip finds no torch>=2.6 for this platform and Python"]))
 
     def test_wer_above_limit_fails(self):
-        rows = [{"wav": "audio/nano.wav", "label": "Nano", "wer": 0.8}]
-        self.assertEqual(classify(result(asr_rows=rows))[0], FAILED)
-
-    def test_crashed_package_checks_and_transcription_fail(self):
-        r = result()
-        r["package"] = {"status": "crash", "error": "exited"}
-        self.assertEqual(classify(r)[0], FAILED)
-        r = result()
-        r["asr"] = {"status": "timeout", "error": "slow"}
-        self.assertEqual(classify(r)[0], FAILED)
+        status, reasons = classify(result(tests=[test(wer=0.8, transcript="something else")]))
+        self.assertEqual(status, FAILED)
+        self.assertIn("Whisper heard “something else” (WER 80%)", reasons[0])
 
     def test_job_without_install_record_is_no_result(self):
         self.assertEqual(classify({"spec": spec()})[0], NO_RESULT)
 
 
-class Helpers(unittest.TestCase):
-    def test_exit_codes(self):
-        self.assertIn("0xC000001D, illegal CPU instruction", run_target.exit_reason(3221225501))
-        self.assertIn("segmentation fault", run_target.exit_reason(-11))
-        self.assertIn("out of memory", run_target.exit_reason(-9))
+class Runner(unittest.TestCase):
+    def test_crash_reasons(self):
+        self.assertEqual(run_target.crash_reason(3221225501), "crashed: illegal CPU instruction (0xC000001D)")
+        self.assertEqual(run_target.crash_reason(-11), "crashed: segmentation fault (SIGSEGV)")
+        self.assertIn("out of memory", run_target.crash_reason(-9))
+        log = "Warning: unauthenticated\nError processing file 'phontab': No such file or directory.\n"
+        self.assertEqual(run_target.crash_reason(1, log),
+                         "exited with code 1: Error processing file 'phontab': No such file or directory.")
+
+    def test_install_errors(self):
+        self.assertEqual(run_target.NO_BUILD.findall("ERROR: No matching distribution found for torch>=2.6"),
+                         ["torch>=2.6"])
+        self.assertEqual(run_target.PY_REFUSED.search(
+            "ERROR: Package 'kittenml' requires a different Python: 3.9.25 not in '>=3.10'").group(1), ">=3.10")
+
+    def test_one_test_per_readme_example(self):
+        tests = run_target.plan_tests(spec(models=[NANO, TTS2]))
+        self.assertEqual([t["key"] for t in tests], ["nano", "tts2", "tts2:stream", "tts2:clone"])
+        self.assertEqual(tests[3]["title"], "KittenTTS 2 · Clone")
 
     def test_wer(self):
         for said in ("KittenTTS rocks", "Kitten TTS rocks", "Kitten T.T.S. rocks", "kitten-tts rocks"):
             self.assertEqual(normalize_words(said), ["kitten", "tts", "rocks"], said)
         w, edits, n = wer("one two three four", "one two tree four")
         self.assertEqual((edits, n, w), (1, 4, 0.25))
-
-    def test_cpu_names_and_python_ranges(self):
-        self.assertEqual(report.short_cpu("INTEL(R) XEON(R) PLATINUM 8573C"), "Intel Xeon Platinum 8573C")
-        self.assertEqual(report.short_cpu("AMD EPYC 7763 64-Core Processor"), "AMD EPYC 7763")
-        everyone = ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
-        self.assertEqual(report.py_list(everyone, everyone), "py3.9–3.15")
-        self.assertEqual(report.py_list(["3.9", "3.11", "3.12"], everyone), "py3.9, py3.11–3.12")
 
 
 class Plan(unittest.TestCase):
@@ -161,7 +169,8 @@ class Plan(unittest.TestCase):
         self.assertEqual(small["models"][0]["weights"], "emb4")
         self.assertEqual(small["text"], "Short.")
         self.assertNotIn("weights", big["models"][1])
-        self.assertEqual(small["limits"]["step_minutes"], 10)
+        self.assertEqual(big["limits"], {"step_minutes": 10, "job_minutes": 45})
+        self.assertEqual(small["limits"]["job_minutes"], 90)                      # the runner's own deadline
         pushed = self.expand(self.write(FIXTURE), GITHUB_EVENT_NAME="push")
         self.assertIn("Main only", {s["name"] for s in pushed})
 
@@ -213,136 +222,158 @@ class Report(unittest.TestCase):
         return md, gate.returncode
 
     def test_first_run_reports_without_failing(self):
-        broken = result(spec(id="linux-x64-py3.13", python="3.13"), models=[model(status="fail", error="boom")])
+        broken = result(spec(python="3.13"), tests=[test(status="fail", error="ValueError: boom")])
         md, code = self.run_report([result(), broken])
         self.assertEqual(code, 0)
-        self.assertIn("## ✅ Report only: there is no earlier run to compare with yet", md)
-        self.assertIn("1 of 2 platform and Python combinations work fully", md)
-        self.assertIn("| Linux x64 | AMD EPYC 7763 | ✅ | ❌ |", md)
-        self.assertIn("- Linux x64 on AMD EPYC 7763 py3.13: Nano: boom", md)
+        self.assertIn("✅ **Report only**: there is no earlier run to compare with yet.", md)
+        self.assertIn("| Results | 1 pass every test · 1 pass some · 0 cannot install |", md)
+        self.assertIn("| Linux x64 | AMD EPYC 7763 | ✅ | ❌ 1/2 |", md)
+        self.assertIn("| Nano: Speak | ValueError: boom | Linux x64 · 3.13 |", md)
 
     def test_layout(self):
         s = spec(models=[NANO, TTS2])
-        tts2 = model("KittenTTS 2", key="tts2", wav="audio/tts2.wav", checks=[
-            {"name": "stream", "status": "pass"}, {"name": "clone", "status": "pass"}])
-        md, code = self.run_report([result(s, models=[model(), tts2])], baseline=[])
+        md, code = self.run_report([result(s, tests=[test()] + tts2_tests())], baseline=[])
         self.assertEqual(code, 0)
-        self.assertIn("### KittenTTS 0.8 (ONNX models)", md)
-        self.assertIn("### KittenTTS 2", md)
-        self.assertIn("| Test | Linux x64<br>AMD EPYC 7763 |", md)
-        self.assertIn("| Install and import | ✅ |", md)
-        self.assertIn("| KittenTTS 2: streaming (`generate_stream`) | ✅ |", md)
-        self.assertIn("| Nano RTF | 0.10 |", md)
-        self.assertIn("| Peak RAM | 0.9 GB |", md)
-        self.assertNotIn("### Every job", md)
-        self.assertIn("### Every job", self.summary)
+        self.assertTrue(md.startswith("# KittenTTS Python Platform Report\n\n"))
+        for heading in ("## Summary", "## Platform Status", "## KittenTTS 0.8 (ONNX)", "## KittenTTS 2"):
+            self.assertIn(heading, md)
+        self.assertIn("| Platform | CPU | Speak | Avg RTF | Worst RTF | WER |", md)
+        self.assertIn("| Linux x64 | AMD EPYC 7763 | ✅ | 0.10 | 0.10 Nano | 0% |", md)
+        self.assertIn("| Platform | CPU | Speak | Stream | Clone | RTF | Peak RAM | WER |", md)
+        self.assertIn("| Linux x64 | AMD EPYC 7763 | ✅ | ✅ | ✅ | 0.10 | 0.9 GB | 0% |", md)
+        self.assertNotIn("## What Does Not Work", md)
+        self.assertNotIn("## Job Details", md)
+        self.assertIn("## Job Details", self.summary)
 
     def test_something_that_worked_on_main_and_breaks_fails_the_run(self):
-        # A model that fails to generate has no generation time, as run_target.py records it.
-        now = [result(models=[model(status="fail", first_s=None, error="ValueError: bad audio", trace="Traceback ...")])]
-        md, code = self.run_report(now, baseline=[result()])
+        now = [result(tests=[test(status="fail", error="ValueError: bad audio", trace="Traceback ...")])]
+        jobs = [{"name": "Linux x64 · py3.12", "html_url": "https://example.test/1",
+                 "started_at": "2026-10-05T10:00:00Z", "completed_at": "2026-10-05T10:20:00Z"}]
+        md, code = self.run_report(now, baseline=[result()], jobs=jobs)
         self.assertEqual(code, 1)
-        self.assertIn("## ❌ 1 test broke compared with main", md)
+        self.assertIn("❌ **1 test broke** compared with main.", md)
+        self.assertIn("| Linux x64 | 3.12 | AMD EPYC 7763 | Nano · Speak | ValueError: bad audio | passed in 5 s | "
+                      "[log](https://example.test/1) |", md)
+        self.assertIn("| Linux x64 | AMD EPYC 7763 | ❌ 1/2 new | 20 min |", md)
         self.assertIn("| Linux x64 | AMD EPYC 7763 | ❌ new |", md)
-        self.assertIn("| Nano: speaks the sample text | ❌ new |", md)
-        self.assertIn("**Linux x64 · py3.12** · Nano: speaks the sample text: ValueError: bad audio", md)
 
     def test_something_that_also_fails_on_main_is_listed_not_failed(self):
-        no_torch = spec(id="macos-intel-py3.12", name="macOS Intel", runner="macos-15-intel")
-        error = "ERROR: No matching distribution found for torch>=2.6"
-        md, code = self.run_report([result(no_torch, ok=False, error=error)],
-                                   baseline=[result(no_torch, ok=False, error=error)])
+        no_torch = spec(name="macOS Intel", runner="macos-15-intel")
+        why = "pip finds no torch>=2.6 for this platform and Python"
+        md, code = self.run_report([result(no_torch, ok=False, reason=why)],
+                                   baseline=[result(no_torch, ok=False, reason=why)])
         self.assertEqual(code, 0)
-        self.assertIn("## ✅ Nothing broke compared with main", md)
-        self.assertIn("**Does not work** (on the baseline too, so it does not fail the run):", md)
-        self.assertIn(f"- macOS Intel py3.12: install: {error}", md)
+        self.assertIn("✅ **Nothing broke** compared with main.", md)
+        self.assertIn("| macOS Intel | Intel | ❌ install |", md.replace("AMD EPYC 7763", "Intel"))
+        self.assertIn(f"| Install | {why} | macOS Intel · 3.12 |", md)
+
+    def test_the_same_reason_on_several_platforms_is_one_row(self):
+        why = "pip finds no torch>=2.6 for this platform and Python"
+        jobs = [result(spec(name=n, python=p), ok=False, reason=why)
+                for n in ("Linux x64", "Windows x64") for p in ("3.14", "3.15")]
+        jobs += [result(spec(name="macOS Intel", python="3.15"), ok=False, reason=why)]
+        jobs += [result(spec(name="macOS Intel", python="3.14"))]
+        md, _ = self.run_report(jobs)
+        self.assertIn(f"| Install | {why} | Linux x64, Windows x64 · every Python<br>macOS Intel · 3.15 |", md)
+
+    def test_partial_install_shows_what_works_without_the_missing_package(self):
+        s = spec(name="macOS Intel", models=[NANO, TTS2])
+        no_torch = "ModuleNotFoundError: No module named 'torch'"
+        r = result(s, ok=False, reason="pip finds no torch>=2.6 for this platform and Python",
+                   without=["torch", "torchaudio"], import_ok=True,
+                   tests=[test()] + tts2_tests(**{k: {"status": "fail", "error": no_torch}
+                                                  for k in ("tts2", "tts2:stream", "tts2:clone")}))
+        md, code = self.run_report([r])
+        self.assertIn("| macOS Intel | AMD EPYC 7763 | ❌ 1/5 |", md)
+        self.assertIn("| macOS Intel ¹ | AMD EPYC 7763 | ✅ |", md)
+        self.assertIn("| macOS Intel ¹ | AMD EPYC 7763 | ❌ | ❌ | ❌ |", md)
+        self.assertIn("¹ `pip install kittenml` fails on macOS Intel, so kittenml was installed without torch, "
+                      "torchaudio to see what works without them.", md)
+        self.assertIn(f"| KittenTTS 2: every test | {no_torch} | macOS Intel · 3.12 |", md)
+
+    def test_platform_settings_are_flagged(self):
+        s = spec(name="macOS Apple Silicon", models=[TTS2], overrides={"tts2": {"weights": "emb4"}})
+        md, _ = self.run_report([result(s, tests=tts2_tests())])
+        self.assertIn("| macOS Apple Silicon ² | AMD EPYC 7763 | ✅ | ✅ | ✅ |", md)
+        self.assertIn("² macOS Apple Silicon runs these with `weights='emb4'` (`overrides` in qa/config.toml).", md)
 
     def test_failure_on_a_cpu_main_never_drew_is_reported_not_failed(self):
-        crash = {"key": "nano", "label": "Nano", "status": "crash", "error": "illegal CPU instruction"}
-        md, code = self.run_report([result(models=[crash], cpu="INTEL(R) XEON(R) PLATINUM 8573C")],
+        crash = test(status="crash", error="crashed: illegal CPU instruction (0xC000001D)")
+        md, code = self.run_report([result(tests=[crash], cpu="INTEL(R) XEON(R) PLATINUM 8573C")],
                                    baseline=[result()])
         self.assertEqual(code, 0)
-        self.assertIn("**On a CPU the baseline never drew**, so not counted as broken: "
-                      "Linux x64 · py3.12 on Intel Xeon Platinum 8573C", md)
+        self.assertIn("**Not counted as broken**: Linux x64 · 3.12: Nano Speak on Intel Xeon Platinum 8573C, "
+                      "which the baseline never drew", md)
 
     def test_an_install_that_breaks_fails_even_on_a_new_cpu(self):
-        md, code = self.run_report([result(ok=False, error="ERROR: bad dependency", cpu="Some new CPU")],
+        md, code = self.run_report([result(ok=False, reason="ERROR: bad dependency", cpu="Some new CPU")],
                                    baseline=[result()])
         self.assertEqual(code, 1)
 
     def test_something_that_starts_working_is_marked(self):
-        md, code = self.run_report([result()], baseline=[result(ok=False, error="ERROR: no torch")])
+        md, code = self.run_report([result()], baseline=[result(ok=False, reason="no torch")])
         self.assertEqual(code, 0)
         self.assertIn("| Linux x64 | AMD EPYC 7763 | ✅ new |", md)
-        self.assertIn("**Works now, did not before:** Linux x64 · py3.12", md)
+        self.assertIn("**Works now**, did not in the baseline: Linux x64 · 3.12: Install", md)
 
     def test_missing_job_that_worked_on_main_fails(self):
         md, code = self.run_report([], baseline=[result()], planned=[spec()])
         self.assertEqual(code, 1)
-        self.assertIn("| Linux x64 | ubuntu-24.04 | ❌ new |", md)
+        self.assertIn("| Linux x64 | ubuntu-24.04 | ❌ no result new |", md)
 
-    def test_timeouts_show_a_timer_and_skip_the_rest(self):
-        timed = {"key": "tts2", "label": "KittenTTS 2", "status": "timeout", "first_s": 30.0, "audio_s": 3.0,
-                 "warm_s": [], "wav": "audio/tts2.wav", "error": "stream took longer than 10 min",
-                 "checks": [{"name": "stream", "status": "timeout", "error": "took longer than 10 min"},
-                            {"name": "clone", "status": "skipped", "error": "not run: an earlier step timed out"}]}
-        md, code = self.run_report([result(spec(models=[TTS2]), models=[timed])])
-        self.assertIn("| KittenTTS 2: speaks the sample text | ✅ |", md)
-        self.assertIn("| KittenTTS 2: streaming (`generate_stream`) | ⏱️ |", md)
-        self.assertIn("| KittenTTS 2: voice cloning with a transcript | ⏱️ |", md)
-
-    def test_timeouts_count_only_as_a_clear_slowdown(self):
+    def test_timeouts_count_only_when_main_ran_clean_and_fast(self):
         s = spec(models=[TTS2])
+        stalled = {"tts2:stream": {"status": "timeout", "error": "took longer than 10 min, twice"}}
+        now = result(s, tests=tts2_tests(**stalled))
+        md, code = self.run_report([now], baseline=[result(s, tests=tts2_tests())])
+        self.assertEqual(code, 1)                                  # main streamed in 5 s
+        md, code = self.run_report([now], baseline=[result(s, tests=tts2_tests(**{"tts2:stream": {"secs": 400.0}}))])
+        self.assertEqual(code, 0)                                  # 7 min on main: a slow runner
+        self.assertIn("Linux x64 · 3.12: KittenTTS 2 Stream timed out; it took 7 min in the baseline too", md)
+        other = result(spec(models=[TTS2], python="3.13"), tests=tts2_tests(**{"tts2:clone": {"status": "timeout"}}))
+        md, code = self.run_report([now], baseline=[result(s, tests=tts2_tests()), other])
+        self.assertEqual(code, 0)                                  # main stalled on this platform too
+        self.assertIn("tests on this platform timed out in the baseline too", md)
+        self.assertIn("| KittenTTS 2: Stream | took longer than 10 min, twice | Linux x64 · 3.12 |", md)
 
-        def tts2_job(first_s, stream):
-            return result(s, models=[model("KittenTTS 2", key="tts2", wav="audio/tts2.wav", first_s=first_s, load_s=10.0,
-                                           status="pass" if stream == "pass" else "timeout",
-                                           checks=[{"name": "stream", "status": stream, "secs": first_s},
-                                                   {"name": "clone", "status": "pass" if stream == "pass" else "skipped",
-                                                    "secs": first_s}])])
-        slow_main, fast_main = tts2_job(500.0, "pass"), tts2_job(30.0, "pass")
-        now = tts2_job(500.0, "timeout")
-        md, code = self.run_report([now], baseline=[slow_main])
-        self.assertEqual(code, 0)                                         # 8 min on main: runner speed
-        self.assertIn("**Timed out, but slow on the baseline too** (runner speed, does not fail the run): "
-                      "Linux x64 · py3.12 · KittenTTS 2: streaming (`generate_stream`) (took 8 min there)", md)
-        md, code = self.run_report([now], baseline=[fast_main])
-        self.assertEqual(code, 1)                                         # 30 s on main: a slowdown
-        self.assertIn("## ❌ 1 test broke", md)                            # the skipped clone does not count
-        self.assertIn("| KittenTTS 2: voice cloning with a transcript | ⏱️ |", md)
-
-    def test_wer_failure_and_log_link(self):
-        rows = [{"wav": "audio/nano.wav", "label": "Nano", "wer": 0.9, "transcript": "something else"}]
-        jobs = [{"name": "Linux x64 · py3.12", "html_url": "https://example.test/1",
-                 "started_at": "2026-10-05T10:00:00Z", "completed_at": "2026-10-05T10:45:00Z"}]
-        md, code = self.run_report([result(asr_rows=rows)], baseline=[result()], jobs=jobs)
-        self.assertEqual(code, 1)
-        self.assertIn("Nano: speaks the sample text: WER 90.0%, Whisper heard “something else” · "
-                      "[log](https://example.test/1)", md)
-        self.assertIn("🐢 45 min", md)
-
-    def test_logs_cannot_break_the_comment(self):
-        crash = {"key": "nano", "label": "Nano", "status": "crash", "error": "exited", "log_tail": "```\nKilled"}
-        md, code = self.run_report([result(models=[crash])], baseline=[result()])
-        self.assertIn("````\n```\nKilled\n````", md)
-        self.assertTrue(md.rstrip().endswith("</details>"))
-
-    def test_flaky_crash_is_listed_not_failed(self):
-        now = [result(models=[model(flaky="process was killed by signal 11 on the first run; passed on the second")])]
-        md, code = self.run_report(now, baseline=[result()])
+    def test_skipped_tests_never_count(self):
+        s = spec(models=[TTS2])
+        now = result(s, tests=tts2_tests(**{"tts2:clone": {"status": "skipped", "error": "not run"}}))
+        md, code = self.run_report([now], baseline=[result(s, tests=tts2_tests())])
         self.assertEqual(code, 0)
-        self.assertIn("**Flaky** (crashed or stalled, then passed when run again; does not fail the run): Linux x64 · py3.12 · "
-                      "Nano (process was killed by signal 11 on the first run; passed on the second)", md)
+        self.assertIn("| Linux x64 | AMD EPYC 7763 | ✅ | ✅ | — |", md)
+
+    def test_python_versions_in_cells(self):
+        jobs = [result(spec(python=p), tests=[test(status="fail" if p in ("3.10", "3.11", "3.13") else "pass")])
+                for p in ("3.10", "3.11", "3.12", "3.13")]
+        md, _ = self.run_report(jobs)
+        self.assertIn("| Linux x64 | AMD EPYC 7763 | ❌ 3.10–3.11, 3.13 |", md)
+
+    def test_wer_failure(self):
+        md, code = self.run_report([result(tests=[test(wer=0.9, transcript="something else")])],
+                                   baseline=[result()])
+        self.assertEqual(code, 1)
+        self.assertIn("Whisper heard “something else” (WER 90%)", md)
+
+    def test_flaky_is_listed_not_failed(self):
+        flaky = test(flaky="crashed: segmentation fault (SIGSEGV) the first time; passed when run again")
+        md, code = self.run_report([result(tests=[flaky])], baseline=[result()])
+        self.assertEqual(code, 0)
+        self.assertIn("**Flaky**, failed and then passed when run again: Linux x64 · 3.12: Nano Speak "
+                      "(crashed: segmentation fault (SIGSEGV) the first time; passed when run again)", md)
+
+    def test_logs_cannot_break_the_summary(self):
+        crash = test(status="crash", error="crashed", log_tail="```\nKilled")
+        self.run_report([result(tests=[crash])], baseline=[result()])
+        self.assertIn("````\n```\nKilled\n````", self.summary)
 
     def test_comment_stays_under_github_limit(self):
         models = [{"key": f"m{j}", "label": f"M{j}", "repo": "KittenML/x", "checks": []} for j in range(5)]
 
-        def job(i, **kw):
-            return result(spec(id=f"p{i}", name=f"Platform {i}", models=models), **kw)
-        now = [job(i, models=[model(label=f"M{j}", status="fail", first_s=None, error="x" * 300, trace="t" * 5000)
-                              for j in range(5)]) for i in range(40)]
-        base = [job(i, models=[model(label=f"M{j}") for j in range(5)]) for i in range(40)]
-        md, code = self.run_report(now, baseline=base)
+        def job(i, status):
+            return result(spec(name=f"Platform {i}", models=models),
+                          tests=[test(f"m{j}", f"M{j} · Speak", status=status, error="x" * 300) for j in range(5)])
+        md, code = self.run_report([job(i, "fail") for i in range(40)], baseline=[job(i, "pass") for i in range(40)])
         self.assertLessEqual(len(md), report.COMMENT_LIMIT)
         self.assertEqual(code, 1)
 

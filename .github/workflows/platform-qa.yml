@@ -104,8 +104,8 @@ jobs:
           QA_SPEC: ${{ matrix.spec }}
         run: |
           mkdir -p qa-out
-          printf '{"spec": %s, "env": {}, "status": "failed", "install": {"ok": false, "secs": 0, "error": "Python %s is not available for %s"}}' \
-            "$QA_SPEC" "${{ matrix.python }}" "${{ matrix.runner }}" > qa-out/result.json
+          printf '{"spec": %s, "env": {}, "install": {"ok": false, "secs": 0, "error": "actions/setup-python has no Python %s for %s", "reason": "actions/setup-python has no build of this Python for %s"}}' \
+            "$QA_SPEC" "${{ matrix.python }}" "${{ matrix.runner }}" "${{ matrix.runner }}" > qa-out/result.json
 
       - name: Install and test
         if: steps.python.outcome == 'success'

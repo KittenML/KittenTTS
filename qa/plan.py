@@ -103,6 +103,7 @@ def expand(cfg):
             resolved.append(m)
         limits = {"step_minutes": 10, "job_minutes": 45, **cfg.get("limits", {})}
         timeout = t.get("timeout_minutes") or limits["job_minutes"]
+        limits["job_minutes"] = timeout     # the runner stops starting tests before GitHub ends the job
         for py in t.get("pythons") or cfg.get("matrix", {}).get("pythons", []):
             if only_pythons and py not in only_pythons:
                 continue
@@ -116,6 +117,7 @@ def expand(cfg):
                 "models": resolved,
                 "asr": cfg.get("asr", {"enabled": False}),
                 "limits": limits,
+                "overrides": {k: v for k, v in t.get("overrides", {}).items() if k in models},
             }
             jobs.append({"id": spec["id"], "name": t["name"], "runner": t["runner"],
                          "python": py, "timeout": timeout, "spec": json.dumps(spec)})

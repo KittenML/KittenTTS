@@ -1,28 +1,28 @@
-"""One platform job: install kittenml, run every model, transcribe, write result.json.
+"""One platform job: install kittenml, run each README example, transcribe, write result.json.
 
     python qa/run_target.py --spec spec.json --out qa-out
 
 The spec is one job from qa/plan.py. QA_SOURCE says what to install: "checkout"
 (default, this repository) or a pip requirement such as "kittenml==0.9.3".
 
-Everything before the install uses the standard library only. Each model and
-the transcription run in their own process with a timeout, so a model that
-hangs, segfaults or exit()s (espeak does) is reported, not fatal.
+Each test is one README example in its own Python process, stopped after
+[limits] step_minutes. A test that hangs, segfaults or exit()s (espeak does) is
+reported, not fatal, and one that crashes or stalls is run once more. Everything
+before the install uses the standard library only.
 """
 import argparse
-import gc
 import json
 import os
 import platform
+import re
 import subprocess
 import sys
-import threading
 import time
 import traceback
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from qa_common import STATUS_LABEL, classify, wer  # noqa: E402
+from qa_common import TESTS, classify, test_keys, test_name, wer  # noqa: E402
 
 EXPRESSION_TEXT = "[joyful] We actually won the grant <laugh> I can (((hardly))) believe it!"
 CLONE_TEXT = "This is my own voice, cloned from a short recording."
@@ -38,9 +38,10 @@ def _run(cmd):
 
 
 def system_info():
+    """CPU, cores, RAM and the RAM free when the job starts."""
     info = {"os": platform.platform(), "machine": platform.machine(),
             "python": platform.python_version(), "cpu_count": os.cpu_count(),
-            "cpu": "", "ram_gb": None}
+            "cpu": "", "ram_gb": None, "ram_free_gb": None}
     try:
         if sys.platform == "linux":
             for line in _run(["lscpu"]).splitlines():
@@ -48,11 +49,17 @@ def system_info():
                     info["cpu"] = line.split(":", 1)[1].strip()
                     break
             with open("/proc/meminfo") as f:
-                kb = int(f.readline().split()[1])
-            info["ram_gb"] = round(kb / 2**20, 1)
+                mem = {line.split(":")[0]: int(line.split()[1]) for line in f}
+            info["ram_gb"] = round(mem["MemTotal"] / 2**20, 1)
+            info["ram_free_gb"] = round(mem.get("MemAvailable", 0) / 2**20, 1)
         elif sys.platform == "darwin":
             info["cpu"] = _run(["sysctl", "-n", "machdep.cpu.brand_string"])
             info["ram_gb"] = round(int(_run(["sysctl", "-n", "hw.memsize"]) or 0) / 2**30, 1)
+            vm = _run(["vm_stat"])
+            page = int((re.search(r"page size of (\d+)", vm) or [0, 4096])[1])
+            pages = {k.strip(): int(v.strip(" .")) for k, v in re.findall(r"^(Pages [^:]+):\s+(\d+)", vm, re.M)}
+            free = sum(pages.get(f"Pages {k}", 0) for k in ("free", "inactive", "speculative", "purgeable"))
+            info["ram_free_gb"] = round(free * page / 2**30, 1)
         elif sys.platform == "win32":
             import ctypes
             import winreg
@@ -70,6 +77,7 @@ def system_info():
             ms.dwLength = ctypes.sizeof(MemStatus)
             ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(ms))
             info["ram_gb"] = round(ms.ullTotalPhys / 2**30, 1)
+            info["ram_free_gb"] = round(ms.ullAvailPhys / 2**30, 1)
     except Exception as e:
         info["cpu"] = info["cpu"] or f"unknown ({type(e).__name__})"
     info["cpu"] = info["cpu"] or platform.processor() or "unknown"
@@ -100,34 +108,84 @@ def peak_rss_mb():
     return round(peak / 2**20 if sys.platform == "darwin" else peak / 1024)
 
 
+def span(secs):
+    secs = int(secs)
+    return f"{secs // 60} min" if secs >= 60 else f"{secs} s"
+
+
 # ── Install ──────────────────────────────────────────────────────────────────────
 
-def install(out, limit_s):
-    source = os.environ.get("QA_SOURCE", "checkout").strip() or "checkout"
-    target = os.path.dirname(HERE) if source == "checkout" else source
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-U", "pip"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    t0 = time.time()
+PY_REFUSED = re.compile(r"requires a different Python: \S+ not in '([^']+)'")
+NO_BUILD = re.compile(r"(?:No matching distribution found for|"
+                      r"Could not find a version that satisfies the requirement) ([^\s(]+)")
+
+
+def pip(args, timeout_s):
+    """(exit code or None on timeout, output)."""
     try:
-        proc = subprocess.run([sys.executable, "-m", "pip", "install", target],
-                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                              encoding="utf-8", errors="replace", timeout=limit_s)
-        log, code = proc.stdout, proc.returncode
+        proc = subprocess.run([sys.executable, "-m", "pip"] + args, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, text=True, encoding="utf-8",
+                              errors="replace", timeout=max(timeout_s, 1))
+        return proc.returncode, proc.stdout
     except subprocess.TimeoutExpired as e:
         partial = e.stdout.decode("utf-8", "replace") if isinstance(e.stdout, bytes) else (e.stdout or "")
-        log, code = partial + f"\nERROR: pip install took longer than {span(limit_s)}", None
-    with open(os.path.join(out, "install.log"), "w", encoding="utf-8") as f:
-        f.write(log)
-    refused = code != 0 and ("requires a different Python" in log or "Requires-Python" in log)
-    res = {"source": source, "ok": code == 0, "refused": refused, "secs": round(time.time() - t0, 1)}
+        return None, partial + f"\nERROR: pip took longer than {span(timeout_s)}"
+
+
+def install(out, limit_s):
+    """pip install kittenml as the README says. If that fails only because a dependency
+    has no build for this platform or Python, kittenml is installed without it, so the
+    tests can show what works anyway; the install itself still counts as failed."""
+    source = os.environ.get("QA_SOURCE", "checkout").strip() or "checkout"
+    target = os.path.dirname(HERE) if source == "checkout" else source
+    pip(["install", "-q", "-U", "pip"], limit_s)
+    t0 = time.time()
+    code, log = pip(["install", target], limit_s)
+    res = {"source": source, "ok": code == 0, "secs": round(time.time() - t0, 1)}
     if code != 0:
         lines = log.strip().splitlines()
-        errs = [l for l in lines if l.startswith("ERROR")]
+        errs = [line for line in lines if line.startswith("ERROR")]
         res["error"] = (errs[-1] if errs else lines[-1] if lines else "pip failed")[:300]
         res["log_tail"] = log[-3000:]
-    else:
+        refused, missing = PY_REFUSED.search(log), NO_BUILD.findall(log)
+        if refused:
+            res["reason"] = f"kittenml requires Python {refused.group(1)}"
+        elif code is None:
+            res["reason"] = f"pip install took longer than {span(limit_s)}"
+        elif missing:
+            res["reason"] = f"pip finds no {missing[0]} for this platform and Python"
+            if source == "checkout":
+                log += partial_install(res, target, limit_s)
+        else:
+            res["reason"] = res["error"]
+    with open(os.path.join(out, "install.log"), "w", encoding="utf-8") as f:
+        f.write(log)
+    if res["ok"] or res.get("without") is not None:
         res["versions"] = installed_versions()
     return res
+
+
+def partial_install(res, target, limit_s):
+    """kittenml with every dependency that installs here; records the ones that do not."""
+    t0 = time.time()
+    code, log = pip(["install", "--no-deps", target], limit_s)
+    if code != 0:
+        return log
+    reqs = _run([sys.executable, "-c", "from importlib.metadata import requires\n"
+                 "print('\\n'.join(r for r in requires('kittenml') or [] if 'extra ==' not in r))"]).splitlines()
+    without = []
+    for req in reqs:
+        left = limit_s - (time.time() - t0)
+        if left < 20:
+            without.append(req)
+            continue
+        code, more = pip(["install", req], min(left, 300))
+        log += more
+        if code != 0:
+            without.append(req)
+    res["without"] = [re.split(r"[<>=!~;\[ ]", r, 1)[0] for r in without]
+    print(f"kittenml installed without: {', '.join(res['without'])}", flush=True)
+    return log
 
 
 def installed_versions():
@@ -142,33 +200,42 @@ def installed_versions():
 
 # ── Child processes ──────────────────────────────────────────────────────────────
 
+def part_path(out, kind, arg):
+    return os.path.join(out, "parts", f"{kind}-{arg.replace(':', '__')}.json")
+
+
+def log_path(out, kind, arg):
+    return os.path.join(out, "logs", f"{kind}-{arg.replace(':', '__')}.log")
+
+
+def write_part(out, kind, arg, data):
+    with open(part_path(out, kind, arg), "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=1)
+
+
 def run_child(kind, arg, spec_path, out, timeout_s):
-    """Run one isolated part; returns its JSON, or a crash/timeout record."""
-    part_out = os.path.join(out, "parts", f"{kind}-{arg}.json")
-    log_path = os.path.join(out, "logs", f"{kind}-{arg}.log")
+    """Run one part in its own process: (its JSON or None, exit code or None on timeout, log tail)."""
+    part, log = part_path(out, kind, arg), log_path(out, kind, arg)
+    if os.path.exists(part):
+        os.remove(part)
     # faulthandler prints the Python stack when native code crashes the process
     # (segfault, illegal instruction, Windows exceptions), which otherwise dies silently.
     cmd = [sys.executable, "-X", "faulthandler", os.path.abspath(__file__), "--child", kind, arg,
-           "--spec", spec_path, "--out", out]
+           "--spec", spec_path, "--out", out, "--limit", str(int(timeout_s))]
     t0 = time.time()
-    with open(log_path, "w", encoding="utf-8") as log:
+    with open(log, "w", encoding="utf-8") as f:
         try:
-            proc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, timeout=timeout_s)
-            code = proc.returncode
+            code = subprocess.run(cmd, stdout=f, stderr=subprocess.STDOUT, timeout=timeout_s).returncode
         except subprocess.TimeoutExpired:
             code = None
-    secs = round(time.time() - t0, 1)
-    with open(log_path, encoding="utf-8", errors="replace") as f:
+    with open(log, encoding="utf-8", errors="replace") as f:
         tail = f.read()[-3000:]
-    print(f"  {kind} {arg}: {secs}s, exit {code}", flush=True)
-    if os.path.exists(part_out):
-        with open(part_out, encoding="utf-8") as f:
-            return json.load(f)
-    if code is None:
-        return {"status": "timeout", "secs": secs, "error": f"stopped after {span(timeout_s)}",
-                "log_tail": tail}
-    return {"status": "crash", "secs": secs, "error": f"process {exit_reason(code)} before reporting",
-            "log_tail": tail}
+    print(f"  {kind} {arg}: {time.time() - t0:.0f} s, exit {code}", flush=True)
+    data = None
+    if os.path.exists(part):
+        with open(part, encoding="utf-8") as f:
+            data = json.load(f)
+    return data, code, tail, round(time.time() - t0, 1)
 
 
 # Exit codes worth naming: native crashes and kills, which leave no Python traceback.
@@ -180,81 +247,43 @@ SIGNALS = {4: "illegal CPU instruction (SIGILL)", 6: "aborted (SIGABRT)", 7: "bu
            11: "segmentation fault (SIGSEGV)"}
 
 
-def exit_reason(code):
-    """'exited with code 3221225501 (0xC000001D, illegal CPU instruction)' and the like."""
-    if code is not None and code < 0 and -code in SIGNALS:
-        return f"was killed by signal {-code}: {SIGNALS[-code]}"
-    if code is not None and code > 128 and code - 128 in SIGNALS and sys.platform != "win32":
-        return f"exited with code {code}: {SIGNALS[code - 128]}"
-    unsigned = code & 0xFFFFFFFF if code is not None else None
+def crash_reason(code, log=""):
+    """'crashed: illegal CPU instruction (0xC000001D)' and the like."""
+    if code < 0 and -code in SIGNALS:
+        return f"crashed: {SIGNALS[-code]}"
+    if code > 128 and code - 128 in SIGNALS and sys.platform != "win32":
+        return f"crashed: {SIGNALS[code - 128]}"
+    unsigned = code & 0xFFFFFFFF
     if unsigned in WINDOWS_CODES:
-        return f"exited with code {code} (0x{unsigned:08X}, {WINDOWS_CODES[unsigned]})"
-    return f"exited with code {code}"
+        return f"crashed: {WINDOWS_CODES[unsigned]} (0x{unsigned:08X})"
+    # Something called exit() (espeak-ng does): its last words say why.
+    said = [line.strip() for line in log.splitlines() if line.strip() and "Warning" not in line]
+    return f"exited with code {code}" + (f": {said[-1][:200]}" if said else "")
 
 
-def write_part(out, kind, arg, data):
-    with open(os.path.join(out, "parts", f"{kind}-{arg}.json"), "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=1)
+def run_test(key, spec, spec_path, out, timeout_s):
+    data, code, tail, secs = run_child("test", key, spec_path, out, timeout_s)
+    if data is None or code is None and data.get("status") != "pass":
+        data = dict(data or {}, key=key, log_tail=tail)
+        if code is None:
+            data.update(status="timeout", error=f"took longer than {span(timeout_s)}")
+        else:
+            data.update(status="crash", error=crash_reason(code, tail))
+    data["secs"] = secs
+    return data
 
 
-def step_limit(spec):
-    return int(spec.get("limits", {}).get("step_minutes", 10) * 60)
+def plan_tests(spec):
+    tests = []
+    for m in spec["models"]:
+        for key in test_keys(m):
+            header = TESTS[test_name(key)][0]
+            tests.append({"key": key, "model": m["key"], "test": test_name(key),
+                          "title": f"{m['label']} · {header}"})
+    return tests
 
 
-def span(secs):
-    return f"{secs // 60} min" if secs >= 60 else f"{secs} s"
-
-
-class Watchdog:
-    """Ends the process when one step runs past the limit, after saving what finished.
-
-    A step is one model load, generation, test or transcription. Native code can
-    hang without returning, so the only way out is to save the partial result and exit.
-    """
-
-    def __init__(self, limit_s, save):
-        self.limit_s, self.save, self.timer = limit_s, save, None
-
-    def start(self, step):
-        self.stop()
-        self.timer = threading.Timer(self.limit_s, self._fire, args=(step,))
-        self.timer.daemon = True
-        self.timer.start()
-
-    def stop(self):
-        if self.timer:
-            self.timer.cancel()
-            self.timer = None
-
-    def _fire(self, step):
-        try:
-            print(f"TIMEOUT: {step} took longer than {span(self.limit_s)}", flush=True)
-            self.save(step)
-        finally:
-            os._exit(124)
-
-
-class Checks:
-    """Records named checks; a failing check never stops the others."""
-
-    def __init__(self):
-        self.rows = []
-
-    def run(self, name, fn):
-        t0 = time.time()
-        try:
-            detail = fn() or {}
-            self.rows.append({"name": name, "status": "pass", "secs": round(time.time() - t0, 2), **detail})
-            print(f"PASS {name} {detail}", flush=True)
-            return detail
-        except Exception as e:
-            self.rows.append({"name": name, "status": "fail", "secs": round(time.time() - t0, 2),
-                              "error": f"{type(e).__name__}: {e}"[:400],
-                              "trace": traceback.format_exc()[-2000:]})
-            print(f"FAIL {name}: {type(e).__name__}: {e}", flush=True)
-            traceback.print_exc()
-            return None
-
+# ── The tests, each in its own process ───────────────────────────────────────────
 
 def check_audio(audio, sr, text=None):
     import numpy as np
@@ -267,204 +296,152 @@ def check_audio(audio, sr, text=None):
     assert peak > 1e-3, f"audio is silent (peak {peak:.2g})"
     if text:
         cps = len(text) / dur
-        assert 3 <= cps <= 40, f"{dur:.1f}s of audio for {len(text)} characters is implausible"
+        assert 3 <= cps <= 40, f"{dur:.1f} s of audio for {len(text)} characters is implausible"
     return round(dur, 3)
 
 
-def child_package(spec, out):
-    checks = Checks()
-
-    def imports():
+def child_import(spec, out):
+    res = {}
+    try:
         import kittenml
-        from kittenml import KittenTTS  # noqa: F401
-        return {"version": kittenml.__version__}
-
-    def normalize():
-        from kittenml import normalize_text
+        from kittenml import KittenTTS, normalize_text  # noqa: F401
+        res["version"] = kittenml.__version__
         got = normalize_text("I paid $3.50 for 2 apples.")
-        assert "$" not in got and "three" in got.lower(), got
-        return {"output": got}
-
-    def save(step):
-        write_part(out, "package", "all", {"status": "timeout", "checks": checks.rows + [
-            {"name": step, "status": "timeout", "error": f"took longer than {span(step_limit(spec))}"}]})
-
-    dog = Watchdog(step_limit(spec), save)
-    for name, fn in (("import", imports), ("normalize_text", normalize)):
-        dog.start(name)
-        checks.run(name, fn)
-    dog.stop()
-    write_part(out, "package", "all", {"checks": checks.rows})
+        assert "$" not in got and "three" in got.lower(), f"normalize_text gave {got!r}"
+        res["ok"] = True
+    except Exception as e:
+        traceback.print_exc()
+        res.update(ok=False, error=f"{type(e).__name__}: {e}"[:300])
+    write_part(out, "import", "all", res)
 
 
-def child_model(spec, key, out):
+def child_test(spec, key, out, limit_s, res):
+    import faulthandler
+    # If the parent has to stop a stalled test, the log shows where every thread was.
+    faulthandler.dump_traceback_later(max(limit_s - 20, 10), exit=False)
     import numpy as np
     import soundfile as sf
     from kittenml import KittenTTS
 
-    m_spec = next(m for m in spec["models"] if m["key"] == key)
+    model_key, name = key.partition(":")[0], test_name(key)
+    m = next(x for x in spec["models"] if x["key"] == model_key)
     text, voice = spec["text"], spec["voice"]
-    res = {"key": key, "label": m_spec["label"], "repo": m_spec["repo"], "status": "pass"}
-    os.makedirs(os.path.join(out, "audio"), exist_ok=True)
-    wav = os.path.join(out, "audio", f"{key}.wav")
-    checks = Checks()
+    audio_dir = os.path.join(out, "audio")
 
-    limit = step_limit(spec)
-    pending = list(m_spec.get("checks", []))
-
-    def save(step):
-        # The step that ran out of time, then every test that never got to run.
-        res.update(status="timeout", error=f"{step} took longer than {span(limit)}", timed_out=step)
-        rows = list(checks.rows)
-        for name in pending:
-            if not any(r["name"] == name for r in rows):
-                rows.append({"name": name, "status": "timeout" if name == step else "skipped",
-                             "error": f"took longer than {span(limit)}" if name == step
-                             else "not run: an earlier step timed out"})
-        res["checks"] = rows
-        res["peak_rss_mb"] = res.get("peak_rss_mb") or peak_rss_mb()
-        write_part(out, "model", key, res)
-
-    dog = Watchdog(limit, save)
-    dog.start("load")
     t0 = time.time()
-    kwargs = {"weights": m_spec["weights"]} if m_spec.get("weights") else {}
-    model = KittenTTS(m_spec["repo"], **kwargs)
+    weights = "emb4" if name == "emb4" else m.get("weights")
+    model = KittenTTS(m["repo"], **({"weights": weights} if weights else {}))
     res["load_s"] = round(time.time() - t0, 2)
-    dog.stop()
     sr = getattr(model, "sample_rate", 24000)
-    res["sample_rate"] = sr
-    res["voices"] = len(model.available_voices)
-    assert voice in model.available_voices, f"voice {voice!r} missing from {model.available_voices}"
+    print(f"loaded {m['repo']} in {res['load_s']} s", flush=True)
 
-    times, audio = [], None
-    for i in range(1 + int(m_spec.get("warm_runs", 0))):
-        dog.start("generate" if i == 0 else f"warm run {i}")
-        t0 = time.time()
-        audio = model.generate(text, voice=voice)
-        times.append(time.time() - t0)
-        dog.stop()
-        if i == 0:
-            res["first_s"] = round(times[0], 3)
+    def timed(fn):
+        t = time.time()
+        value = fn()
+        return value, round(time.time() - t, 3)
+
+    def keep(audio, suffix, said):
+        """Save the clip for listening and, with `said`, for Whisper to check."""
+        path = os.path.join(audio_dir, f"{model_key}{suffix}.wav")
+        sf.write(path, np.asarray(audio), sr)
+        res["wav"] = os.path.relpath(path, out)
+        if said:
+            res["said"] = said
+
+    if name == "speak":
+        assert voice in model.available_voices, f"voice {voice!r} missing from {model.available_voices}"
+        times = []
+        for i in range(1 + int(m.get("warm_runs", 0))):
+            audio, secs = timed(lambda: model.generate(text, voice=voice))
+            times.append(secs)
+            print(f"generate #{i + 1}: {secs:.2f} s", flush=True)
+        res.update(first_s=times[0], warm_s=times[1:], gen_s=min(times[1:] or times))
         res["audio_s"] = check_audio(audio, sr, text)
-        print(f"generate #{i + 1}: {times[-1]:.2f}s for {res['audio_s']}s of audio", flush=True)
-    sf.write(wav, np.asarray(audio), sr)
-    res["peak_rss_mb"] = peak_rss_mb()   # load + generate; the checks below can load more
-    res["first_s"] = round(times[0], 3)
-    res["warm_s"] = [round(t, 3) for t in times[1:]]
-    res["wav"] = os.path.relpath(wav, out)
-    res["asr_refs"] = [{"wav": res["wav"], "text": text, "label": m_spec["label"]}]
-
-    def stream():
-        t0 = time.time()
-        first, chunks = None, []
+        keep(audio, "", text)
+    elif name == "stream":
+        t, first, chunks = time.time(), None, []
         for c in model.generate_stream(text, voice=voice):
-            first = first if first is not None else time.time() - t0
+            first = first if first is not None else round(time.time() - t, 3)
             chunks.append(np.asarray(c))
-        assert chunks, "stream yielded nothing"
-        return {"chunks": len(chunks), "first_chunk_s": round(first, 2),
-                "audio_s": check_audio(np.concatenate(chunks), sr, text)}
-
-    def speed():
-        slow = check_audio(model.generate(text, voice=voice, speed=0.8), sr)
-        assert slow > res["audio_s"] * 1.1, f"speed=0.8 gave {slow}s vs {res['audio_s']}s at 1.0"
-        return {"audio_s": slow}
-
-    def to_file():
-        path = os.path.join(out, "audio", f"{key}-to-file.wav")
-        model.generate_to_file(text, path, voice=voice)
+        assert chunks, "generate_stream yielded nothing"
+        res.update(gen_s=round(time.time() - t, 3), first_chunk_s=first, chunks=len(chunks))
+        audio = np.concatenate(chunks)
+        res["audio_s"] = check_audio(audio, sr, text)
+        keep(audio, "-stream", text)
+    elif name == "speed":
+        normal = check_audio(model.generate(text, voice=voice), sr)
+        audio, res["gen_s"] = timed(lambda: model.generate(text, voice=voice, speed=0.8))
+        res["audio_s"] = check_audio(audio, sr, text)
+        assert res["audio_s"] > normal * 1.1, f"speed=0.8 gave {res['audio_s']} s of audio, speed=1.0 {normal} s"
+        keep(audio, "-speed", text)
+    elif name == "to_file":
+        path = os.path.join(audio_dir, f"{model_key}-to-file.wav")
+        _, res["gen_s"] = timed(lambda: model.generate_to_file(text, path, voice=voice))
         data, file_sr = sf.read(path)
-        return {"audio_s": check_audio(data, file_sr)}
-
-    def expression():
-        a = model.generate(EXPRESSION_TEXT, voice="Kiki", preset="expressive")
-        return {"audio_s": check_audio(a, sr)}
-
-    def clone():
-        path = os.path.join(out, "audio", f"{key}-clone.wav")
-        a = model.generate(CLONE_TEXT, reference=wav, reference_text=text)
-        sf.write(path, np.asarray(a), sr)
-        res["asr_refs"].append({"wav": os.path.relpath(path, out), "text": CLONE_TEXT,
-                                "label": f"{m_spec['label']} · clone"})
-        return {"audio_s": check_audio(a, sr, CLONE_TEXT)}
-
-    def clone_whisper():
-        a = model.generate(CLONE_TEXT, reference=wav)
-        return {"audio_s": check_audio(a, sr, CLONE_TEXT)}
-
-    def emb4():
-        # README: KittenTTS("KittenML/kitten-tts-2", weights="emb4"). Drop the main
-        # model first so the two never sit in memory together.
-        nonlocal model
-        model = None
-        gc.collect()
-        t0 = time.time()
-        small = KittenTTS(m_spec["repo"], weights="emb4")
-        load_s = round(time.time() - t0, 2)
-        return {"load_s": load_s, "audio_s": check_audio(small.generate(text, voice=voice), sr, text)}
-
-    known = {"stream": stream, "speed": speed, "to_file": to_file, "expression": expression,
-             "clone": clone, "clone_whisper": clone_whisper, "emb4": emb4}
-    wanted = m_spec.get("checks", [])
-    for name in [c for c in wanted if c != "emb4"] + [c for c in wanted if c == "emb4"]:   # emb4 drops the model
-        dog.start(name)
-        checks.run(name, known[name])
-        dog.stop()
-    res["checks"] = checks.rows
-    failed = [c["name"] for c in checks.rows if c["status"] != "pass"]
-    if failed:
-        res["status"] = "fail"
-        res["error"] = "failed checks: " + ", ".join(failed)
-    res["peak_rss_checks_mb"] = peak_rss_mb()
-    write_part(out, "model", key, res)
+        res["audio_s"] = check_audio(data, file_sr, text)
+        res.update(wav=os.path.relpath(path, out), said=text)
+    elif name == "expression":
+        audio, res["gen_s"] = timed(lambda: model.generate(EXPRESSION_TEXT, voice="Kiki", preset="expressive"))
+        res["audio_s"] = check_audio(audio, sr)
+        keep(audio, "-expression", None)
+    elif name in ("clone", "clone_whisper"):
+        reference = os.path.join(audio_dir, f"{model_key}.wav")
+        if not os.path.exists(reference):
+            raise RuntimeError("no reference clip to clone: the Speak test made none")
+        kwargs = {"reference": reference}
+        if name == "clone":
+            kwargs["reference_text"] = text
+        audio, res["gen_s"] = timed(lambda: model.generate(CLONE_TEXT, **kwargs))
+        res["audio_s"] = check_audio(audio, sr, CLONE_TEXT)
+        keep(audio, "-" + name.replace("_", "-"), CLONE_TEXT)
+    elif name == "emb4":
+        audio, res["gen_s"] = timed(lambda: model.generate(text, voice=voice))
+        res["audio_s"] = check_audio(audio, sr, text)
+        keep(audio, "-emb4", text)
+    if res.get("gen_s") and res.get("audio_s"):
+        res["rtf"] = round(res["gen_s"] / res["audio_s"], 3)
+    res["status"] = "pass"
 
 
-def child_model_safe(spec, key, out):
-    """child_model, but load/generate errors become a failed row, not a crash."""
+def child_test_safe(spec, key, out, limit_s):
+    """child_test, but an exception becomes a failed test with its message."""
+    res = {"key": key}
     try:
-        child_model(spec, key, out)
+        child_test(spec, key, out, limit_s, res)
     except Exception as e:
-        m_spec = next(m for m in spec["models"] if m["key"] == key)
         traceback.print_exc()
-        write_part(out, "model", key, {
-            "key": key, "label": m_spec["label"], "repo": m_spec["repo"], "status": "fail",
-            "error": f"{type(e).__name__}: {e}"[:400], "trace": traceback.format_exc()[-2000:],
-            "peak_rss_mb": peak_rss_mb()})
+        res.update(status="fail", error=f"{type(e).__name__}: {e}"[:400], trace=traceback.format_exc()[-2000:])
+    res["peak_rss_mb"] = peak_rss_mb()
+    print(f"{key}: {res['status']} {res.get('error', '')}", flush=True)
+    write_part(out, "test", key, res)
 
 
 def child_asr(spec, out):
+    """Whisper transcribes every clip; the part is rewritten after each, so a timeout keeps what finished."""
     asr = spec["asr"]
     with open(os.path.join(out, "parts", "asr-refs.json"), encoding="utf-8") as f:
         refs = json.load(f)
+    res = {"status": "running", "model": asr["model"], "rows": []}
     try:
         import librosa
         from transformers import pipeline
     except ImportError as e:
-        write_part(out, "asr", "all", {"status": "skipped", "reason": f"{e}", "rows": []})
+        write_part(out, "asr", "all", {"status": "skipped", "error": f"cannot transcribe: {e}", "rows": []})
         return
-    t0 = time.time()
-    rows = []
-
-    def save(step):
-        write_part(out, "asr", "all", {"status": "timeout", "error": f"{step} took longer than {span(step_limit(spec))}",
-                                       "model": asr["model"], "secs": round(time.time() - t0, 1), "rows": rows})
-
-    dog = Watchdog(step_limit(spec), save)
-    dog.start("loading Whisper")
+    write_part(out, "asr", "all", res)
     pipe = pipeline("automatic-speech-recognition", model=asr["model"], device="cpu")
     for ref in refs:
-        dog.start(f"transcribing {ref['label']}")
         try:
             audio, _ = librosa.load(os.path.join(out, ref["wav"]), sr=16000)
-            hyp = pipe(audio)["text"].strip()
-            w, edits, n = wer(ref["text"], hyp)
-            rows.append({**ref, "transcript": hyp, "wer": round(w, 4), "edits": edits, "words": n})
-            print(f"{ref['label']}: WER {w:.1%} — {hyp}", flush=True)
+            heard = pipe(audio)["text"].strip()
+            w, edits, n = wer(ref["said"], heard)
+            res["rows"].append({"key": ref["key"], "transcript": heard, "wer": round(w, 4), "edits": edits, "words": n})
+            print(f"{ref['key']}: WER {w:.1%} — {heard}", flush=True)
         except Exception as e:
-            rows.append({**ref, "wer": None, "error": f"{type(e).__name__}: {e}"[:300]})
-    dog.stop()
-    write_part(out, "asr", "all", {"status": "done", "model": asr["model"],
-                                   "secs": round(time.time() - t0, 1), "rows": rows})
+            res["rows"].append({"key": ref["key"], "wer": None, "error": f"{type(e).__name__}: {e}"[:300]})
+        write_part(out, "asr", "all", res)
+    res["status"] = "done"
+    write_part(out, "asr", "all", res)
 
 
 # ── Driver ───────────────────────────────────────────────────────────────────────
@@ -475,50 +452,71 @@ def drive(spec_path, out):
     for d in ("parts", "logs", "audio"):
         os.makedirs(os.path.join(out, d), exist_ok=True)
     t_start = time.time()
-    result = {"spec": spec, "env": system_info()}
+    limits = spec.get("limits", {})
+    limit = int(limits.get("step_minutes", 10) * 60)
+    # Stop starting tests before GitHub cancels the job, so result.json is always written.
+    deadline = t_start + limits.get("job_minutes", 45) * 60 - 240
+    reserve = limit // 2 if spec["asr"].get("enabled") else 0     # for the transcription at the end
+    result = {"spec": spec, "env": system_info(), "tests": []}
     print(json.dumps(result["env"]), flush=True)
 
     print("Installing...", flush=True)
-    result["install"] = install(out, step_limit(spec))
-    print(json.dumps({k: v for k, v in result["install"].items() if k != "log_tail"}), flush=True)
+    install_res = install(out, limit)
+    result["install"] = install_res
+    print(json.dumps({k: v for k, v in install_res.items() if k != "log_tail"}), flush=True)
 
-    if result["install"]["ok"]:
-        limit = step_limit(spec)
-        result["package"] = run_child("package", "all", spec_path, out, 3 * limit)
-        result["models"] = []
-        refs = []
-        for m in spec["models"]:
-            # Backstop only: the child's watchdog stops a slow step long before this.
-            steps = 3 + int(m.get("warm_runs", 0)) + len(m.get("checks", []))
-            row = run_child("model", m["key"], spec_path, out, steps * limit)
-            if row.get("status") in ("crash", "timeout"):
-                # Run a crash or a stall once more: KittenTTS 2 stalls in some runs and not others on the same
-                # runner, so one that does not come back is flaky, not broken, and is reported as such.
-                first_log = os.path.join(out, "logs", f"model-{m['key']}.log")
+    if install_res["ok"] or install_res.get("without") is not None:
+        data, code, tail, _ = run_child("import", "all", spec_path, out, limit)
+        install_res["import_ok"] = bool(data and data.get("ok"))
+        if not install_res["import_ok"]:
+            install_res["import_error"] = (data or {}).get("error") or (
+                f"took longer than {span(limit)}" if code is None else crash_reason(code, tail))
+        for t in plan_tests(spec):
+            left = deadline - time.time() - reserve
+            if left < 60:
+                result["tests"].append(dict(t, status="skipped", error="not run: the job ran out of time"))
+                continue
+            row = run_test(t["key"], spec, spec_path, out, min(limit, left))
+            left = deadline - time.time() - reserve
+            if row["status"] in ("crash", "timeout") and left >= 60:
+                # Run a crash or a stall once more, in a fresh process. One that passes then is flaky.
+                first_log = log_path(out, "test", t["key"])
                 os.replace(first_log, first_log[:-4] + "-first.log")
-                part = os.path.join(out, "parts", f"model-{m['key']}.json")
-                if os.path.exists(part):
-                    os.remove(part)
-                again = run_child("model", m["key"], spec_path, out, steps * limit)
-                if again.get("status") == "pass":
-                    again["flaky"] = f"{row['error']} on the first run; passed on the second"
+                again = run_test(t["key"], spec, spec_path, out, min(limit, left))
+                if again["status"] == "pass":
+                    again["flaky"] = f"{row['error']} the first time; passed when run again"
+                elif again.get("error") == row.get("error"):
+                    again["error"] += ", twice"
+                else:
+                    again["error"] = f"{again.get('error')} (first run: {row.get('error')})"
                 row = again
-            row.setdefault("key", m["key"])
-            row.setdefault("label", m["label"])
-            row.setdefault("repo", m["repo"])
-            result["models"].append(row)
-            refs += row.get("asr_refs", [])
+            result["tests"].append(dict(t, **row))
+
+        refs = [{"key": r["key"], "wav": r["wav"], "said": r["said"]} for r in result["tests"]
+                if r.get("status") == "pass" and r.get("said") and r.get("wav")]
         if spec["asr"].get("enabled") and refs:
             with open(os.path.join(out, "parts", "asr-refs.json"), "w", encoding="utf-8") as f:
                 json.dump(refs, f)
-            result["asr"] = run_child("asr", "all", spec_path, out, (2 + len(refs)) * limit)
+            left = max(deadline - time.time(), 60)
+            data, code, tail, secs = run_child("asr", "all", spec_path, out, min(limit, left))
+            asr = data or {"rows": []}
+            if asr.get("status") != "done" and asr.get("status") != "skipped":
+                asr["error"] = f"took longer than {span(min(limit, left))}" if code is None else crash_reason(code, tail)
+                asr["status"] = "timeout" if code is None else "crash"
+                asr["log_tail"] = tail
+            asr["secs"] = secs
+            result["asr"] = {k: v for k, v in asr.items() if k != "rows"}
+            heard = {row["key"]: row for row in asr.get("rows", [])}
+            for r in result["tests"]:
+                if r["key"] in heard:
+                    r.update({k: v for k, v in heard[r["key"]].items() if k != "key"})
 
     result["secs"] = round(time.time() - t_start, 1)
     status, reasons = classify(result)
     result["status"], result["reasons"] = status, reasons
     with open(os.path.join(out, "result.json"), "w", encoding="utf-8") as f:
         json.dump(result, f, indent=1)
-    print(f"\n{spec['name']} · py{spec['python']}: {STATUS_LABEL[status]}", flush=True)
+    print(f"\n{spec['name']} · py{spec['python']}: {status}", flush=True)
     for r in reasons:
         print(f"  - {r}", flush=True)
     # The verdict (did this break something that works on main?) is the report job's.
@@ -530,16 +528,17 @@ def main():
     ap.add_argument("--spec", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--child", nargs=2, metavar=("KIND", "ARG"))
+    ap.add_argument("--limit", type=int, default=600)
     args = ap.parse_args()
     if not args.child:
         sys.exit(drive(args.spec, args.out))
     with open(args.spec, encoding="utf-8") as f:
         spec = json.load(f)
     kind, arg = args.child
-    if kind == "package":
-        child_package(spec, args.out)
-    elif kind == "model":
-        child_model_safe(spec, arg, args.out)
+    if kind == "import":
+        child_import(spec, args.out)
+    elif kind == "test":
+        child_test_safe(spec, arg, args.out, args.limit)
     elif kind == "asr":
         child_asr(spec, args.out)
 

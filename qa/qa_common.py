@@ -1,4 +1,4 @@
-"""Shared by the runner script and the report: statuses and WER.
+"""Shared by the runner script and the report: test names, statuses and WER.
 
 Imported on every runner before anything is installed, including Python 3.9, so
 it uses the standard library only and no newer syntax.
@@ -11,35 +11,66 @@ PASSED = "passed"
 FAILED = "failed"
 NO_RESULT = "no-result"       # the job died, timed out or was cancelled
 
-STATUS_LABEL = {PASSED: "Works", FAILED: "Does not work", NO_RESULT: "No result"}
+# Each test is one README example, run in its own Python process.
+# test name -> (column header, what it runs)
+TESTS = {
+    "speak": ("Speak", "`generate()` speaks the sample text"),
+    "stream": ("Stream", "`generate_stream()`"),
+    "speed": ("Speed", "`generate(speed=0.8)` gives longer audio"),
+    "to_file": ("To file", "`generate_to_file()`"),
+    "expression": ("Expression", "`[joyful]` and `<laugh>` tags with `preset=\"expressive\"`"),
+    "clone": ("Clone", "voice cloning with `reference=` and `reference_text=`"),
+    "clone_whisper": ("Clone (Whisper)", "voice cloning with `reference=` only; Whisper writes the transcript"),
+    "emb4": ("emb4", "`weights=\"emb4\"`, the smaller weights"),
+}
+
+
+def test_keys(model):
+    """'nano' (speaks the sample text), then 'nano:stream' and the like for each check."""
+    return [model["key"]] + [f"{model['key']}:{c}" for c in model.get("checks", [])]
+
+
+def test_name(key):
+    return key.partition(":")[2] or "speak"
+
+
+def wer_failed(row, fail_above):
+    return fail_above is not None and row.get("wer") is not None and row["wer"] > fail_above
+
+
+def test_ok(row, fail_above):
+    """A test works when it ran without error and, where Whisper listened, it heard the text."""
+    return row.get("status") == "pass" and not wer_failed(row, fail_above)
+
+
+def why(row, fail_above):
+    """One line on why a test does not work."""
+    if row.get("status") == "pass" and wer_failed(row, fail_above):
+        heard = (row.get("transcript") or "").strip()
+        return f"Whisper heard “{heard[:100]}” (WER {row['wer']:.0%})"
+    error = re.sub(r"\s+", " ", row.get("error") or row.get("status") or "failed").strip()
+    return error[:200]
+
+
+def install_ok(result):
+    install = result.get("install") or {}
+    return bool(install.get("ok") and install.get("import_ok"))
 
 
 def classify(result):
     """(status, reasons) for one platform job's result.json."""
-    spec = result["spec"]
     install = result.get("install") or {}
     if not install:
         return NO_RESULT, ["the job did not record an install"]
-    if not install.get("ok"):
-        return FAILED, [f"install: {install.get('error') or 'failed'}"]
+    fail_above = result["spec"].get("asr", {}).get("fail_above")
     reasons = []
-    package = result.get("package") or {}
-    if package.get("status") in ("crash", "timeout"):
-        reasons.append(f"package checks: {package.get('error', package['status'])}")
-    for chk in package.get("checks", []):
-        if chk["status"] != "pass":
-            reasons.append(f"{chk['name']}: {chk.get('error', chk['status'])}")
-    for model in result.get("models", []):
-        if model["status"] != "pass":
-            reasons.append(f"{model['label']}: {model.get('error') or model['status']}")
-    asr = result.get("asr") or {}
-    if asr.get("status") in ("crash", "timeout"):
-        # No WER means no check that the audio says the text; that must not pass quietly.
-        reasons.append(f"WER transcription: {asr.get('error', asr['status'])}")
-    fail_above = spec.get("asr", {}).get("fail_above")
-    for row in asr.get("rows", []):
-        if fail_above is not None and row.get("wer") is not None and row["wer"] > fail_above:
-            reasons.append(f"{row['label']}: WER {row['wer']:.0%} is above {fail_above:.0%}")
+    if not install.get("ok"):
+        reasons.append(f"install: {install.get('reason') or install.get('error') or 'failed'}")
+    elif not install.get("import_ok"):
+        reasons.append(f"import: {install.get('import_error') or 'failed'}")
+    for row in result.get("tests", []):
+        if not test_ok(row, fail_above):
+            reasons.append(f"{row.get('title', row['key'])}: {why(row, fail_above)}")
     return (FAILED, reasons) if reasons else (PASSED, [])
 
 

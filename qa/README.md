@@ -15,33 +15,43 @@ It assumes nothing about what should work. It answers two questions:
   a test that works there stops working here. Something that does not work on `main`
   either is listed, not failed; something that starts working is marked **new**.
 
-A failure on a CPU the `main` run never drew is reported but not counted as broken, since
-it cannot tell a regression from a CPU-specific problem (GitHub assigns runner CPUs at
-random). The first run, with nothing to compare with, only reports.
+Not counted as broken, but listed: a failure on a CPU the `main` run never drew (GitHub
+assigns runner CPUs at random, so it cannot tell a regression from a CPU-specific problem),
+and a timeout on a platform that also timed out on `main` or where `main` took over half
+the limit. The first run, with nothing to compare with, only reports.
 
 It runs on pull requests and pushes to `main` that touch the package, its dependencies or
 this folder. You can also start it from the Actions tab.
 
-Every install, load, generation, test and transcription is stopped after
-`[limits] step_minutes` (10 min) and reported as timed out, and a job after
-`[limits] job_minutes`, so nothing runs for hours.
+## How a job runs
+
+1. `pip install` this checkout, as the README says. When that fails only because a
+   dependency has no build for the platform or Python (torch on Intel Macs, for example),
+   kittenml is installed without it, so the tests still show what works there. The
+   install itself stays ❌.
+2. Each test is one README example in its own Python process: every model speaks the
+   sample text, and each check in `config.toml` (streaming, `generate_to_file`, voice
+   cloning, …) runs on its own. One that crashes or stalls cannot take the others down.
+3. Each test is stopped after `[limits] step_minutes` (10 min). One that crashes or times
+   out is run once more; if it passes then, it is reported as flaky.
+4. Whisper transcribes every clip; a WER above `[asr] fail_above` fails that test.
+5. No test starts when the job is near its time limit, so every job reports.
 
 ## What the report shows
 
-The pull request gets one short comment for each commit:
+The pull request gets one comment for each commit, laid out like the React Native SDK's:
 
-- **Platforms:** one row per platform and one column per Python version, the CPUs the
-  runners drew, and how long the jobs took (🐢 over `report.slow_job_minutes`). Under it,
-  why each ❌ does not work.
-- **KittenTTS 0.8 (ONNX models)** and **KittenTTS 2:** one row per README example and one
-  column per platform and CPU, then each model's real-time factor (🐢 slower than realtime)
-  and, for KittenTTS 2, peak RAM.
-- **Broke since the baseline:** one line per broken test, with a link to the job's log and
-  the log's tail.
+- **Summary:** the commit, how many jobs pass every test, and what it was compared with.
+- **Broke in This PR:** only when something broke, one row per test with a log link.
+- **Platform Status:** one row per platform, one column per Python version: ✅, ❌ with how
+  many tests pass, or ❌ install. The CPUs the runners drew and the job times (🐢 slow).
+- **What Does Not Work:** one row per reason, with every platform and Python it affects.
+- **KittenTTS 0.8 (ONNX)** and **KittenTTS 2:** one row per platform and CPU, one column per
+  test, then real-time factor, peak RAM and WER.
+- **Notes:** what started working, what was flaky, what was not counted and why.
 
-The run summary has everything above plus every job's numbers: load time, first and warm
-generation times, peak RAM, what Whisper heard, every test's result, every failure's log,
-and an audio download.
+The run summary adds every job's numbers: load and generation time, RTF, peak RAM, what
+Whisper heard, and the log of every failure.
 
 ## Changing what is tested
 
@@ -52,7 +62,7 @@ Edit [`config.toml`](config.toml). The workflow needs no changes.
 | Add or drop a Python version | `[matrix] pythons`, or `pythons` on one `[[target]]` |
 | Add a platform | Add a `[[target]]` with a [runner label](https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners) |
 | Add a model | Add a `[models.<key>]`; every platform runs it (`models` on a target narrows that) |
-| Change one model on one platform | `overrides = { tts2 = { weights = "emb4", warm_runs = 0 } }` |
+| Change one model on one platform | `overrides = { tts2 = { weights = "emb4", warm_runs = 0 } }` (the report marks it) |
 | Run a platform only on PRs, or only on `main` | `events = ["pull_request"]` or `events = ["push", "workflow_dispatch"]` |
 | Change when a job counts as slow | `[report] slow_job_minutes` |
 | Change the time limits | `[limits] step_minutes`, `job_minutes`, or `timeout_minutes` on a target |
