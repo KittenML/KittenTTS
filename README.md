@@ -253,6 +253,7 @@ Two consequences worth knowing:
 | [Decoders](docs/decoders.md) | How audio is decoded, and the smaller quantised decoders |
 | [Text normalization](docs/text-normalization.md) | How written text becomes spoken text |
 | [Architecture](docs/architecture.md) | What the model is, package layout, vendored components |
+| [Docker](docs/docker.md) | Run a basic OpenAI-compatible speech API, with voice cloning, in a container |
 | [Lightweight ONNX models](docs/onnx-models.md) | The CPU models, 15M-80M parameters, and their API |
 
 ## System Requirements
