@@ -8,7 +8,7 @@ Fuller detail than the [project README](../README.md), which covers getting star
 | [voices-and-expression.md](voices-and-expression.md) | The 47 built-in voices, the emotion and vocal-event tags, the ten languages |
 | [decoders.md](decoders.md) | How audio is decoded, and the smaller quantised decoders |
 | [vllm.md](vllm.md) | Optional NVIDIA GPU inference with vLLM |
-| [docker.md](docker.md) | Running the vLLM or PyTorch GPU backend in a container |
+| [docker.md](docker.md) | A basic OpenAI-compatible speech API, with voice cloning, in a container |
 | [text-normalization.md](text-normalization.md) | How written text becomes spoken text |
 | [architecture.md](architecture.md) | What the model is, package layout, vendored components |
 | [onnx-models.md](onnx-models.md) | The lightweight CPU models and their API |
