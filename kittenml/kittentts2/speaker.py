@@ -156,10 +156,19 @@ class ReferenceTranscriber:
                 chunk_length_s=30, device=0 if self.device == "cuda" else -1,
                 dtype=torch.float16 if self.device == "cuda" else torch.float32,
                 model_kwargs={"cache_dir": self.cache_dir} if self.cache_dir else {})
+            # Clear saved language settings so language=None enables auto-detection.
+            for config in (self._pipeline.generation_config,
+                           self._pipeline.model.generation_config):
+                config.language = None
+                config.forced_decoder_ids = None
+            self._pipeline.model.config.forced_decoder_ids = None
         return self._pipeline
 
-    def __call__(self, wav_path):
+    def __call__(self, wav_path, reference_language=None):
         import librosa
         wav, sample_rate = librosa.load(str(wav_path), sr=16000, mono=True)
         del sample_rate
-        return self._load()(wav, generate_kwargs={"language": "en"})["text"].strip()
+        return self._load()(wav, generate_kwargs={
+            "language": reference_language,
+            "task": "transcribe",
+        })["text"].strip()

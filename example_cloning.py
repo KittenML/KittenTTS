@@ -5,10 +5,11 @@ from kittenml import KittenTTS
 
 m = KittenTTS("KittenML/kitten-tts-2")
 
+# Set reference_language="en" or "ru" if the recording's language is known.
 audio = m.generate("This is my own voice, cloned.", reference="my_voice.wav")
 sf.write("cloned.wav", audio, m.sample_rate)
 
-# The clip is transcribed automatically. Pass the transcript if you have it.
+# Supplying the transcript skips Whisper.
 audio = m.generate("The transcript is optional, but it helps.",
                    reference="my_voice.wav",
                    reference_text="What the recording actually says.")

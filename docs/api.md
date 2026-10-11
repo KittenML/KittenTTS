@@ -20,15 +20,16 @@ Loads whichever model family the repository's `config.json` declares.
 # `model.generate(text, voice=None, reference=None, ...)`
 
 Returns a float32 NumPy array at `model.sample_rate` (24 kHz). The speaker comes from exactly one
-of `voice` or `reference`; giving both, or `reference_text` without `reference`, raises
-`ValueError`.
+of `voice` or `reference`; giving both, or providing `reference_text` or
+`reference_language` without `reference`, raises `ValueError`.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `text` | `str` | -- | Text to speak; supports the expression controls above |
 | `voice` | `str` | repo default | Built-in voice name |
 | `reference` | `str` | `None` | Path to a recording to clone instead of using a built-in voice |
-| `reference_text` | `str` | `None` | Reference transcript; auto-transcribed when omitted |
+| `reference_text` | `str` | `None` | Reference transcript; auto-transcribed when omitted or blank. A nonblank value skips Whisper |
+| `reference_language` | `str` | `None` | Keyword-only Whisper language code (e.g. `"en"`, `"ru"`); `None` auto-detects. Ignored for a nonblank `reference_text` |
 | `preset` | `str` | `"stable"` | Decoding preset: `"stable"` or `"expressive"` |
 | `max_new_tokens` | `int` | `1000` | Per-chunk token budget; 25 tokens is about one second |
 | `normalize` | `bool` | `True` | Expand written forms before synthesis |
@@ -64,7 +65,7 @@ audio = m.generate("Hello.", voice="Bruno", advanced={"seed": 1234})   # reprodu
 
 Same arguments; yields each chunk's audio as it is produced.
 
-# `model.generate_to_file(text, output_path, **kwargs)`
+# `model.generate_to_file(text, output_path, *, reference_language=None, **kwargs)`
 
 Synthesize and write a wav. Returns the path written.
 

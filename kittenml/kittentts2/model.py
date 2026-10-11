@@ -291,16 +291,18 @@ class KittenTTS2:
                 reference_wav=spec["reference"])
         return self._reference_cache[("voice", voice)]
 
-    def _clone_reference(self, reference_wav, reference_text=None):
+    def _clone_reference(self, reference_wav, reference_text=None, reference_language=None):
         """The same artifacts, derived on the fly from an arbitrary clip."""
         reference_wav = resolve_reference_path(reference_wav)
-        key = ("clone", reference_wav, reference_text)
+        needs_transcript = not (reference_text and reference_text.strip())
+        key = ("clone", reference_wav, reference_text,
+               reference_language if needs_transcript else None)
         if key not in self._reference_cache:
             transcript = reference_text
-            if not (transcript and transcript.strip()):
+            if needs_transcript:
                 # The transcript is part of the prompt, and a caller should not have
                 # to type it out; transcribe rather than refuse.
-                transcript = self.transcriber(reference_wav)
+                transcript = self.transcriber(reference_wav, reference_language=reference_language)
                 if not (transcript and transcript.strip()):
                     raise ValueError(
                         f"no speech found in the reference clip: {reference_wav}")
@@ -435,14 +437,16 @@ class KittenTTS2:
                 yield wav
 
     # ── public API ────────────────────────────────────────────────────────────
-    def _speaker(self, voice, reference, reference_text):
+    def _speaker(self, voice, reference, reference_text, reference_language=None):
         """Resolve the speaker: a built-in voice, or a reference recording."""
         if reference is not None and voice is not None:
             raise ValueError("give either voice= or reference=, not both")
         if reference is not None:
-            return self._clone_reference(reference, reference_text)
+            return self._clone_reference(reference, reference_text, reference_language)
         if reference_text is not None:
             raise ValueError("reference_text= only applies together with reference=")
+        if reference_language is not None:
+            raise ValueError("reference_language= only applies together with reference=")
         voice = voice or self.config.get("default_voice")
         if voice is None:
             raise ValueError("no voice given and the model declares no default voice")
@@ -451,7 +455,7 @@ class KittenTTS2:
     def generate(self, text, voice=None, reference=None, reference_text=None,
                  preset=None, max_new_tokens=1000, normalize=True,
                  use_reference_prompt=None, temperature=None, top_k=None,
-                 top_p=None, min_p=None, advanced=None):
+                 top_p=None, min_p=None, advanced=None, *, reference_language=None):
         """Synthesize `text` as a built-in voice, or as a cloned one.
 
         The speaker comes from exactly one of `voice` or `reference`:
@@ -465,7 +469,10 @@ class KittenTTS2:
             voice: a name from `available_voices`. Defaults to the repository's
                 own default voice when neither this nor `reference` is given.
             reference: path to roughly 5-30 seconds of a single speaker, to clone.
-            reference_text: what that clip says. Transcribed with Whisper if omitted.
+            reference_text: what that clip says. Transcribed with Whisper if blank or omitted.
+            reference_language: Whisper language code (e.g. "en" or "ru"). None
+                auto-detects; transcription stays in the clip's original language.
+                Ignored when reference_text is nonblank. Requires reference.
             preset: a decoding preset name, e.g. "stable" or "expressive".
             max_new_tokens: per-chunk token budget; 25 tokens is about one second.
             normalize: expand written forms ("$12.50" -> "twelve dollars fifty cents").
@@ -482,7 +489,7 @@ class KittenTTS2:
         """
         options = self._resolve_advanced(advanced)
         wavs = list(self._synthesize(
-            self._speaker(voice, reference, reference_text), text,
+            self._speaker(voice, reference, reference_text, reference_language), text,
             preset or self.default_preset, max_new_tokens, normalize,
             use_reference_prompt,
             dict(temperature=temperature, top_k=top_k, top_p=top_p, min_p=min_p),
@@ -492,7 +499,7 @@ class KittenTTS2:
     def generate_stream(self, text, voice=None, reference=None, reference_text=None,
                         preset=None, max_new_tokens=1000, normalize=True,
                         use_reference_prompt=None, temperature=None, top_k=None,
-                        top_p=None, min_p=None, advanced=None):
+                        top_p=None, min_p=None, advanced=None, *, reference_language=None):
         """`generate`, yielding each chunk's audio as it is produced.
 
         Chunks are yielded untrimmed and unjoined — `generate` post-processes the
@@ -500,16 +507,16 @@ class KittenTTS2:
         chunk. Text short enough to fit one chunk yields exactly once.
         """
         yield from self._synthesize(
-            self._speaker(voice, reference, reference_text), text,
+            self._speaker(voice, reference, reference_text, reference_language), text,
             preset or self.default_preset, max_new_tokens, normalize,
             use_reference_prompt,
             dict(temperature=temperature, top_k=top_k, top_p=top_p, min_p=min_p),
             self._resolve_advanced(advanced))
 
-    def generate_to_file(self, text, output_path, **kwargs):
+    def generate_to_file(self, text, output_path, *, reference_language=None, **kwargs):
         """Synthesize and write a wav. Returns the path written."""
         import soundfile as sf
-        audio = self.generate(text, **kwargs)
+        audio = self.generate(text, reference_language=reference_language, **kwargs)
         sf.write(str(output_path), audio, self.sample_rate)
         return str(output_path)
 
