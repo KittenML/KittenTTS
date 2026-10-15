@@ -42,6 +42,19 @@ print(model.available_voices)
 # ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
 ```
 
+
+# Long text
+
+The 0.8 ONNX models share a BERT encoder with 512 position embeddings, so one
+forward pass can hold at most 512 input tokens. `generate` and
+`generate_stream` first split on sentence and word boundaries, then split any
+piece that would still exceed that budget, and concatenate the results. A chunk
+that phonemized to more than 512 tokens used to fail inside ONNX Runtime with
+`/bert/Expand` "invalid expand shape"; it is now split and synthesized.
+
+```python
+audio = model.generate(long_text, voice="Jasper")  # no manual chunking needed
+```
 # Using with GPU
 
 ```
