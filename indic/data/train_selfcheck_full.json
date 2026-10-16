@@ -1,0 +1,67 @@
+{
+  "device": "cpu",
+  "full": true,
+  "checkpoint": "/home/khushiyant/.cache/huggingface/hub/models--KittenML--kitten-tts-2/snapshots/f2eee74f4467855ad58fe16f1fb7b7df473263fd/lm",
+  "results": [
+    {
+      "check": "loss_masking",
+      "passed": true,
+      "skipped": false,
+      "note": "mask located two independent ways; padding bit-invariant; supervised positions provably do move the loss",
+      "row_lengths": [
+        35,
+        61
+      ],
+      "pad_positions": 26,
+      "mask_matches_token_scan": true,
+      "rows_checked": 2,
+      "baseline_loss": 10.672252655029297,
+      "pad_scrambled_loss": 10.672252655029297,
+      "pad_scrambled_delta": 0.0,
+      "supervised_token_control_delta": 0.09000968933105469,
+      "different_target_loss": 10.721636772155762,
+      "pad_invariant": true,
+      "supervised_control_moves_loss": true,
+      "target_changes_loss": true,
+      "seconds": 9.92
+    },
+    {
+      "check": "speaker_conditioning",
+      "passed": true,
+      "skipped": false,
+      "note": "prefill branch confirmed for teacher-forced training; positional-call hazard measured against the inference hook",
+      "model_received_inputs_embeds": true,
+      "model_received_input_ids": false,
+      "dtype": "torch.bfloat16",
+      "position_zero_vs_spk_proj": 0.0,
+      "position_zero_vs_start_token": 3.259521484375,
+      "position_zero_is_spk_proj": true,
+      "position_zero_is_start_token": false,
+      "spk_proj_grad_abs_sum": 808.0,
+      "loss_speakers": 10.797609329223633,
+      "loss_speakers_swapped": 10.513859748840332,
+      "loss_speaker_zero": 10.685218811035156,
+      "swap_delta": 0.2837495803833008,
+      "zero_delta": 0.11239051818847656,
+      "keyword_call_loss": 10.797609329223633,
+      "positional_call_loss": 10.797609329223633,
+      "positional_call_matches_keyword": true,
+      "missing_speaker_raises": true,
+      "inputs_embeds_raises": true,
+      "inference_hook": {
+        "keyword_call_loss": 5.416241645812988,
+        "keyword_call_spk_grad": 75.44007110595703,
+        "unconditioned_loss": 5.408564567565918,
+        "positional_call_loss": 5.408564567565918,
+        "positional_call_spk_grad": 0.0,
+        "inputs_embeds_call_loss": 5.408564567565918,
+        "keyword_call_differs_from_unconditioned": true,
+        "positional_call_is_unconditioned": true,
+        "inputs_embeds_call_is_unconditioned": true,
+        "both_bypasses_reproduced": true,
+        "loss_difference": 0.0076770782470703125
+      },
+      "seconds": 413.87
+    }
+  ]
+}

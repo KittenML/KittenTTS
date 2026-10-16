@@ -1,0 +1,67 @@
+{
+  "checkpoint": "indic/data/kitten-tts-2-sarvam-random",
+  "passed": 12,
+  "total": 12,
+  "results": [
+    {
+      "check": "config token_map parses",
+      "ok": true,
+      "detail": "audio_id_base 68,102"
+    },
+    {
+      "check": "vocab_size matches embedding rows",
+      "ok": true,
+      "detail": "74,752 vs 74,752"
+    },
+    {
+      "check": "audio range inside table",
+      "ok": true,
+      "detail": "audio ends at 74,663, table has 74,752"
+    },
+    {
+      "check": "lm_head is tied (no separate head stored)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "stale packed-weight keys dropped",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "audio rows bit-identical to source",
+      "ok": true,
+      "detail": "6,561 rows"
+    },
+    {
+      "check": "audio alignment is unique (off-by-one would differ)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "special and marker rows copied exactly",
+      "ok": true,
+      "detail": "11/11 rows match"
+    },
+    {
+      "check": "text-row norms in the trained regime",
+      "ok": true,
+      "detail": "median norm 2.175 vs source 2.158 (ratio 1.01)"
+    },
+    {
+      "check": "no NaN or Inf in the table",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "shipped tokenizer round-trips mixed script",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "check": "tokenizer emits only text rows",
+      "ok": true,
+      "detail": "max id 67,546 < first special 68,096"
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "kitten-qwen3": {
+    "repo": "KittenML/kitten-tts-2",
+    "vocab_size": 158237,
+    "class": "Qwen2Tokenizer",
+    "languages": {
+      "hi": {
+        "tokens_per_word": 4.761904761904762,
+        "tokens_per_char": 0.9297738958934987,
+        "tokens_per_sentence": 111.86440677966101,
+        "p95_tokens_per_sentence": 187,
+        "n_sentences": 118,
+        "n_tokens": 13200,
+        "n_words": 2772,
+        "n_chars": 14197
+      },
+      "bn": {
+        "tokens_per_word": 7.139180171591993,
+        "tokens_per_char": 1.0658222443606347,
+        "tokens_per_sentence": 126.9322033898305,
+        "p95_tokens_per_sentence": 227,
+        "n_sentences": 118,
+        "n_tokens": 14978,
+        "n_words": 2098,
+        "n_chars": 14053
+      },
+      "ta": {
+        "tokens_per_word": 10.129977876106194,
+        "tokens_per_char": 1.0988780224395511,
+        "tokens_per_sentence": 155.21186440677965,
+        "p95_tokens_per_sentence": 250,
+        "n_sentences": 118,
+        "n_tokens": 18315,
+        "n_words": 1808,
+        "n_chars": 16667
+      },
+      "te": {
+        "tokens_per_word": 11.415300546448087,
+        "tokens_per_char": 1.4572724101848622,
+        "tokens_per_sentence": 177.03389830508473,
+        "p95_tokens_per_sentence": 313,
+        "n_sentences": 118,
+        "n_tokens": 20890,
+        "n_words": 1830,
+        "n_chars": 14335
+      },
+      "mr": {
+        "tokens_per_word": 6.654509610645638,
+        "tokens_per_char": 0.9579283433841788,
+        "tokens_per_sentence": 114.42372881355932,
+        "p95_tokens_per_sentence": 187,
+        "n_sentences": 118,
+        "n_tokens": 13502,
+        "n_words": 2029,
+        "n_chars": 14095
+      },
+      "en": {
+        "tokens_per_word": 1.2636324602833835,
+        "tokens_per_char": 0.2073119188503804,
+        "tokens_per_sentence": 24.940677966101696,
+        "p95_tokens_per_sentence": 48,
+        "n_sentences": 118,
+        "n_tokens": 2943,
+        "n_words": 2329,
+        "n_chars": 14196
+      }
+    },
+    "roundtrip_exact": {
+      "hi": 1.0,
+      "bn": 1.0,
+      "ta": 1.0,
+      "te": 1.0,
+      "mr": 1.0,
+      "en": 1.0
+    }
+  },
+  "sarvam-1": {
+    "repo": "sarvamai/sarvam-1",
+    "vocab_size": 68096,
+    "class": "LlamaTokenizer",
+    "languages": {
+      "hi": {
+        "tokens_per_word": 1.376984126984127,
+        "tokens_per_char": 0.26885961822920335,
+        "tokens_per_sentence": 32.347457627118644,
+        "p95_tokens_per_sentence": 58,
+        "n_sentences": 118,
+        "n_tokens": 3817,
+        "n_words": 2772,
+        "n_chars": 14197
+      },
+      "bn": {
+        "tokens_per_word": 1.8050524308865585,
+        "tokens_per_char": 0.26947982637159323,
+        "tokens_per_sentence": 32.09322033898305,
+        "p95_tokens_per_sentence": 62,
+        "n_sentences": 118,
+        "n_tokens": 3787,
+        "n_words": 2098,
+        "n_chars": 14053
+      },
+      "ta": {
+        "tokens_per_word": 2.1709070796460175,
+        "tokens_per_char": 0.23549529009419812,
+        "tokens_per_sentence": 33.26271186440678,
+        "p95_tokens_per_sentence": 57,
+        "n_sentences": 118,
+        "n_tokens": 3925,
+        "n_words": 1808,
+        "n_chars": 16667
+      },
+      "te": {
+        "tokens_per_word": 2.106010928961749,
+        "tokens_per_char": 0.26885245901639343,
+        "tokens_per_sentence": 32.66101694915254,
+        "p95_tokens_per_sentence": 58,
+        "n_sentences": 118,
+        "n_tokens": 3854,
+        "n_words": 1830,
+        "n_chars": 14335
+      },
+      "mr": {
+        "tokens_per_word": 1.7703302119270576,
+        "tokens_per_char": 0.2548421426037602,
+        "tokens_per_sentence": 30.440677966101696,
+        "p95_tokens_per_sentence": 56,
+        "n_sentences": 118,
+        "n_tokens": 3592,
+        "n_words": 2029,
+        "n_chars": 14095
+      },
+      "en": {
+        "tokens_per_word": 1.4392443108630313,
+        "tokens_per_char": 0.2361228515074669,
+        "tokens_per_sentence": 28.406779661016948,
+        "p95_tokens_per_sentence": 53,
+        "n_sentences": 118,
+        "n_tokens": 3352,
+        "n_words": 2329,
+        "n_chars": 14196
+      }
+    },
+    "roundtrip_exact": {
+      "hi": 1.0,
+      "bn": 1.0,
+      "ta": 1.0,
+      "te": 1.0,
+      "mr": 1.0,
+      "en": 1.0
+    }
+  }
+}

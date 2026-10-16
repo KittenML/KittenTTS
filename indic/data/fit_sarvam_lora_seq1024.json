@@ -1,0 +1,62 @@
+{
+  "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+  "total_gb": 11.49639892578125,
+  "budget_gb": 9.99639892578125,
+  "results": [
+    {
+      "peak_gb": 4.817605972290039,
+      "reserved_gb": 5.326171875,
+      "trainable": 189011968,
+      "oom": false,
+      "mode": "lora",
+      "batch": 1,
+      "seq": 1024,
+      "vocab": 74752,
+      "tokens_per_step": 1024
+    },
+    {
+      "peak_gb": 5.932864189147949,
+      "reserved_gb": 6.525390625,
+      "trainable": 189011968,
+      "oom": false,
+      "mode": "lora",
+      "batch": 2,
+      "seq": 1024,
+      "vocab": 74752,
+      "tokens_per_step": 2048
+    },
+    {
+      "peak_gb": 8.16338062286377,
+      "reserved_gb": 9.51953125,
+      "trainable": 189011968,
+      "oom": false,
+      "mode": "lora",
+      "batch": 4,
+      "seq": 1024,
+      "vocab": 74752,
+      "tokens_per_step": 4096
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "lora",
+      "batch": 8,
+      "seq": 1024,
+      "vocab": 74752,
+      "tokens_per_step": 8192
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "lora",
+      "batch": 16,
+      "seq": 1024,
+      "vocab": 74752,
+      "tokens_per_step": 16384
+    }
+  ]
+}

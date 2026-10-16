@@ -1,0 +1,1631 @@
+{
+  "config": {
+    "split": "dev",
+    "clips": 16,
+    "asr": "none",
+    "asr_note": "disabled by --asr none",
+    "device": "cuda",
+    "asr_backends": {},
+    "cer_excess": 0.05,
+    "mcd_ratio": 1.3
+  },
+  "summary": {
+    "hi": {
+      "mcd_db": 20.10516083240509,
+      "log_mel_l1": 0.6298519689589739,
+      "duration_ratio": 1.0003540097712946,
+      "cer_original": null,
+      "cer_reconstruction": null,
+      "cer_delta": null,
+      "frame_shift": 0.0,
+      "n_clips": 16,
+      "n_failed": 0
+    },
+    "bn": {
+      "mcd_db": 17.133074462413788,
+      "log_mel_l1": 0.481284873560071,
+      "duration_ratio": 1.0004472767222319,
+      "cer_original": null,
+      "cer_reconstruction": null,
+      "cer_delta": null,
+      "frame_shift": 0.0,
+      "n_clips": 16,
+      "n_failed": 0
+    },
+    "ta": {
+      "mcd_db": 19.050249457359314,
+      "log_mel_l1": 0.596911858767271,
+      "duration_ratio": 1.0002749029599824,
+      "cer_original": null,
+      "cer_reconstruction": null,
+      "cer_delta": null,
+      "frame_shift": -0.0625,
+      "n_clips": 16,
+      "n_failed": 0
+    },
+    "te": {
+      "mcd_db": 17.98294299840927,
+      "log_mel_l1": 0.5230094622820616,
+      "duration_ratio": 1.0004971697583427,
+      "cer_original": null,
+      "cer_reconstruction": null,
+      "cer_delta": null,
+      "frame_shift": -0.125,
+      "n_clips": 16,
+      "n_failed": 0
+    },
+    "mr": {
+      "mcd_db": 18.70557552576065,
+      "log_mel_l1": 0.6017210576683283,
+      "duration_ratio": 1.00013024013024,
+      "cer_original": null,
+      "cer_reconstruction": null,
+      "cer_delta": null,
+      "frame_shift": -0.125,
+      "n_clips": 16,
+      "n_failed": 0
+    },
+    "en": {
+      "mcd_db": 24.631019830703735,
+      "log_mel_l1": 0.8500829115509987,
+      "duration_ratio": 1.000334406159902,
+      "cer_original": null,
+      "cer_reconstruction": null,
+      "cer_delta": null,
+      "frame_shift": -0.3125,
+      "n_clips": 16,
+      "n_failed": 0
+    }
+  },
+  "clips": {
+    "hi": [
+      {
+        "id": "1510",
+        "n_tokens": 420,
+        "original_s": 16.8,
+        "reconstruction_s": 16.92,
+        "duration_ratio": 1.0,
+        "token_seconds": 16.8,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1510.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1510.recon.wav"
+        },
+        "log_mel_l1": 0.8315528631210327,
+        "mcd_db": 22.25162696838379,
+        "frame_shift": 0,
+        "frames_compared": 840
+      },
+      {
+        "id": "1513",
+        "n_tokens": 174,
+        "original_s": 6.96,
+        "reconstruction_s": 7.08,
+        "duration_ratio": 1.0,
+        "token_seconds": 6.96,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1513.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1513.recon.wav"
+        },
+        "log_mel_l1": 0.4709536135196686,
+        "mcd_db": 14.853569030761719,
+        "frame_shift": 0,
+        "frames_compared": 348
+      },
+      {
+        "id": "1514",
+        "n_tokens": 341,
+        "original_s": 13.62,
+        "reconstruction_s": 13.76,
+        "duration_ratio": 1.0014684287812041,
+        "token_seconds": 13.64,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1514.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1514.recon.wav"
+        },
+        "log_mel_l1": 0.49923571944236755,
+        "mcd_db": 16.038898468017578,
+        "frame_shift": 0,
+        "frames_compared": 681
+      },
+      {
+        "id": "1515",
+        "n_tokens": 146,
+        "original_s": 5.82,
+        "reconstruction_s": 5.96,
+        "duration_ratio": 1.0034364261168385,
+        "token_seconds": 5.84,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1515.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1515.recon.wav"
+        },
+        "log_mel_l1": 0.6701743602752686,
+        "mcd_db": 23.998607635498047,
+        "frame_shift": 0,
+        "frames_compared": 291
+      },
+      {
+        "id": "1516",
+        "n_tokens": 324,
+        "original_s": 12.96,
+        "reconstruction_s": 13.08,
+        "duration_ratio": 1.0,
+        "token_seconds": 12.96,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1516.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1516.recon.wav"
+        },
+        "log_mel_l1": 0.6607102155685425,
+        "mcd_db": 22.908416748046875,
+        "frame_shift": 0,
+        "frames_compared": 648
+      },
+      {
+        "id": "1517",
+        "n_tokens": 258,
+        "original_s": 10.32,
+        "reconstruction_s": 10.44,
+        "duration_ratio": 1.0,
+        "token_seconds": 10.32,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1517.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1517.recon.wav"
+        },
+        "log_mel_l1": 0.47166907787323,
+        "mcd_db": 15.21037769317627,
+        "frame_shift": 0,
+        "frames_compared": 516
+      },
+      {
+        "id": "1518",
+        "n_tokens": 369,
+        "original_s": 14.76,
+        "reconstruction_s": 14.88,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 14.76,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1518.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1518.recon.wav"
+        },
+        "log_mel_l1": 1.0233137607574463,
+        "mcd_db": 24.87497901916504,
+        "frame_shift": 0,
+        "frames_compared": 738
+      },
+      {
+        "id": "1519",
+        "n_tokens": 378,
+        "original_s": 15.12,
+        "reconstruction_s": 15.24,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 15.12,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1519.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1519.recon.wav"
+        },
+        "log_mel_l1": 0.4749087393283844,
+        "mcd_db": 17.076509475708008,
+        "frame_shift": 0,
+        "frames_compared": 756
+      },
+      {
+        "id": "1520",
+        "n_tokens": 399,
+        "original_s": 15.96,
+        "reconstruction_s": 16.08,
+        "duration_ratio": 0.9999999999999999,
+        "token_seconds": 15.96,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1520.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1520.recon.wav"
+        },
+        "log_mel_l1": 0.7698307037353516,
+        "mcd_db": 21.583284378051758,
+        "frame_shift": 0,
+        "frames_compared": 798
+      },
+      {
+        "id": "1521",
+        "n_tokens": 156,
+        "original_s": 6.24,
+        "reconstruction_s": 6.36,
+        "duration_ratio": 1.0,
+        "token_seconds": 6.24,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1521.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1521.recon.wav"
+        },
+        "log_mel_l1": 0.5652547478675842,
+        "mcd_db": 19.071386337280273,
+        "frame_shift": 0,
+        "frames_compared": 312
+      },
+      {
+        "id": "1523",
+        "n_tokens": 243,
+        "original_s": 9.72,
+        "reconstruction_s": 9.84,
+        "duration_ratio": 1.0,
+        "token_seconds": 9.72,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1523.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1523.recon.wav"
+        },
+        "log_mel_l1": 0.5792803764343262,
+        "mcd_db": 16.663742065429688,
+        "frame_shift": 0,
+        "frames_compared": 486
+      },
+      {
+        "id": "1524",
+        "n_tokens": 393,
+        "original_s": 15.72,
+        "reconstruction_s": 15.84,
+        "duration_ratio": 1.0,
+        "token_seconds": 15.72,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1524.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1524.recon.wav"
+        },
+        "log_mel_l1": 0.7233845591545105,
+        "mcd_db": 25.10654640197754,
+        "frame_shift": 0,
+        "frames_compared": 786
+      },
+      {
+        "id": "1525",
+        "n_tokens": 659,
+        "original_s": 26.34,
+        "reconstruction_s": 26.48,
+        "duration_ratio": 1.0007593014426728,
+        "token_seconds": 26.36,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1525.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1525.recon.wav"
+        },
+        "log_mel_l1": 0.6613420844078064,
+        "mcd_db": 24.026832580566406,
+        "frame_shift": 0,
+        "frames_compared": 1317
+      },
+      {
+        "id": "1526",
+        "n_tokens": 354,
+        "original_s": 14.16,
+        "reconstruction_s": 14.28,
+        "duration_ratio": 1.0,
+        "token_seconds": 14.16,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1526.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1526.recon.wav"
+        },
+        "log_mel_l1": 0.5727086067199707,
+        "mcd_db": 15.87935733795166,
+        "frame_shift": 0,
+        "frames_compared": 708
+      },
+      {
+        "id": "1527",
+        "n_tokens": 432,
+        "original_s": 17.28,
+        "reconstruction_s": 17.4,
+        "duration_ratio": 0.9999999999999998,
+        "token_seconds": 17.28,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1527.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1527.recon.wav"
+        },
+        "log_mel_l1": 0.5395532846450806,
+        "mcd_db": 22.301156997680664,
+        "frame_shift": 0,
+        "frames_compared": 864
+      },
+      {
+        "id": "1528",
+        "n_tokens": 159,
+        "original_s": 6.36,
+        "reconstruction_s": 6.48,
+        "duration_ratio": 1.0,
+        "token_seconds": 6.36,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1528.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/hi/1528.recon.wav"
+        },
+        "log_mel_l1": 0.5637587904930115,
+        "mcd_db": 19.837282180786133,
+        "frame_shift": 0,
+        "frames_compared": 318
+      }
+    ],
+    "bn": [
+      {
+        "id": "1510",
+        "n_tokens": 264,
+        "original_s": 10.56,
+        "reconstruction_s": 10.68,
+        "duration_ratio": 1.0,
+        "token_seconds": 10.56,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1510.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1510.recon.wav"
+        },
+        "log_mel_l1": 0.4818730652332306,
+        "mcd_db": 15.597512245178223,
+        "frame_shift": 0,
+        "frames_compared": 528
+      },
+      {
+        "id": "1513",
+        "n_tokens": 171,
+        "original_s": 6.84,
+        "reconstruction_s": 6.96,
+        "duration_ratio": 1.0,
+        "token_seconds": 6.84,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1513.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1513.recon.wav"
+        },
+        "log_mel_l1": 0.4358459413051605,
+        "mcd_db": 15.987361907958984,
+        "frame_shift": 0,
+        "frames_compared": 342
+      },
+      {
+        "id": "1514",
+        "n_tokens": 389,
+        "original_s": 15.54,
+        "reconstruction_s": 15.68,
+        "duration_ratio": 1.0012870012870014,
+        "token_seconds": 15.56,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1514.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1514.recon.wav"
+        },
+        "log_mel_l1": 0.4684845805168152,
+        "mcd_db": 17.549270629882812,
+        "frame_shift": 0,
+        "frames_compared": 777
+      },
+      {
+        "id": "1515",
+        "n_tokens": 159,
+        "original_s": 6.36,
+        "reconstruction_s": 6.48,
+        "duration_ratio": 1.0,
+        "token_seconds": 6.36,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1515.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1515.recon.wav"
+        },
+        "log_mel_l1": 0.46314141154289246,
+        "mcd_db": 13.847230911254883,
+        "frame_shift": 0,
+        "frames_compared": 318
+      },
+      {
+        "id": "1516",
+        "n_tokens": 237,
+        "original_s": 9.48,
+        "reconstruction_s": 9.6,
+        "duration_ratio": 1.0,
+        "token_seconds": 9.48,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1516.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1516.recon.wav"
+        },
+        "log_mel_l1": 0.44812965393066406,
+        "mcd_db": 16.49476432800293,
+        "frame_shift": 0,
+        "frames_compared": 474
+      },
+      {
+        "id": "1517",
+        "n_tokens": 345,
+        "original_s": 13.8,
+        "reconstruction_s": 13.92,
+        "duration_ratio": 1.0,
+        "token_seconds": 13.8,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1517.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1517.recon.wav"
+        },
+        "log_mel_l1": 0.447754830121994,
+        "mcd_db": 17.924623489379883,
+        "frame_shift": 0,
+        "frames_compared": 690
+      },
+      {
+        "id": "1518",
+        "n_tokens": 260,
+        "original_s": 10.38,
+        "reconstruction_s": 10.52,
+        "duration_ratio": 1.001926782273603,
+        "token_seconds": 10.4,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1518.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1518.recon.wav"
+        },
+        "log_mel_l1": 0.42316749691963196,
+        "mcd_db": 15.625184059143066,
+        "frame_shift": 0,
+        "frames_compared": 519
+      },
+      {
+        "id": "1519",
+        "n_tokens": 366,
+        "original_s": 14.64,
+        "reconstruction_s": 14.76,
+        "duration_ratio": 1.0,
+        "token_seconds": 14.64,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1519.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1519.recon.wav"
+        },
+        "log_mel_l1": 0.42412835359573364,
+        "mcd_db": 16.493371963500977,
+        "frame_shift": 0,
+        "frames_compared": 732
+      },
+      {
+        "id": "1520",
+        "n_tokens": 404,
+        "original_s": 16.14,
+        "reconstruction_s": 16.28,
+        "duration_ratio": 1.0012391573729864,
+        "token_seconds": 16.16,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1520.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1520.recon.wav"
+        },
+        "log_mel_l1": 0.49561867117881775,
+        "mcd_db": 19.582853317260742,
+        "frame_shift": 0,
+        "frames_compared": 807
+      },
+      {
+        "id": "1521",
+        "n_tokens": 228,
+        "original_s": 9.12,
+        "reconstruction_s": 9.24,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 9.12,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1521.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1521.recon.wav"
+        },
+        "log_mel_l1": 0.4622223377227783,
+        "mcd_db": 16.562402725219727,
+        "frame_shift": 0,
+        "frames_compared": 456
+      },
+      {
+        "id": "1523",
+        "n_tokens": 270,
+        "original_s": 10.8,
+        "reconstruction_s": 10.92,
+        "duration_ratio": 1.0,
+        "token_seconds": 10.8,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1523.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1523.recon.wav"
+        },
+        "log_mel_l1": 0.6074413061141968,
+        "mcd_db": 19.294143676757812,
+        "frame_shift": 0,
+        "frames_compared": 540
+      },
+      {
+        "id": "1524",
+        "n_tokens": 356,
+        "original_s": 14.22,
+        "reconstruction_s": 14.36,
+        "duration_ratio": 1.0014064697609002,
+        "token_seconds": 14.24,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1524.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1524.recon.wav"
+        },
+        "log_mel_l1": 0.4689803421497345,
+        "mcd_db": 16.557065963745117,
+        "frame_shift": 0,
+        "frames_compared": 711
+      },
+      {
+        "id": "1525",
+        "n_tokens": 663,
+        "original_s": 26.52,
+        "reconstruction_s": 26.64,
+        "duration_ratio": 1.0,
+        "token_seconds": 26.52,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1525.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1525.recon.wav"
+        },
+        "log_mel_l1": 0.5662005543708801,
+        "mcd_db": 18.340991973876953,
+        "frame_shift": 0,
+        "frames_compared": 1326
+      },
+      {
+        "id": "1526",
+        "n_tokens": 386,
+        "original_s": 15.42,
+        "reconstruction_s": 15.56,
+        "duration_ratio": 1.0012970168612192,
+        "token_seconds": 15.44,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1526.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1526.recon.wav"
+        },
+        "log_mel_l1": 0.41966935992240906,
+        "mcd_db": 16.114320755004883,
+        "frame_shift": 0,
+        "frames_compared": 771
+      },
+      {
+        "id": "1527",
+        "n_tokens": 612,
+        "original_s": 24.48,
+        "reconstruction_s": 24.6,
+        "duration_ratio": 1.0,
+        "token_seconds": 24.48,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1527.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1527.recon.wav"
+        },
+        "log_mel_l1": 0.6516451835632324,
+        "mcd_db": 23.595006942749023,
+        "frame_shift": 0,
+        "frames_compared": 1224
+      },
+      {
+        "id": "1528",
+        "n_tokens": 204,
+        "original_s": 8.16,
+        "reconstruction_s": 8.28,
+        "duration_ratio": 1.0,
+        "token_seconds": 8.16,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1528.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/bn/1528.recon.wav"
+        },
+        "log_mel_l1": 0.4362548887729645,
+        "mcd_db": 14.56308650970459,
+        "frame_shift": 0,
+        "frames_compared": 408
+      }
+    ],
+    "ta": [
+      {
+        "id": "1510",
+        "n_tokens": 321,
+        "original_s": 12.84,
+        "reconstruction_s": 12.96,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 12.84,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1510.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1510.recon.wav"
+        },
+        "log_mel_l1": 0.8280203342437744,
+        "mcd_db": 19.284317016601562,
+        "frame_shift": 0,
+        "frames_compared": 642
+      },
+      {
+        "id": "1513",
+        "n_tokens": 185,
+        "original_s": 7.38,
+        "reconstruction_s": 7.5,
+        "duration_ratio": 1.0,
+        "token_seconds": 7.4,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1513.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1513.recon.wav"
+        },
+        "log_mel_l1": 0.7361931204795837,
+        "mcd_db": 18.699474334716797,
+        "frame_shift": -1,
+        "frames_compared": 368
+      },
+      {
+        "id": "1514",
+        "n_tokens": 372,
+        "original_s": 14.88,
+        "reconstruction_s": 15.0,
+        "duration_ratio": 1.0,
+        "token_seconds": 14.88,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1514.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1514.recon.wav"
+        },
+        "log_mel_l1": 0.8622333407402039,
+        "mcd_db": 20.995851516723633,
+        "frame_shift": 0,
+        "frames_compared": 744
+      },
+      {
+        "id": "1515",
+        "n_tokens": 150,
+        "original_s": 6.0,
+        "reconstruction_s": 6.12,
+        "duration_ratio": 1.0,
+        "token_seconds": 6.0,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1515.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1515.recon.wav"
+        },
+        "log_mel_l1": 0.6528074741363525,
+        "mcd_db": 19.30120849609375,
+        "frame_shift": 0,
+        "frames_compared": 300
+      },
+      {
+        "id": "1516",
+        "n_tokens": 630,
+        "original_s": 25.2,
+        "reconstruction_s": 25.32,
+        "duration_ratio": 1.0,
+        "token_seconds": 25.2,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1516.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1516.recon.wav"
+        },
+        "log_mel_l1": 0.5923625230789185,
+        "mcd_db": 21.369136810302734,
+        "frame_shift": 0,
+        "frames_compared": 1260
+      },
+      {
+        "id": "1517",
+        "n_tokens": 147,
+        "original_s": 5.88,
+        "reconstruction_s": 6.0,
+        "duration_ratio": 1.0,
+        "token_seconds": 5.88,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1517.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1517.recon.wav"
+        },
+        "log_mel_l1": 0.5692847371101379,
+        "mcd_db": 16.614952087402344,
+        "frame_shift": 0,
+        "frames_compared": 294
+      },
+      {
+        "id": "1518",
+        "n_tokens": 312,
+        "original_s": 12.46,
+        "reconstruction_s": 12.6,
+        "duration_ratio": 1.001605136436597,
+        "token_seconds": 12.48,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1518.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1518.recon.wav"
+        },
+        "log_mel_l1": 0.5044065713882446,
+        "mcd_db": 16.771875381469727,
+        "frame_shift": 0,
+        "frames_compared": 623
+      },
+      {
+        "id": "1519",
+        "n_tokens": 210,
+        "original_s": 8.4,
+        "reconstruction_s": 8.52,
+        "duration_ratio": 1.0,
+        "token_seconds": 8.4,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1519.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1519.recon.wav"
+        },
+        "log_mel_l1": 0.4693535566329956,
+        "mcd_db": 18.195659637451172,
+        "frame_shift": 0,
+        "frames_compared": 420
+      },
+      {
+        "id": "1520",
+        "n_tokens": 275,
+        "original_s": 10.98,
+        "reconstruction_s": 11.12,
+        "duration_ratio": 1.0018214936247722,
+        "token_seconds": 11.0,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1520.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1520.recon.wav"
+        },
+        "log_mel_l1": 0.522956132888794,
+        "mcd_db": 20.85693359375,
+        "frame_shift": 0,
+        "frames_compared": 549
+      },
+      {
+        "id": "1521",
+        "n_tokens": 213,
+        "original_s": 8.52,
+        "reconstruction_s": 8.64,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 8.52,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1521.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1521.recon.wav"
+        },
+        "log_mel_l1": 0.3890538513660431,
+        "mcd_db": 15.811534881591797,
+        "frame_shift": 0,
+        "frames_compared": 426
+      },
+      {
+        "id": "1523",
+        "n_tokens": 243,
+        "original_s": 9.72,
+        "reconstruction_s": 9.84,
+        "duration_ratio": 1.0,
+        "token_seconds": 9.72,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1523.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1523.recon.wav"
+        },
+        "log_mel_l1": 0.5379128456115723,
+        "mcd_db": 20.64105987548828,
+        "frame_shift": 0,
+        "frames_compared": 486
+      },
+      {
+        "id": "1524",
+        "n_tokens": 515,
+        "original_s": 20.58,
+        "reconstruction_s": 20.72,
+        "duration_ratio": 1.000971817298348,
+        "token_seconds": 20.6,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1524.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1524.recon.wav"
+        },
+        "log_mel_l1": 0.55864417552948,
+        "mcd_db": 18.792116165161133,
+        "frame_shift": 0,
+        "frames_compared": 1029
+      },
+      {
+        "id": "1525",
+        "n_tokens": 561,
+        "original_s": 22.44,
+        "reconstruction_s": 22.56,
+        "duration_ratio": 0.9999999999999999,
+        "token_seconds": 22.44,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1525.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1525.recon.wav"
+        },
+        "log_mel_l1": 0.5859807729721069,
+        "mcd_db": 19.263845443725586,
+        "frame_shift": 0,
+        "frames_compared": 1122
+      },
+      {
+        "id": "1526",
+        "n_tokens": 327,
+        "original_s": 13.08,
+        "reconstruction_s": 13.2,
+        "duration_ratio": 1.0,
+        "token_seconds": 13.08,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1526.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1526.recon.wav"
+        },
+        "log_mel_l1": 0.7168125510215759,
+        "mcd_db": 24.877666473388672,
+        "frame_shift": 0,
+        "frames_compared": 654
+      },
+      {
+        "id": "1527",
+        "n_tokens": 489,
+        "original_s": 19.56,
+        "reconstruction_s": 19.68,
+        "duration_ratio": 1.0,
+        "token_seconds": 19.56,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1527.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1527.recon.wav"
+        },
+        "log_mel_l1": 0.6142604351043701,
+        "mcd_db": 19.45110321044922,
+        "frame_shift": 0,
+        "frames_compared": 978
+      },
+      {
+        "id": "1528",
+        "n_tokens": 267,
+        "original_s": 10.68,
+        "reconstruction_s": 10.8,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 10.68,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1528.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/ta/1528.recon.wav"
+        },
+        "log_mel_l1": 0.4103073179721832,
+        "mcd_db": 13.877256393432617,
+        "frame_shift": 0,
+        "frames_compared": 534
+      }
+    ],
+    "te": [
+      {
+        "id": "1510",
+        "n_tokens": 225,
+        "original_s": 9.0,
+        "reconstruction_s": 9.12,
+        "duration_ratio": 1.0,
+        "token_seconds": 9.0,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1510.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1510.recon.wav"
+        },
+        "log_mel_l1": 0.536603569984436,
+        "mcd_db": 18.688749313354492,
+        "frame_shift": 0,
+        "frames_compared": 450
+      },
+      {
+        "id": "1513",
+        "n_tokens": 159,
+        "original_s": 6.36,
+        "reconstruction_s": 6.48,
+        "duration_ratio": 1.0,
+        "token_seconds": 6.36,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1513.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1513.recon.wav"
+        },
+        "log_mel_l1": 0.5646151900291443,
+        "mcd_db": 17.207674026489258,
+        "frame_shift": 0,
+        "frames_compared": 318
+      },
+      {
+        "id": "1514",
+        "n_tokens": 300,
+        "original_s": 12.0,
+        "reconstruction_s": 12.12,
+        "duration_ratio": 1.0,
+        "token_seconds": 12.0,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1514.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1514.recon.wav"
+        },
+        "log_mel_l1": 0.5407393574714661,
+        "mcd_db": 17.193456649780273,
+        "frame_shift": 0,
+        "frames_compared": 600
+      },
+      {
+        "id": "1515",
+        "n_tokens": 146,
+        "original_s": 5.82,
+        "reconstruction_s": 5.96,
+        "duration_ratio": 1.0034364261168385,
+        "token_seconds": 5.84,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1515.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1515.recon.wav"
+        },
+        "log_mel_l1": 0.5550532341003418,
+        "mcd_db": 15.959430694580078,
+        "frame_shift": 0,
+        "frames_compared": 291
+      },
+      {
+        "id": "1516",
+        "n_tokens": 249,
+        "original_s": 9.96,
+        "reconstruction_s": 10.08,
+        "duration_ratio": 1.0,
+        "token_seconds": 9.96,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1516.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1516.recon.wav"
+        },
+        "log_mel_l1": 0.525236964225769,
+        "mcd_db": 17.656646728515625,
+        "frame_shift": 0,
+        "frames_compared": 498
+      },
+      {
+        "id": "1517",
+        "n_tokens": 333,
+        "original_s": 13.32,
+        "reconstruction_s": 13.44,
+        "duration_ratio": 1.0,
+        "token_seconds": 13.32,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1517.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1517.recon.wav"
+        },
+        "log_mel_l1": 0.4773130416870117,
+        "mcd_db": 18.61329460144043,
+        "frame_shift": 0,
+        "frames_compared": 666
+      },
+      {
+        "id": "1518",
+        "n_tokens": 218,
+        "original_s": 8.7,
+        "reconstruction_s": 8.82,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 8.72,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1518.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1518.recon.wav"
+        },
+        "log_mel_l1": 0.48561567068099976,
+        "mcd_db": 18.62250518798828,
+        "frame_shift": -1,
+        "frames_compared": 434
+      },
+      {
+        "id": "1519",
+        "n_tokens": 275,
+        "original_s": 10.98,
+        "reconstruction_s": 11.12,
+        "duration_ratio": 1.0018214936247722,
+        "token_seconds": 11.0,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1519.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1519.recon.wav"
+        },
+        "log_mel_l1": 0.4428863823413849,
+        "mcd_db": 16.164793014526367,
+        "frame_shift": 0,
+        "frames_compared": 549
+      },
+      {
+        "id": "1520",
+        "n_tokens": 336,
+        "original_s": 13.44,
+        "reconstruction_s": 13.56,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 13.44,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1520.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1520.recon.wav"
+        },
+        "log_mel_l1": 0.4344784915447235,
+        "mcd_db": 14.684859275817871,
+        "frame_shift": 0,
+        "frames_compared": 672
+      },
+      {
+        "id": "1521",
+        "n_tokens": 206,
+        "original_s": 8.22,
+        "reconstruction_s": 8.34,
+        "duration_ratio": 1.0,
+        "token_seconds": 8.24,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1521.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1521.recon.wav"
+        },
+        "log_mel_l1": 0.4785865545272827,
+        "mcd_db": 16.574724197387695,
+        "frame_shift": -1,
+        "frames_compared": 410
+      },
+      {
+        "id": "1523",
+        "n_tokens": 302,
+        "original_s": 12.06,
+        "reconstruction_s": 12.2,
+        "duration_ratio": 1.001658374792703,
+        "token_seconds": 12.08,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1523.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1523.recon.wav"
+        },
+        "log_mel_l1": 0.47799310088157654,
+        "mcd_db": 17.250141143798828,
+        "frame_shift": 0,
+        "frames_compared": 603
+      },
+      {
+        "id": "1524",
+        "n_tokens": 387,
+        "original_s": 15.48,
+        "reconstruction_s": 15.6,
+        "duration_ratio": 1.0,
+        "token_seconds": 15.48,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1524.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1524.recon.wav"
+        },
+        "log_mel_l1": 0.5642715692520142,
+        "mcd_db": 20.194990158081055,
+        "frame_shift": 0,
+        "frames_compared": 774
+      },
+      {
+        "id": "1525",
+        "n_tokens": 482,
+        "original_s": 19.26,
+        "reconstruction_s": 19.4,
+        "duration_ratio": 1.001038421599169,
+        "token_seconds": 19.28,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1525.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1525.recon.wav"
+        },
+        "log_mel_l1": 0.6159818768501282,
+        "mcd_db": 22.1268310546875,
+        "frame_shift": 0,
+        "frames_compared": 963
+      },
+      {
+        "id": "1526",
+        "n_tokens": 237,
+        "original_s": 9.48,
+        "reconstruction_s": 9.6,
+        "duration_ratio": 1.0,
+        "token_seconds": 9.48,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1526.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1526.recon.wav"
+        },
+        "log_mel_l1": 0.5378372073173523,
+        "mcd_db": 18.75905990600586,
+        "frame_shift": 0,
+        "frames_compared": 474
+      },
+      {
+        "id": "1527",
+        "n_tokens": 414,
+        "original_s": 16.56,
+        "reconstruction_s": 16.68,
+        "duration_ratio": 1.0,
+        "token_seconds": 16.56,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1527.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1527.recon.wav"
+        },
+        "log_mel_l1": 0.6261634826660156,
+        "mcd_db": 21.536462783813477,
+        "frame_shift": 0,
+        "frames_compared": 828
+      },
+      {
+        "id": "1528",
+        "n_tokens": 174,
+        "original_s": 6.96,
+        "reconstruction_s": 7.08,
+        "duration_ratio": 1.0,
+        "token_seconds": 6.96,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1528.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/te/1528.recon.wav"
+        },
+        "log_mel_l1": 0.5047757029533386,
+        "mcd_db": 16.49346923828125,
+        "frame_shift": 0,
+        "frames_compared": 348
+      }
+    ],
+    "mr": [
+      {
+        "id": "1510",
+        "n_tokens": 267,
+        "original_s": 10.68,
+        "reconstruction_s": 10.8,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 10.68,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1510.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1510.recon.wav"
+        },
+        "log_mel_l1": 0.5948029160499573,
+        "mcd_db": 18.673791885375977,
+        "frame_shift": 0,
+        "frames_compared": 534
+      },
+      {
+        "id": "1513",
+        "n_tokens": 183,
+        "original_s": 7.32,
+        "reconstruction_s": 7.44,
+        "duration_ratio": 1.0,
+        "token_seconds": 7.32,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1513.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1513.recon.wav"
+        },
+        "log_mel_l1": 0.5371308326721191,
+        "mcd_db": 17.657949447631836,
+        "frame_shift": 0,
+        "frames_compared": 366
+      },
+      {
+        "id": "1514",
+        "n_tokens": 402,
+        "original_s": 16.08,
+        "reconstruction_s": 16.2,
+        "duration_ratio": 1.0,
+        "token_seconds": 16.08,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1514.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1514.recon.wav"
+        },
+        "log_mel_l1": 0.6199694871902466,
+        "mcd_db": 18.165977478027344,
+        "frame_shift": 0,
+        "frames_compared": 804
+      },
+      {
+        "id": "1515",
+        "n_tokens": 183,
+        "original_s": 7.32,
+        "reconstruction_s": 7.44,
+        "duration_ratio": 1.0,
+        "token_seconds": 7.32,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1515.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1515.recon.wav"
+        },
+        "log_mel_l1": 0.47042742371559143,
+        "mcd_db": 14.049447059631348,
+        "frame_shift": 0,
+        "frames_compared": 366
+      },
+      {
+        "id": "1516",
+        "n_tokens": 294,
+        "original_s": 11.76,
+        "reconstruction_s": 11.88,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 11.76,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1516.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1516.recon.wav"
+        },
+        "log_mel_l1": 0.6710954308509827,
+        "mcd_db": 21.62325096130371,
+        "frame_shift": 0,
+        "frames_compared": 588
+      },
+      {
+        "id": "1517",
+        "n_tokens": 270,
+        "original_s": 10.8,
+        "reconstruction_s": 10.92,
+        "duration_ratio": 1.0,
+        "token_seconds": 10.8,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1517.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1517.recon.wav"
+        },
+        "log_mel_l1": 0.763599693775177,
+        "mcd_db": 20.688512802124023,
+        "frame_shift": 0,
+        "frames_compared": 540
+      },
+      {
+        "id": "1518",
+        "n_tokens": 242,
+        "original_s": 9.66,
+        "reconstruction_s": 9.78,
+        "duration_ratio": 1.0,
+        "token_seconds": 9.68,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1518.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1518.recon.wav"
+        },
+        "log_mel_l1": 0.6170868873596191,
+        "mcd_db": 21.892017364501953,
+        "frame_shift": -1,
+        "frames_compared": 482
+      },
+      {
+        "id": "1519",
+        "n_tokens": 330,
+        "original_s": 13.2,
+        "reconstruction_s": 13.32,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 13.2,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1519.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1519.recon.wav"
+        },
+        "log_mel_l1": 0.5552933216094971,
+        "mcd_db": 17.72708511352539,
+        "frame_shift": 0,
+        "frames_compared": 660
+      },
+      {
+        "id": "1520",
+        "n_tokens": 488,
+        "original_s": 19.5,
+        "reconstruction_s": 19.64,
+        "duration_ratio": 1.001025641025641,
+        "token_seconds": 19.52,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1520.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1520.recon.wav"
+        },
+        "log_mel_l1": 0.6101140975952148,
+        "mcd_db": 18.651641845703125,
+        "frame_shift": 0,
+        "frames_compared": 975
+      },
+      {
+        "id": "1521",
+        "n_tokens": 291,
+        "original_s": 11.64,
+        "reconstruction_s": 11.76,
+        "duration_ratio": 1.0,
+        "token_seconds": 11.64,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1521.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1521.recon.wav"
+        },
+        "log_mel_l1": 0.6519270539283752,
+        "mcd_db": 16.252588272094727,
+        "frame_shift": 0,
+        "frames_compared": 582
+      },
+      {
+        "id": "1523",
+        "n_tokens": 345,
+        "original_s": 13.8,
+        "reconstruction_s": 13.92,
+        "duration_ratio": 1.0,
+        "token_seconds": 13.8,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1523.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1523.recon.wav"
+        },
+        "log_mel_l1": 0.5427348017692566,
+        "mcd_db": 16.462158203125,
+        "frame_shift": 0,
+        "frames_compared": 690
+      },
+      {
+        "id": "1524",
+        "n_tokens": 360,
+        "original_s": 14.4,
+        "reconstruction_s": 14.52,
+        "duration_ratio": 1.0,
+        "token_seconds": 14.4,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1524.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1524.recon.wav"
+        },
+        "log_mel_l1": 0.5196858644485474,
+        "mcd_db": 17.990760803222656,
+        "frame_shift": 0,
+        "frames_compared": 720
+      },
+      {
+        "id": "1525",
+        "n_tokens": 473,
+        "original_s": 18.9,
+        "reconstruction_s": 19.04,
+        "duration_ratio": 1.001058201058201,
+        "token_seconds": 18.92,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1525.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1525.recon.wav"
+        },
+        "log_mel_l1": 0.7099421620368958,
+        "mcd_db": 18.6209774017334,
+        "frame_shift": 0,
+        "frames_compared": 945
+      },
+      {
+        "id": "1526",
+        "n_tokens": 306,
+        "original_s": 12.24,
+        "reconstruction_s": 12.36,
+        "duration_ratio": 1.0,
+        "token_seconds": 12.24,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1526.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1526.recon.wav"
+        },
+        "log_mel_l1": 0.585132360458374,
+        "mcd_db": 19.02169418334961,
+        "frame_shift": 0,
+        "frames_compared": 612
+      },
+      {
+        "id": "1527",
+        "n_tokens": 498,
+        "original_s": 19.92,
+        "reconstruction_s": 20.04,
+        "duration_ratio": 0.9999999999999998,
+        "token_seconds": 19.92,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1527.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1527.recon.wav"
+        },
+        "log_mel_l1": 0.5901065468788147,
+        "mcd_db": 22.635456085205078,
+        "frame_shift": 0,
+        "frames_compared": 996
+      },
+      {
+        "id": "1528",
+        "n_tokens": 161,
+        "original_s": 6.42,
+        "reconstruction_s": 6.54,
+        "duration_ratio": 1.0,
+        "token_seconds": 6.44,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1528.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/mr/1528.recon.wav"
+        },
+        "log_mel_l1": 0.5884880423545837,
+        "mcd_db": 19.175899505615234,
+        "frame_shift": -1,
+        "frames_compared": 320
+      }
+    ],
+    "en": [
+      {
+        "id": "1510",
+        "n_tokens": 177,
+        "original_s": 7.08,
+        "reconstruction_s": 7.2,
+        "duration_ratio": 1.0,
+        "token_seconds": 7.08,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1510.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1510.recon.wav"
+        },
+        "log_mel_l1": 1.01138174533844,
+        "mcd_db": 30.655838012695312,
+        "frame_shift": 0,
+        "frames_compared": 354
+      },
+      {
+        "id": "1513",
+        "n_tokens": 185,
+        "original_s": 7.38,
+        "reconstruction_s": 7.5,
+        "duration_ratio": 1.0,
+        "token_seconds": 7.4,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1513.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1513.recon.wav"
+        },
+        "log_mel_l1": 0.6947601437568665,
+        "mcd_db": 16.152320861816406,
+        "frame_shift": -1,
+        "frames_compared": 368
+      },
+      {
+        "id": "1514",
+        "n_tokens": 257,
+        "original_s": 10.26,
+        "reconstruction_s": 10.4,
+        "duration_ratio": 1.0019493177387915,
+        "token_seconds": 10.28,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1514.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1514.recon.wav"
+        },
+        "log_mel_l1": 0.7718870043754578,
+        "mcd_db": 29.94646453857422,
+        "frame_shift": 0,
+        "frames_compared": 513
+      },
+      {
+        "id": "1515",
+        "n_tokens": 172,
+        "original_s": 6.86,
+        "reconstruction_s": 6.98,
+        "duration_ratio": 1.0,
+        "token_seconds": 6.88,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1515.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1515.recon.wav"
+        },
+        "log_mel_l1": 0.6993521451950073,
+        "mcd_db": 22.862773895263672,
+        "frame_shift": -1,
+        "frames_compared": 342
+      },
+      {
+        "id": "1516",
+        "n_tokens": 303,
+        "original_s": 12.12,
+        "reconstruction_s": 12.24,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 12.12,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1516.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1516.recon.wav"
+        },
+        "log_mel_l1": 0.5518377423286438,
+        "mcd_db": 16.335180282592773,
+        "frame_shift": 0,
+        "frames_compared": 606
+      },
+      {
+        "id": "1517",
+        "n_tokens": 209,
+        "original_s": 8.34,
+        "reconstruction_s": 8.46,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 8.36,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1517.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1517.recon.wav"
+        },
+        "log_mel_l1": 0.5440087914466858,
+        "mcd_db": 16.04708480834961,
+        "frame_shift": -1,
+        "frames_compared": 416
+      },
+      {
+        "id": "1518",
+        "n_tokens": 201,
+        "original_s": 8.04,
+        "reconstruction_s": 8.16,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 8.04,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1518.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1518.recon.wav"
+        },
+        "log_mel_l1": 0.9628379940986633,
+        "mcd_db": 26.654823303222656,
+        "frame_shift": 0,
+        "frames_compared": 402
+      },
+      {
+        "id": "1519",
+        "n_tokens": 330,
+        "original_s": 13.18,
+        "reconstruction_s": 13.32,
+        "duration_ratio": 1.0015174506828528,
+        "token_seconds": 13.2,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1519.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1519.recon.wav"
+        },
+        "log_mel_l1": 0.7044751644134521,
+        "mcd_db": 18.55022430419922,
+        "frame_shift": 0,
+        "frames_compared": 659
+      },
+      {
+        "id": "1520",
+        "n_tokens": 342,
+        "original_s": 13.68,
+        "reconstruction_s": 13.8,
+        "duration_ratio": 1.0000000000000002,
+        "token_seconds": 13.68,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1520.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1520.recon.wav"
+        },
+        "log_mel_l1": 0.9690700173377991,
+        "mcd_db": 29.381328582763672,
+        "frame_shift": 0,
+        "frames_compared": 684
+      },
+      {
+        "id": "1521",
+        "n_tokens": 186,
+        "original_s": 7.42,
+        "reconstruction_s": 7.54,
+        "duration_ratio": 1.0,
+        "token_seconds": 7.44,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1521.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1521.recon.wav"
+        },
+        "log_mel_l1": 0.6083406209945679,
+        "mcd_db": 19.02923011779785,
+        "frame_shift": -1,
+        "frames_compared": 370
+      },
+      {
+        "id": "1523",
+        "n_tokens": 252,
+        "original_s": 10.08,
+        "reconstruction_s": 10.2,
+        "duration_ratio": 1.0,
+        "token_seconds": 10.08,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1523.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1523.recon.wav"
+        },
+        "log_mel_l1": 0.9628371596336365,
+        "mcd_db": 27.960655212402344,
+        "frame_shift": 0,
+        "frames_compared": 504
+      },
+      {
+        "id": "1524",
+        "n_tokens": 482,
+        "original_s": 19.26,
+        "reconstruction_s": 19.4,
+        "duration_ratio": 1.001038421599169,
+        "token_seconds": 19.28,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1524.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1524.recon.wav"
+        },
+        "log_mel_l1": 0.8166228532791138,
+        "mcd_db": 23.80478858947754,
+        "frame_shift": 0,
+        "frames_compared": 963
+      },
+      {
+        "id": "1525",
+        "n_tokens": 354,
+        "original_s": 14.16,
+        "reconstruction_s": 14.28,
+        "duration_ratio": 1.0,
+        "token_seconds": 14.16,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1525.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1525.recon.wav"
+        },
+        "log_mel_l1": 1.4817205667495728,
+        "mcd_db": 31.481586456298828,
+        "frame_shift": 0,
+        "frames_compared": 708
+      },
+      {
+        "id": "1526",
+        "n_tokens": 233,
+        "original_s": 9.3,
+        "reconstruction_s": 9.42,
+        "duration_ratio": 1.0,
+        "token_seconds": 9.32,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1526.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1526.recon.wav"
+        },
+        "log_mel_l1": 0.9793088436126709,
+        "mcd_db": 29.56708526611328,
+        "frame_shift": -1,
+        "frames_compared": 464
+      },
+      {
+        "id": "1527",
+        "n_tokens": 592,
+        "original_s": 23.66,
+        "reconstruction_s": 23.8,
+        "duration_ratio": 1.000845308537616,
+        "token_seconds": 23.68,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1527.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1527.recon.wav"
+        },
+        "log_mel_l1": 0.7438086867332458,
+        "mcd_db": 24.987485885620117,
+        "frame_shift": 0,
+        "frames_compared": 1183
+      },
+      {
+        "id": "1528",
+        "n_tokens": 144,
+        "original_s": 5.76,
+        "reconstruction_s": 5.88,
+        "duration_ratio": 1.0,
+        "token_seconds": 5.76,
+        "wav": {
+          "original": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1528.orig.wav",
+          "reconstruction": "/home/khushiyant/Developer/kindic/.cache/codec_roundtrip/en/1528.recon.wav"
+        },
+        "log_mel_l1": 1.0990771055221558,
+        "mcd_db": 30.679447174072266,
+        "frame_shift": 0,
+        "frames_compared": 288
+      }
+    ]
+  },
+  "failed": []
+}

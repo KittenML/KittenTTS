@@ -1,0 +1,114 @@
+{
+  "checks": {
+    "capability": {
+      "name": "capability",
+      "stage": "env",
+      "question": "What hardware is this, and is bf16 safe on it?",
+      "needs_gpu": false,
+      "when": 1792105038.9541054,
+      "status": "PASS",
+      "returncode": 0,
+      "duration_s": 1.119908094406128,
+      "stdout": "host           khushiyant-Vector-16-HX-AI-A2XWHG\npython         3.12.3\ntorch          2.11.0+cu128   (built against CUDA 12.8)\ndriver         580.173.02\ncudnn          91900\nnccl           2.28.9   (available: True)\nflash-attn     not installed\narch list      sm_75, sm_80, sm_86, sm_90, sm_100, sm_120\n\ndev      name                              sm           VRAM  bf16     flash  in build \ncuda:0   NVIDIA GeForce RTX 5070 Ti Laptop sm_120      11.5G  native   yes    yes      \n\npolicy\n  cuda:0   dtype bfloat16   attn sdpa\n\nwarnings\n  ! cuda:0 sm_120 could use flash-attention-2 but the package is not installed; SDPA will be used instead.\n\nblockers\n  none\n",
+      "stderr": ""
+    },
+    "tokenizer_fertility": {
+      "name": "tokenizer_fertility",
+      "stage": "tokenizer",
+      "question": "How much more does Indic text cost under Qwen3 than under Sarvam-1?",
+      "needs_gpu": false,
+      "when": 1792105040.075651,
+      "status": "PASS",
+      "reason": "artifact already present (cached)",
+      "cached": true
+    },
+    "ternary_check": {
+      "name": "ternary_check",
+      "stage": "checkpoint",
+      "question": "Which quantizer wrote these weights, and can QAT resume without damaging them?",
+      "needs_gpu": false,
+      "when": 1792105040.077639,
+      "status": "PASS",
+      "reason": "artifact already present (cached)",
+      "cached": true
+    },
+    "vocab_surgery": {
+      "name": "vocab_surgery",
+      "stage": "surgery",
+      "question": "Does the Sarvam vocabulary swap produce a loadable checkpoint?",
+      "needs_gpu": false,
+      "when": 1792105040.0780818,
+      "status": "PASS",
+      "reason": "artifact already present (cached)",
+      "cached": true
+    },
+    "sarvam_smoke": {
+      "name": "sarvam_smoke",
+      "stage": "surgery",
+      "question": "Is the rebuilt checkpoint actually correct -- audio rows aligned, tokenizer addressing only text rows?",
+      "needs_gpu": false,
+      "when": 1792105040.0787034,
+      "status": "PASS",
+      "reason": "artifact already present (cached)",
+      "cached": true
+    },
+    "codec_roundtrip": {
+      "name": "codec_roundtrip",
+      "stage": "gates",
+      "question": "Can the S3 codec represent Tamil and Telugu at all?",
+      "needs_gpu": true,
+      "when": 1792105040.0788264,
+      "status": "PASS",
+      "reason": "artifact already present (cached)",
+      "cached": true
+    },
+    "teacher_forced_loss": {
+      "name": "teacher_forced_loss",
+      "stage": "gates",
+      "question": "Does our training sequence format match what the checkpoint was trained on?",
+      "needs_gpu": true,
+      "when": 1792105040.0789258,
+      "status": "FAIL",
+      "returncode": 1,
+      "duration_s": 509.545686006546,
+      "stdout": "  en/no_reference 7/8\n  en/no_reference 8/8\n  en/no_reference: 4.346                        \n  en/no_final_seg 1/8\n  en/no_final_seg 2/8\n  en/no_final_seg 3/8\n  en/no_final_seg 4/8\n  en/no_final_seg 5/8\n  en/no_final_seg 6/8\n  en/no_final_seg 7/8\n  en/no_final_seg 8/8\n  en/no_final_seg: 4.351                        \n  en/text_end_after_target 1/8\n  en/text_end_after_target 2/8\n  en/text_end_after_target 3/8\n  en/text_end_after_target 4/8\n  en/text_end_after_target 5/8\n  en/text_end_after_target 6/8\n  en/text_end_after_target 7/8\n  en/text_end_after_target 8/8\n  en/text_end_after_target: 4.330                        \n  hi/correct 1/8\n  hi/correct 2/8\n  hi/correct 3/8\n  hi/correct 4/8\n  hi/correct 5/8\n  hi/correct 6/8\n  hi/correct 7/8\n  hi/correct 8/8\n  hi/correct: 4.405                        \n  ta/correct 1/8\n  ta/correct 2/8\n  ta/correct 3/8\n  ta/correct 4/8\n  ta/correct 5/8\n  ta/correct 6/8\n  ta/correct 7/8\n  ta/correct 8/8\n  ta/correct: 5.699                        \n\n== Format check on en (8 examples, reference speaker cosine 0.65) ==\nvariant                         loss       ppl      gap  measured against\ncorrect format                 4.327      75.7        -\nshuffled_audio                 8.855    7007.2   +4.528  correct\nother_audio                    5.548     256.7   +1.221  correct\nrole_swapped                   4.301      73.8   -0.026  correct\nspeaker_zeros_no_reference     4.599      99.4   +0.254  no_reference\nspeaker_noise                  4.391      80.8   +0.065  correct  (diagnostic)\nspeaker_zeros                  4.363      78.5   +0.037  correct  (diagnostic)\nno_reference                   4.346      77.1   +0.019  correct  (diagnostic)\nno_final_seg                   4.351      77.5   +0.024  correct  (diagnostic)\ntext_end_after_target          4.330      76.0   +0.003  correct  (diagnostic)\nuniform over 6561              8.789      6561   +4.462  no model at all\n\n== Verdict ==\n  Target segment CONFIRMED.\n    Scrambling what is said costs whole nats, so the markers, the token\n    offset, the loss mask and the shift are the ones this checkpoint\n    continues. This is the half that would waste the compute if wrong.\n  Reference and speaker NOT CONFIRMED.\n    role_swapped: -0.026 nats over correct (needs >= 0.2)\n    Pairing is sound (0.65 cosine), so the references are\n    the right speaker and there was something real to corrupt. Two\n    readings remain and this test cannot separate them: either our\n    reference layout is not the trained one, or the checkpoint is\n    near-indifferent to identity conditioning under teacher forcing.\n    The second is plausible -- each audio token is mostly\n    predictable from the ones before it, and the `no_reference` row\n    above says what the entire reference prefix is worth. Note also\n    that role_swapped is not a pure corruption: its layout is what a\n    *second segment* of a multi-segment sample looks like, which\n    `final_seg` existing at all implies the checkpoint saw.\n    What this blocks: claiming the reference layout is right. Training\n    the target segment is still on solid ground, and the training plan\n    already calls for reference dropout -- so train with it, and settle\n    the reference layout by generating from both and scoring speaker\n    similarity, which this metric cannot see.\n  no_reference is diagnostic: inference supports dropping the reference and the\n  training plan calls for doing so on some examples, so a small gap is expected.\n\n== Correct format by language ==\nlang       n     loss      ppl    vs en  ref cos  ref tok  tgt tok\nen         8    4.327     75.7   +0.000     0.65      253      213\nhi         8    4.405     81.8   +0.078     0.63      266      241\nta         8    5.699    298.7   +1.373     0.71      247      248\n\n  The per-language rows are a baseline, not a gate: they say how much\n  worse Indic is under today's tokenizer and today's weights, which is\n  the number a fine-tune has to improve on.\n\nwrote indic/data/teacher_forced.json\n",
+      "stderr": "\nFetching 11 files:   0%|          | 0/11 [00:00<?, ?it/s]\nFetching 11 files: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 11/11 [00:00<00:00, 1720.13it/s]\nWarning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n\nLoading weights:   0%|          | 0/310 [00:00<?, ?it/s]\nLoading weights: 100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 310/310 [00:00<00:00, 8096.05it/s]\n"
+    },
+    "train_selfcheck": {
+      "name": "train_selfcheck",
+      "stage": "train",
+      "question": "Does the training loop provably work -- overfit one batch, exact loss mask, gradients where they belong?",
+      "needs_gpu": false,
+      "when": 1792105549.624891,
+      "status": "PASS",
+      "returncode": 0,
+      "duration_s": 7.360785484313965,
+      "stdout": "    tensor::model.layers.0.self_attn.o_proj.weight.packed True\n      tensor::model.layers.0.self_attn.o_proj.weight.bytes_in 8388608\n      tensor::model.layers.0.self_attn.o_proj.weight.bytes_out 904397\n      inference_loader.tensors                       28\n      inference_loader.mismatched                    []\n      inference_loader.exact                         True\n      export.path                                    /tmp/tmp6_fbp_u7/lm/model-ternary.safetensors\n      export.packed_tensors                          14\n      export.dense_tensors                           14\n      export.tensors                                 28\n      export.mismatched                              []\n      export.missing                                 []\n      export.passed                                  True\n      -- export goes through ternary.py, so the result loads in the existing inference path\n  [PASS] determinism\n      run_a                                          [5.41794, 5.39029, 5.3998, 5.25443, 5.23153, 5.17569]\n      run_b                                          [5.41794, 5.39029, 5.3998, 5.25443, 5.23153, 5.17569]\n      other_seed_first_loss                          5.42148\n      same_seed_identical                            True\n      different_seed_differs                         True\n      -- exact equality, and a different seed proves the comparison is not vacuous\n  [PASS] checkpoint_resume\n      straight_through                               [5.32249, 5.35781, 5.33304, 5.27165, 5.31049, 5.19295, 5.15326, 5.13885]\n      first_half                                     [5.32249, 5.35781, 5.33304, 5.27165]\n      resumed_from                                   4\n      resumed_tail                                   [5.31049, 5.19295, 5.15326, 5.13885]\n      expected_tail                                  [5.31049, 5.19295, 5.15326, 5.13885]\n      first_half_identical                           True\n      tail_identical                                 True\n      -- optimizer moments, scheduler position and RNG all restored\n  [PASS] speaker_conditioning\n      model_received_inputs_embeds                   True\n      model_received_input_ids                       False\n      dtype                                          torch.float32\n      position_zero_vs_spk_proj                      0\n      position_zero_vs_start_token                   2.42958\n      position_zero_is_spk_proj                      True\n      position_zero_is_start_token                   False\n      spk_proj_grad_abs_sum                          52.9456\n      loss_speakers                                  5.43181\n      loss_speakers_swapped                          5.42021\n      loss_speaker_zero                              5.41538\n      swap_delta                                     0.011601\n      zero_delta                                     0.0164309\n      keyword_call_loss                              5.43181\n      positional_call_loss                           5.43181\n      positional_call_matches_keyword                True\n      missing_speaker_raises                         True\n      inputs_embeds_raises                           True\n      inference_hook.keyword_call_loss               5.41624\n      inference_hook.keyword_call_spk_grad           75.4401\n      inference_hook.unconditioned_loss              5.40856\n      inference_hook.positional_call_loss            5.40856\n      inference_hook.positional_call_spk_grad        0\n      inference_hook.inputs_embeds_call_loss         5.40856\n      inference_hook.keyword_call_differs_from_unconditioned True\n      inference_hook.positional_call_is_unconditioned True\n      inference_hook.inputs_embeds_call_is_unconditioned True\n      inference_hook.both_bypasses_reproduced        True\n      inference_hook.loss_difference                 0.00767708\n      -- prefill branch confirmed for teacher-forced training; positional-call hazard measured against the inference hook\nwrote indic/data/train_selfcheck.json\n",
+      "stderr": ""
+    },
+    "fit_config_sarvam": {
+      "name": "fit_config_sarvam",
+      "stage": "fit",
+      "question": "What is the largest training configuration that fits this GPU, Sarvam vocab?",
+      "needs_gpu": true,
+      "when": 1792105556.9859638,
+      "status": "PASS",
+      "returncode": 0,
+      "duration_s": 30.505133867263794,
+      "stdout": "device    NVIDIA GeForce RTX 5070 Ti Laptop GPU  11.5 GB\nvocab     74,752   seq 512   reserve 1.5 GB -> budget 10.0 GB\n\nmode     batch    trainable    alloc  reserved  headroom  verdict\nembed        1      154.1M     4.06      4.24     +5.76  FITS\nembed        2      154.1M     4.62      4.96     +5.03  FITS\nembed        4      154.1M     5.74      6.14     +3.85  FITS\nembed        8      154.1M     7.97      9.05     +0.95  FITS\nembed       16            -      OOM         -         -  no\nlora         1      189.0M     4.26      4.59     +5.41  FITS\nlora         2      189.0M     4.82      5.32     +4.68  FITS\nlora         4      189.0M     5.93      6.54     +3.46  FITS\nlora         8      189.0M     8.16      9.52     +0.48  FITS\nlora        16            -      OOM         -         -  no\nfull         1     1716.6M     9.74     10.05     -0.06  over budget\nfull         2     1716.6M     9.81     10.12     -0.12  over budget\nfull         4     1716.6M     9.96     11.12     -1.12  over budget\nfull         8            -      OOM         -         -  no\nfull        16            -      OOM         -         -  no\n\n== Largest configuration that fits, per mode ==\n  embed    batch 8   (4,096 tokens/step)  reserved 9.05 GB (alloc 7.97), 0.95 GB spare\n  lora     batch 8   (4,096 tokens/step)  reserved 9.52 GB (alloc 8.16), 0.48 GB spare\n  full     nothing fits in budget\n\nwrote indic/data/fit_sarvam.json\n",
+      "stderr": ""
+    },
+    "fit_config_qwen3": {
+      "name": "fit_config_qwen3",
+      "stage": "fit",
+      "question": "The same, for the unchanged Qwen3 vocab -- how much does the swap buy?",
+      "needs_gpu": true,
+      "when": 1792105587.4932692,
+      "status": "PASS",
+      "returncode": 0,
+      "duration_s": 27.438442945480347,
+      "stdout": "device    NVIDIA GeForce RTX 5070 Ti Laptop GPU  11.5 GB\nvocab     158,241   seq 768   reserve 1.5 GB -> budget 10.0 GB\n\nmode     batch    trainable    alloc  reserved  headroom  verdict\nembed        1      325.1M     6.14      7.08     +2.91  FITS\nembed        2      325.1M     7.81      9.09     +0.91  FITS\nembed        4            -      OOM         -         -  no\nembed        8            -      OOM         -         -  no\nembed       16            -      OOM         -         -  no\nlora         1      360.0M     6.34      7.46     +2.54  FITS\nlora         2      360.0M     8.01      9.49     +0.51  FITS\nlora         4            -      OOM         -         -  no\nlora         8            -      OOM         -         -  no\nlora        16            -      OOM         -         -  no\nfull         1            -      OOM         -         -  no\nfull         2            -      OOM         -         -  no\nfull         4            -      OOM         -         -  no\nfull         8            -      OOM         -         -  no\nfull        16            -      OOM         -         -  no\n\n== Largest configuration that fits, per mode ==\n  embed    batch 2   (1,536 tokens/step)  reserved 9.09 GB (alloc 7.81), 0.91 GB spare\n  lora     batch 2   (1,536 tokens/step)  reserved 9.49 GB (alloc 8.01), 0.51 GB spare\n  full     nothing fits in budget\n\nwrote indic/data/fit_qwen3.json\n",
+      "stderr": ""
+    }
+  }
+}

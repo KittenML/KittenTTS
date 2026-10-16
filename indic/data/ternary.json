@@ -1,0 +1,196 @@
+{
+  "checkpoint": "/home/khushiyant/.cache/huggingface/hub/models--KittenML--kitten-tts-2/snapshots/f2eee74f4467855ad58fe16f1fb7b7df473263fd/lm/model-ternary.safetensors",
+  "tensors": {
+    "model.layers.0.mlp.down_proj.weight": {
+      "zero_fraction": 0.16319674253463745,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.025981122627854347,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.0.mlp.gate_proj.weight": {
+      "zero_fraction": 0.1554548144340515,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.04262867569923401,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.0.mlp.up_proj.weight": {
+      "zero_fraction": 0.15508180856704712,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.04360410198569298,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.0.self_attn.k_proj.weight": {
+      "zero_fraction": 0.12381839752197266,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.03801047056913376,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.0.self_attn.o_proj.weight": {
+      "zero_fraction": 0.13218069076538086,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.031213369220495224,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.0.self_attn.q_proj.weight": {
+      "zero_fraction": 0.14191699028015137,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.0385209359228611,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.0.self_attn.v_proj.weight": {
+      "zero_fraction": 0.11294794082641602,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.03287597373127937,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.1.mlp.down_proj.weight": {
+      "zero_fraction": 0.14786642789840698,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.02385343611240387,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.1.mlp.gate_proj.weight": {
+      "zero_fraction": 0.16284418106079102,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.04456029832363129,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.1.mlp.up_proj.weight": {
+      "zero_fraction": 0.16278618574142456,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.045967936515808105,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.1.self_attn.k_proj.weight": {
+      "zero_fraction": 0.15792369842529297,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.0448295995593071,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.1.self_attn.o_proj.weight": {
+      "zero_fraction": 0.17137765884399414,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.03305536136031151,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.1.self_attn.q_proj.weight": {
+      "zero_fraction": 0.15122628211975098,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.038546618074178696,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.1.self_attn.v_proj.weight": {
+      "zero_fraction": 0.14064550399780273,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.04038717970252037,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.2.mlp.down_proj.weight": {
+      "zero_fraction": 0.16565179824829102,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.02648964338004589,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.2.mlp.gate_proj.weight": {
+      "zero_fraction": 0.16452425718307495,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.04458997771143913,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.2.mlp.up_proj.weight": {
+      "zero_fraction": 0.1692015528678894,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.04724588617682457,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.2.self_attn.k_proj.weight": {
+      "zero_fraction": 0.16371488571166992,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.04540317505598068,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.2.self_attn.o_proj.weight": {
+      "zero_fraction": 0.15256547927856445,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.030144106596708298,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.2.self_attn.q_proj.weight": {
+      "zero_fraction": 0.14708352088928223,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.037050046026706696,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    },
+    "model.layers.2.self_attn.v_proj.weight": {
+      "zero_fraction": 0.13379955291748047,
+      "exactly_ternary": true,
+      "implied_absmean_scale_equals_stored": true,
+      "absmean_is_fixed_point": false,
+      "absmean_mean_abs_drift": 0.04027164354920387,
+      "absmax_is_fixed_point": true,
+      "absmax_mean_abs_drift": 0.0
+    }
+  },
+  "ternary_params": 1409286144,
+  "dense_params": 325256192
+}

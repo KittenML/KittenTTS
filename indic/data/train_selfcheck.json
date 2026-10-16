@@ -1,0 +1,306 @@
+{
+  "device": "cpu",
+  "full": false,
+  "checkpoint": "/home/khushiyant/.cache/huggingface/hub/models--KittenML--kitten-tts-2/snapshots/f2eee74f4467855ad58fe16f1fb7b7df473263fd/lm",
+  "results": [
+    {
+      "check": "overfit_one_batch",
+      "passed": true,
+      "skipped": false,
+      "note": "both the dense and the ternary-STE run memorise the batch; a zero-LR control does not move at all",
+      "dense_first_loss": 5.428891181945801,
+      "dense_final_loss": 9.948809019988403e-05,
+      "dense_steps": 250,
+      "dense_threshold": 0.05,
+      "dense_loss_ratio": 1.8325674040168534e-05,
+      "dense_passed": true,
+      "qat_absmax_first_loss": 5.493366241455078,
+      "qat_absmax_final_loss": 0.00010235392983304337,
+      "qat_absmax_steps": 250,
+      "qat_absmax_threshold": 0.05,
+      "qat_absmax_loss_ratio": 1.8632278521799767e-05,
+      "qat_absmax_passed": true,
+      "zero_lr_control_delta": 0.0,
+      "zero_lr_control_flat": true,
+      "seconds": 4.02
+    },
+    {
+      "check": "loss_masking",
+      "passed": true,
+      "skipped": false,
+      "note": "mask located two independent ways; padding bit-invariant; supervised positions provably do move the loss",
+      "row_lengths": [
+        35,
+        61
+      ],
+      "pad_positions": 26,
+      "mask_matches_token_scan": true,
+      "rows_checked": 2,
+      "baseline_loss": 5.324972152709961,
+      "pad_scrambled_loss": 5.324972152709961,
+      "pad_scrambled_delta": 0.0,
+      "supervised_token_control_delta": 0.015634536743164062,
+      "different_target_loss": 5.468105316162109,
+      "pad_invariant": true,
+      "supervised_control_moves_loss": true,
+      "target_changes_loss": true,
+      "seconds": 0.01
+    },
+    {
+      "check": "gradient_flow",
+      "passed": true,
+      "skipped": false,
+      "note": "measured after one optimizer step so LoRA's zero-initialised B matrix does not read as a dead parameter",
+      "embed": {
+        "trainable_tensors": 5,
+        "frozen_tensors": 23,
+        "trainable_without_grad": [],
+        "frozen_with_grad": [],
+        "spk_proj_grad_abs_sum": 22.461849212646484,
+        "passed": true
+      },
+      "lora": {
+        "trainable_tensors": 42,
+        "frozen_tensors": 14,
+        "trainable_without_grad": [],
+        "frozen_with_grad": [],
+        "spk_proj_grad_abs_sum": 22.640705108642578,
+        "passed": true
+      },
+      "full": {
+        "trainable_tensors": 28,
+        "frozen_tensors": 0,
+        "trainable_without_grad": [],
+        "frozen_with_grad": [],
+        "spk_proj_grad_abs_sum": 43.25605392456055,
+        "passed": true
+      },
+      "seconds": 0.64
+    },
+    {
+      "check": "qat_fixed_point",
+      "passed": true,
+      "skipped": false,
+      "note": "tests the implementation, not which rule trained the checkpoint",
+      "source": "/home/khushiyant/.cache/huggingface/hub/models--KittenML--kitten-tts-2/snapshots/f2eee74f4467855ad58fe16f1fb7b7df473263fd/lm/model-ternary.safetensors",
+      "model.layers.0.self_attn.q_proj.weight": {
+        "shape": [
+          2048,
+          2048
+        ],
+        "dtype": "torch.bfloat16",
+        "max_group_scale": 0.484375,
+        "nonzero_fraction_min": 0.609375,
+        "nonzero_fraction_max": 0.9765625,
+        "absmax_bit_exact": true,
+        "absmax_max_abs_drift": 0.0,
+        "absmax_relative_drift": 0.0,
+        "absmax_sign_pattern_exact": true,
+        "absmax_passed": true,
+        "absmax_collapsed_groups": 0.0,
+        "absmean_bit_exact": false,
+        "absmean_max_abs_drift": 5.960464477539063e-08,
+        "absmean_relative_drift": 1.2305475050403225e-07,
+        "absmean_sign_pattern_exact": true,
+        "absmean_passed": true,
+        "absmean_collapsed_groups": 0.0,
+        "negative_controls": {
+          "absmean_without_rescale": {
+            "reproduces": false,
+            "max_abs_drift": 0.103759765625
+          },
+          "absmean_without_clamp": {
+            "reproduces": false,
+            "max_abs_drift": 0.27734375
+          },
+          "absmean_bf16_shadow": {
+            "reproduces": false,
+            "max_abs_drift": 0.001068115234375
+          },
+          "absmax_grouped_along_rows": {
+            "reproduces": false,
+            "max_abs_drift": 0.236328125
+          }
+        },
+        "negative_controls_all_rejected": true
+      },
+      "model.layers.13.mlp.down_proj.weight": {
+        "shape": [
+          2048,
+          6144
+        ],
+        "dtype": "torch.bfloat16",
+        "max_group_scale": 0.4609375,
+        "nonzero_fraction_min": 0.65625,
+        "nonzero_fraction_max": 0.953125,
+        "absmax_bit_exact": true,
+        "absmax_max_abs_drift": 0.0,
+        "absmax_relative_drift": 0.0,
+        "absmax_sign_pattern_exact": true,
+        "absmax_passed": true,
+        "absmax_collapsed_groups": 0.0,
+        "absmean_bit_exact": false,
+        "absmean_max_abs_drift": 4.470348358154297e-08,
+        "absmean_relative_drift": 9.698382878707628e-08,
+        "absmean_sign_pattern_exact": true,
+        "absmean_passed": true,
+        "absmean_collapsed_groups": 0.0,
+        "negative_controls": {
+          "absmean_without_rescale": {
+            "reproduces": false,
+            "max_abs_drift": 0.068145751953125
+          },
+          "absmean_without_clamp": {
+            "reproduces": false,
+            "max_abs_drift": 0.1728515625
+          },
+          "absmean_bf16_shadow": {
+            "reproduces": false,
+            "max_abs_drift": 0.0008544921875
+          },
+          "absmax_grouped_along_rows": {
+            "reproduces": false,
+            "max_abs_drift": 0.2294921875
+          }
+        },
+        "negative_controls_all_rejected": true
+      },
+      "seconds": 0.71
+    },
+    {
+      "check": "pack_roundtrip",
+      "passed": true,
+      "skipped": false,
+      "note": "export goes through ternary.py, so the result loads in the existing inference path",
+      "tensor::synthetic": {
+        "exact": true,
+        "packed": true,
+        "bytes_in": 131072,
+        "bytes_out": 14132
+      },
+      "tensor::model.layers.0.self_attn.o_proj.weight": {
+        "exact": true,
+        "packed": true,
+        "bytes_in": 8388608,
+        "bytes_out": 904397
+      },
+      "inference_loader": {
+        "tensors": 28,
+        "mismatched": [],
+        "exact": true
+      },
+      "export": {
+        "path": "/tmp/tmp6_fbp_u7/lm/model-ternary.safetensors",
+        "packed_tensors": 14,
+        "dense_tensors": 14,
+        "tensors": 28,
+        "mismatched": [],
+        "missing": [],
+        "passed": true
+      },
+      "seconds": 0.41
+    },
+    {
+      "check": "determinism",
+      "passed": true,
+      "skipped": false,
+      "note": "exact equality, and a different seed proves the comparison is not vacuous",
+      "run_a": [
+        5.417942047119141,
+        5.390293598175049,
+        5.3997955322265625,
+        5.254434108734131,
+        5.231531620025635,
+        5.175690174102783
+      ],
+      "run_b": [
+        5.417942047119141,
+        5.390293598175049,
+        5.3997955322265625,
+        5.254434108734131,
+        5.231531620025635,
+        5.175690174102783
+      ],
+      "other_seed_first_loss": 5.421475410461426,
+      "same_seed_identical": true,
+      "different_seed_differs": true,
+      "seconds": 0.1
+    },
+    {
+      "check": "checkpoint_resume",
+      "passed": true,
+      "skipped": false,
+      "note": "optimizer moments, scheduler position and RNG all restored",
+      "straight_through": [
+        5.322494983673096,
+        5.3578057289123535,
+        5.333040237426758,
+        5.27165412902832,
+        5.31048583984375,
+        5.1929497718811035,
+        5.153263568878174,
+        5.138854026794434
+      ],
+      "first_half": [
+        5.322494983673096,
+        5.3578057289123535,
+        5.333040237426758,
+        5.27165412902832
+      ],
+      "resumed_from": 4,
+      "resumed_tail": [
+        5.31048583984375,
+        5.1929497718811035,
+        5.153263568878174,
+        5.138854026794434
+      ],
+      "expected_tail": [
+        5.31048583984375,
+        5.1929497718811035,
+        5.153263568878174,
+        5.138854026794434
+      ],
+      "first_half_identical": true,
+      "tail_identical": true,
+      "seconds": 0.1
+    },
+    {
+      "check": "speaker_conditioning",
+      "passed": true,
+      "skipped": false,
+      "note": "prefill branch confirmed for teacher-forced training; positional-call hazard measured against the inference hook",
+      "model_received_inputs_embeds": true,
+      "model_received_input_ids": false,
+      "dtype": "torch.float32",
+      "position_zero_vs_spk_proj": 0.0,
+      "position_zero_vs_start_token": 2.4295847415924072,
+      "position_zero_is_spk_proj": true,
+      "position_zero_is_start_token": false,
+      "spk_proj_grad_abs_sum": 52.94556427001953,
+      "loss_speakers": 5.4318084716796875,
+      "loss_speakers_swapped": 5.420207500457764,
+      "loss_speaker_zero": 5.415377616882324,
+      "swap_delta": 0.011600971221923828,
+      "zero_delta": 0.01643085479736328,
+      "keyword_call_loss": 5.4318084716796875,
+      "positional_call_loss": 5.4318084716796875,
+      "positional_call_matches_keyword": true,
+      "missing_speaker_raises": true,
+      "inputs_embeds_raises": true,
+      "inference_hook": {
+        "keyword_call_loss": 5.416241645812988,
+        "keyword_call_spk_grad": 75.44007110595703,
+        "unconditioned_loss": 5.408564567565918,
+        "positional_call_loss": 5.408564567565918,
+        "positional_call_spk_grad": 0.0,
+        "inputs_embeds_call_loss": 5.408564567565918,
+        "keyword_call_differs_from_unconditioned": true,
+        "positional_call_is_unconditioned": true,
+        "inputs_embeds_call_is_unconditioned": true,
+        "both_bypasses_reproduced": true,
+        "loss_difference": 0.0076770782470703125
+      },
+      "seconds": 0.03
+    }
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "device": "NVIDIA GeForce RTX 5070 Ti Laptop GPU",
+  "total_gb": 11.49639892578125,
+  "budget_gb": 9.99639892578125,
+  "results": [
+    {
+      "peak_gb": 6.140074253082275,
+      "reserved_gb": 7.083984375,
+      "trainable": 325132288,
+      "oom": false,
+      "mode": "embed",
+      "batch": 1,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 768
+    },
+    {
+      "peak_gb": 7.814906120300293,
+      "reserved_gb": 9.08984375,
+      "trainable": 325132288,
+      "oom": false,
+      "mode": "embed",
+      "batch": 2,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 1536
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "embed",
+      "batch": 4,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 3072
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "embed",
+      "batch": 8,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 6144
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "embed",
+      "batch": 16,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 12288
+    },
+    {
+      "peak_gb": 6.337744235992432,
+      "reserved_gb": 7.455078125,
+      "trainable": 359997440,
+      "oom": false,
+      "mode": "lora",
+      "batch": 1,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 768
+    },
+    {
+      "peak_gb": 8.01074504852295,
+      "reserved_gb": 9.486328125,
+      "trainable": 359997440,
+      "oom": false,
+      "mode": "lora",
+      "batch": 2,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 1536
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "lora",
+      "batch": 4,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 3072
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "lora",
+      "batch": 8,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 6144
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "lora",
+      "batch": 16,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 12288
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "full",
+      "batch": 1,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 768
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "full",
+      "batch": 2,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 1536
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "full",
+      "batch": 4,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 3072
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "full",
+      "batch": 8,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 6144
+    },
+    {
+      "peak_gb": null,
+      "reserved_gb": null,
+      "trainable": null,
+      "oom": true,
+      "mode": "full",
+      "batch": 16,
+      "seq": 768,
+      "vocab": 158241,
+      "tokens_per_step": 12288
+    }
+  ]
+}
