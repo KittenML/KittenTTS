@@ -131,7 +131,7 @@ _NONTAG_BRACKET_SPAN = re.compile(r"\[([^\[\]\n]{1,400})\]|<([^<>\n]{1,60})>|\((
 _COMMA_COLLISION = re.compile(r",\s*([,.!?;:])")
 
 _TRAILING_NONTERMINAL = re.compile(r"[,;:\-\u2013\u2014]+\s*$")
-_ALREADY_TERMINATED = set('.!?"\u2019\u201d\')]')
+_ALREADY_TERMINATED = set('.!?"\u2019\u201d\')]\u0964\u0965')
 
 # Em/en dashes -> commas. The checkpoint has little dash-delimited training data, and
 # nested em-dashes were the most reliable way to make a chunk run away in testing. A
@@ -221,6 +221,25 @@ if not getattr(_backend, "PRESERVES_SENTINELS", False):
         "expression tags would be corrupted. Pin an earlier version.")
 
 
+def _normalize_script(text):
+    """Script-level cleanup the backend cannot do, applied before it runs.
+
+    Two things, both no-ops on Latin input. NFC, because the same Devanagari or
+    Bengali syllable has several decomposed spellings and the tokenizer treats
+    them as different pieces -- an ordinary word then reaches the model as a rare
+    sequence. And Indic digits to ASCII, because the number grammar only
+    recognises 0-9, so a year written in Devanagari digits would otherwise arrive
+    as four rare codepoints rather than being spoken at all.
+
+    What this does *not* fix: the expansion is still English, so an Indic number
+    comes out in English words. That needs a per-language backend -- see
+    indic/text/indic_text.py.
+    """
+    from indic.text.indic_text import has_indic, normalize_indic
+
+    return normalize_indic(text) if has_indic(text) else text
+
+
 def warm_normalizer():
     """Build the backend's grammars now rather than inside the first request."""
     _backend.warm()
@@ -235,7 +254,7 @@ def normalize_text(text, normalize=True):
     every return path, so it survives identically whether normalization
     succeeds, fails, or is switched off.
     """
-    protected, tags = _protect_tags(str(text or ""))
+    protected, tags = _protect_tags(_normalize_script(str(text or "")))
     # Hard line wraps otherwise reach the sentence splitter as missing spaces:
     # "require.\nWe" collapses to "require.We", the boundary regex cannot see it, and
     # the fused pseudo-sentence falls into mid-clause splits that are audible as seams.
@@ -277,8 +296,14 @@ CHUNK_CHARS = 380
 CHUNK_MIN_CHARS = 130
 CHUNK_GAP_S = 0.16
 
-_SENT_END = re.compile(r'(?<=[.!?])["’”\')\]]*\s+')
-_TERMINAL = '.!?,;:'
+# U+0964 DANDA and U+0965 DOUBLE DANDA close a sentence in Devanagari and Bengali
+# exactly as '.' does in Latin script. Without them, a Hindi or Marathi paragraph
+# is one unbroken string to this splitter: no boundary is ever found, the text
+# falls through to the hard `sentence[:max_chars]` cut below, and the model is
+# handed a fragment that stops mid-word. Tamil and Telugu write '.' and were
+# already covered.
+_SENT_END = re.compile(r'(?<=[.!?\u0964\u0965])["’”\')\]]*\s+')
+_TERMINAL = '.!?,;:\u0964\u0965'
 
 
 def split_for_synthesis(text, max_chars=CHUNK_CHARS, min_chars=CHUNK_MIN_CHARS):
