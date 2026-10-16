@@ -65,6 +65,40 @@ ADVANCED_OPTIONS = {
 }
 
 
+def _warn_if_dtype_unsupported(device, dtype):
+    """Say so out loud when the chosen dtype is not native on this GPU.
+
+    On a pre-Ampere card (V100 sm_70, T4 sm_75) bf16 still *runs* -- torch emulates
+    it -- but the tensor cores sit idle and throughput drops several-fold with
+    nothing in the logs to say why. The usual check does not catch it either:
+    `torch.cuda.is_bf16_supported()` defaults to `including_emulation=True` and
+    returns True on a V100, so code that trusts it silently takes the slow arm.
+    Compute capability is the honest signal.
+
+    fp16 is not the escape hatch it looks like. The per-group ternary scales
+    convert to fp16 exactly, but this checkpoint's residual stream carries
+    Qwen-family massive activations -- measured up to 3.2e6 against fp16's 65,504
+    ceiling -- so an fp16 forward saturates to inf and emits NaN logits. On
+    pre-Ampere hardware the only correct option is fp32.
+
+    A warning rather than a refusal: the library has to keep working on whatever
+    hardware it is handed, and the caller may have accepted the cost. The
+    heterogeneous-cluster story is in `indic/hpc/capability.py`, which refuses by
+    default and is what a Slurm preflight should call.
+    """
+    if dtype is not torch.bfloat16 or not str(device).startswith("cuda"):
+        return
+    try:
+        major, _ = torch.cuda.get_device_capability(device if ":" in str(device) else 0)
+    except Exception:                       # no device, or a backend without the query
+        return
+    if major < 8:
+        print(f"[kittenml] warning: {torch.cuda.get_device_name(0)} is pre-Ampere "
+              f"(sm_{major}x); bfloat16 will be emulated and run several times "
+              f"slower. float32 is the correct choice here -- fp16 is not, this "
+              f"checkpoint's activations overflow it.", flush=True)
+
+
 @contextlib.contextmanager
 def _quiet_unexpected_keys():
     """Quieten transformers' loading chatter for one from_pretrained call."""
@@ -169,6 +203,7 @@ class KittenTTS2:
             raise FileNotFoundError(f"language model directory not found: {lm_dir}")
 
         self.dtype = torch.bfloat16 if self.config.get("dtype", "bf16") == "bf16" else torch.float32
+        _warn_if_dtype_unsupported(self.device, self.dtype)
         self.tokenizer = AutoTokenizer.from_pretrained(str(lm_dir))
         # The weights on disk are already the folded ternary codeword — every weight
         # group is exactly {-gamma, 0, +gamma}, not a latent full-precision tensor.
