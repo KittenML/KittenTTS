@@ -142,10 +142,12 @@ class ReferenceTranscriber:
     transcripts, so they never reach this.
     """
 
-    def __init__(self, device="cuda", model_name=WHISPER_MODEL, cache_dir=None):
+    def __init__(self, device="cuda", model_name=WHISPER_MODEL, cache_dir=None,
+                 language=None):
         self.device = device
         self.model_name = model_name
         self.cache_dir = cache_dir
+        self.language = language
         self._pipeline = None
 
     def _load(self):
@@ -158,8 +160,24 @@ class ReferenceTranscriber:
                 model_kwargs={"cache_dir": self.cache_dir} if self.cache_dir else {})
         return self._pipeline
 
-    def __call__(self, wav_path):
+    def __call__(self, wav_path, language=None):
+        """Transcribe a reference clip, detecting its language unless told.
+
+        The language is left unset by default so Whisper detects it. Forcing
+        English — as this did — does not merely mislabel a Hindi or Tamil clip:
+        Whisper then *translates and transliterates* it, so the prompt carries a
+        romanised English rendering of speech the reference actually contains in
+        Devanagari or Tamil script. The model is handed a transcript that does
+        not match its audio, which is the one part of the reference prompt that
+        has to agree with the other.
+
+        Pass `language=` (a Whisper language name, e.g. "hindi") to force it when
+        detection is unreliable, which it can be on clips under about five
+        seconds.
+        """
         import librosa
         wav, sample_rate = librosa.load(str(wav_path), sr=16000, mono=True)
         del sample_rate
-        return self._load()(wav, generate_kwargs={"language": "en"})["text"].strip()
+        language = language or self.language
+        generate_kwargs = {"language": language} if language else {}
+        return self._load()(wav, generate_kwargs=generate_kwargs)["text"].strip()
