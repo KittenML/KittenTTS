@@ -10,12 +10,13 @@ Loads whichever model family the repository's `config.json` declares.
 |---|---|---|---|
 | `model_name` | `str` | -- | Hugging Face repo ID, or a path to a local repository directory |
 | `cache_dir` | `str` | `None` | Local directory for caching downloaded files |
-| `device` | `str` | `None` | `"cuda"` or `"cpu"`; auto-detected when omitted. CPU works, at roughly 2-3x slower than real time -- and on a many-core host `torch.set_num_threads(8)` is markedly faster than letting it use every core |
+| `device` | `str` | `None` | `"cuda"` or `"cpu"`; auto-detected when omitted. The Python package runs slower than real time on most CPUs. For real-time performance, please refer to our [optimized implementation](https://github.com/KittenML/KittenTTS#running-on-cpu) |
 | `hf_token` | `str` | `None` | Token, only for downloading a private model repository |
 | `decoder` | `str` | repo default | Which decoder to load; see [decoders.md](decoders.md) |
 | `weights` | `str` | `"packed"` | Which weight packing to load: `"packed"` (lossless), `"emb4"` (smaller, quantised embedding), `"full"` (bf16) |
 | `backend` | `str` | `None` | Default PyTorch inference, or `"vllm"` for optional NVIDIA GPU inference on Linux |
 | `vllm_options` | `dict` | `None` | Engine memory and context settings; see [vLLM](vllm.md) |
+
 
 # `model.generate(text, voice=None, reference=None, ...)`
 
