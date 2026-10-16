@@ -251,3 +251,13 @@ __marimo__/
 # and regenerates the vendored s3gen / student-flow files from private checkouts.
 # Not useful without those inputs, so it is kept out of the published repo.
 scripts/
+
+# --- indic harness outputs ---
+# Rebuilt checkpoints from indic/vocab/build_sarvam_vocab.py: 3 GB each and fully
+# reproducible from the source repo plus the build command, so they are artifacts
+# rather than source. The JSON next to them IS worth keeping -- it records which
+# init produced which table.
+indic/data/kitten-tts-2-*/
+indic/data/*.wav
+indic/data/generated/
+indic/data/overnight.log
