@@ -23,6 +23,11 @@ The library also ships the original [**lightweight legacy models**](docs/onnx-mo
 
 **Commercial support is available.** For integration assistance, custom voices, or enterprise licensing, [contact us](https://docs.google.com/forms/d/e/1FAIpQLSc49erSr7jmh3H2yeqH4oZyRRuXm0ROuQdOgWguTzx6SMdUnQ/viewform?usp=preview).
 
+
+<img   alt="5325cae7-e2e1-4aad-8d53-caf93a268b36" src="https://github.com/user-attachments/assets/3ed09eab-09e9-457a-acc6-619152cc5a21" />
+
+
+
 ## Table of Contents
 
 - [Features](#features)
@@ -51,7 +56,12 @@ The library also ships the original [**lightweight legacy models**](docs/onnx-mo
 - **Text preprocessing** -- Numbers, currencies, dates, units and abbreviations expanded automatically
 - **24 kHz output** -- High-quality audio at a standard sample rate
 - **Runs without a GPU**
+- **Runs real time on a CPU** -- Check [Running on CPU](#running-on-cpu)
 - **Optimized C++ inference for CPU** -- Our fork of [llama.cpp](https://github.com/KittenML/kitten-tts-2-cpp)
+
+
+
+
 ## Available Models
 
 **KittenTTS 2** -- speech language model:
@@ -117,6 +127,7 @@ audio = m.generate("One day, a little girl named Lily found a needle in her room
                    voice="Bruno")
 sf.write("output.wav", audio, m.sample_rate)
 ```
+> To run Kitten-TTS 2 on a CPU, please refer to  [Running on CPU](#running-on-cpu)
 
 `m.available_voices` lists all 47 built-in voices, described in
 [voices and expression](docs/voices-and-expression.md). Bella, Jasper, Luna, Bruno, Rosie, Hugo,
@@ -182,9 +193,23 @@ covered.
 
 ## Running on CPU
 
-KittenTTS 2 runs on CPU out of the box — `device` is auto-detected — but the fastest way is
+Kitten-TTS 2 runs on CPU out of the box — `device` is auto-detected — but the fastest way is
 [kitten-tts-2-cpp](https://github.com/KittenML/kitten-tts-2-cpp), our llama.cpp fork. It reads
-the GGUF weights in the model repository's `cpp/` directory.
+the GGUF weights in the model repository's `cpp/` directory. You can use the Python bindings too:
+
+```
+pip install kitten_tts_cpp
+```
+
+```python
+from kitten_tts_cpp import KittenTTS
+
+model = KittenTTS("KittenML/kitten-tts-2", decoder="student_w4", threads=8)
+model.generate_to_file("One day, a little girl named Lily found a needle in her room.", "hello.wav", voice="Bruno")
+print(model.last_report)  # Generation timings and token IDs.
+```
+
+> Kitten-TTS 2 C++ is in beta. Please report any issues you encounter.
 
 ## Running with vLLM
 
