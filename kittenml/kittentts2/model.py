@@ -263,7 +263,7 @@ class KittenTTS2:
         voices_path = self.repo_dir / self.config.get("voices", "voices/voices.json")
         if not voices_path.is_file():
             return {}
-        with open(voices_path) as f:
+        with open(voices_path, encoding="utf-8") as f:
             entries = json.load(f)
         root = voices_path.parent
         return {name: {**spec,

@@ -28,10 +28,10 @@ def resolve_repo(model_name, cache_dir=None):
         config_path = os.path.join(model_name, "config.json")
         if not os.path.isfile(config_path):
             raise FileNotFoundError(f"no config.json in {model_name}")
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             return model_name, None, json.load(f)
 
     repo_id = model_name if "/" in model_name else f"KittenML/{model_name}"
     config_path = hf_hub_download(repo_id=repo_id, filename="config.json", cache_dir=cache_dir)
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         return None, repo_id, json.load(f)
