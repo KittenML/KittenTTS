@@ -167,7 +167,7 @@ _RE_PERCENT  = re.compile(r"(-?[\d,]+(?:\.\d+)?)\s*%")
 _RE_CURRENCY = re.compile(r"([$€£¥₹₩₿])\s*([\d,]+(?:\.\d+)?)\s*([KMBT])?(?![a-zA-Z\d])")
 
 # Time: 3:30pm, 14:00, 3:30 AM — requires 2-digit minutes so "3:0" (score) doesn't match
-_RE_TIME     = re.compile(r"\b(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s+(am|pm))?\b", re.IGNORECASE)
+_RE_TIME     = re.compile(r"\b(\d{1,2}):(\d{2})(?::(\d{2}))?(?:(?:\s+)?(am|pm))?\b", re.IGNORECASE)
 
 # Ranges: 10-20, 100-200 (both sides numeric, hyphen between them)
 _RE_RANGE    = re.compile(r"(?<!\w)(\d+)-(\d+)(?!\w)")
@@ -969,7 +969,7 @@ def normalize_text_result(
             lambda m: f"{_month_name(m.group(1))} {_year_to_words(int(m.group(2)))}",
             "date",
         ),
-        (re.compile(r"\b(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\s+(a\.?m\.?|p\.?m\.?))?\b", re.IGNORECASE), _replace_read_aloud_time, "time"),
+        (re.compile(r"\b(\d{1,2}):(\d{2})(?::(\d{2}))?(?:(?:\s+)?(a\.?m\.?|p\.?m\.?))?\b", re.IGNORECASE), _replace_read_aloud_time, "time"),
         (_RE_CURRENCY, lambda m: expand_currency(m.group(0)), "currency"),
         (_RE_PERCENT, lambda m: expand_percentages(m.group(0)), "number"),
         (_RE_ORDINAL, lambda m: _ordinal_suffix(int(m.group(1))), "ordinal"),
