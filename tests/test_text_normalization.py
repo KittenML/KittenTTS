@@ -61,6 +61,16 @@ class TextNormalizationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             normalize_text("Bonjour 2026", locale="fr-FR")
 
+    def test_bare_time_does_not_eat_following_space(self):
+        cases = {
+            "We leave at 10:00 in the morning.": "We leave at ten in the morning.",
+            "The train leaves at 14:30 on platform 2.": "The train leaves at fourteen thirty on platform two.",
+            "I woke up at 6:15 and slept at 23:45.": "I woke up at six fifteen and slept at twenty-three forty-five.",
+        }
+        for raw, expected in cases.items():
+            with self.subTest(raw=raw):
+                self.assertEqual(normalize_text(raw), expected)
+
 
 if __name__ == "__main__":
     unittest.main()
