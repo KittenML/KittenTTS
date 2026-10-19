@@ -317,6 +317,7 @@ def expand_currency(text: str) -> str:
         "$100"      → "one hundred dollars"
         "€1,200.50" → "twelve hundred euros and fifty cents"
         "£9.99"     → "nine pounds and ninety-nine cents"
+        "$1.00"     → "one dollar"
         "$85K"      → "eighty five thousand dollars"
         "$2.5M"     → "two point five million dollars"
     """
@@ -337,8 +338,9 @@ def expand_currency(text: str) -> str:
         if "." in raw:
             int_part, dec_part = raw.split(".", 1)
             dec_val = int(dec_part[:2].ljust(2, "0"))
-            int_words = number_to_words(int(int_part))
-            result = f"{int_words} {unit}s" if unit else int_words
+            int_val = int(int_part)
+            int_words = number_to_words(int_val)
+            result = f"{int_words} {unit}{'s' if int_val != 1 and unit else ''}" if unit else int_words
             if dec_val:
                 cents = number_to_words(dec_val)
                 result += f" and {cents} cent{'s' if dec_val != 1 else ''}"
