@@ -10,12 +10,13 @@ Loads whichever model family the repository's `config.json` declares.
 |---|---|---|---|
 | `model_name` | `str` | -- | Hugging Face repo ID, or a path to a local repository directory |
 | `cache_dir` | `str` | `None` | Local directory for caching downloaded files |
-| `device` | `str` | `None` | `"cuda"` or `"cpu"`; auto-detected when omitted. Note: this Python package is for demo only, and not optimized for speed. For real-time performance on CPU, please refer to our [optimized cpu inference repo](https://github.com/KittenML/kitten-tts-2-cpp). And for GPU, please refer to the vllm instructions below. |
+| `device` | `str` | `None` | `"cuda"`, `"mps"` or `"cpu"`; auto-detected when omitted. With `backend="mlx"` the language model always runs on the Mac GPU and this selects only where audio decoding runs, defaulting to `"mps"`. Note: this Python package is for demo only, and not optimized for speed. For real-time performance on CPU, please refer to our [optimized cpu inference repo](https://github.com/KittenML/kitten-tts-2-cpp). And for GPU, please refer to the vllm instructions below. |
 | `hf_token` | `str` | `None` | Token, only for downloading a private model repository |
 | `decoder` | `str` | repo default | Which decoder to load; see [decoders.md](decoders.md) |
 | `weights` | `str` | `"packed"` | Which weight packing to load: `"packed"` (lossless), `"emb4"` (smaller, quantised embedding), `"full"` (bf16) |
-| `backend` | `str` | `None` | Default PyTorch inference, or `"vllm"` for optional NVIDIA GPU inference on Linux |
+| `backend` | `str` | `None` | Default PyTorch inference, `"mlx"` for the Apple-silicon GPU, `"vllm"` for optional NVIDIA GPU inference on Linux, or `"auto"` to pick MLX on a Mac and PyTorch elsewhere |
 | `vllm_options` | `dict` | `None` | Engine memory and context settings; see [vLLM](vllm.md) |
+| `mlx_options` | `dict` | `None` | Reserved; the MLX backend currently takes no options. See [MLX](mlx.md) |
 
 
 # `model.generate(text, voice=None, reference=None, ...)`

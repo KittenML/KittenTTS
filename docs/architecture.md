@@ -21,13 +21,19 @@ kittenml/
     tokens.py           the shared text/audio token layout
     vocoder.py          reference encoding and token -> waveform
     s3gen.py            vendored S3 tokenizer + s3gen vocoder
+    mlx/                the optional Apple-silicon backend
+      loader.py           ternary weights -> MLX's 4-bit kernels, exactly
+      model.py            Qwen3 and the speaker head as MLX modules
+      sample.py           the same decode pipeline, in MLX
   kittentts_legacy/      the ONNX models
     model.py            KittenTTSOnnx: generate, speed control
     onnx_model.py       the ONNX session and phonemizer
 ```
 
 Neither backend is imported until it is the one selected, so a KittenTTS 2 install never needs
-espeak and an ONNX install never needs torch.
+espeak and an ONNX install never needs torch. The same is true of the optional language-model
+backends under `kittentts2/`: `mlx/` is imported only for `backend="mlx"`, `vllm/` only for
+`backend="vllm"`.
 
 # The model repository
 
