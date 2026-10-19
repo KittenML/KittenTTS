@@ -31,6 +31,30 @@ class TextNormalizationTests(unittest.TestCase):
             with self.subTest(raw=raw):
                 self.assertEqual(normalize_text(raw), expected)
 
+    def test_units_glued_to_numbers_are_expanded(self):
+        cases = {
+            "I ran 10km in 30min.": "I ran ten kilometers in thirty minutes",
+            "Use 50% of 2.5GB for 300ms.": "Use fifty percent of two point five gigabytes for three hundred milliseconds",
+            "The file is 500MB.": "The file is five hundred megabytes",
+            "CPU at 2.8GHz and 25°C.": "CPU at two point eight gigahertz and twenty-five degrees Celsius",
+            "It takes 5 sec.": "It takes five seconds",
+        }
+
+        for raw, expected in cases.items():
+            with self.subTest(raw=raw):
+                self.assertEqual(normalize_text(raw).rstrip("."), expected)
+
+    def test_unit_expansion_leaves_unit_free_numbers_alone(self):
+        cases = {
+            "Python-3.10": "Python three point ten",
+            "GPT-4": "GPT four",
+            "It takes 5 minutes": "It takes five minutes",
+        }
+
+        for raw, expected in cases.items():
+            with self.subTest(raw=raw):
+                self.assertEqual(normalize_text(raw), expected)
+
     def test_url_and_email_are_spoken_not_removed(self):
         normalized = normalize_text("Visit https://example.com or email hello@example.com.")
 
