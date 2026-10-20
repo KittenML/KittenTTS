@@ -214,7 +214,9 @@ print(model.last_report)  # Generation timings and token IDs.
 ## Running with vLLM
 
 For GPU inference with vLLM on Linux and an NVIDIA CUDA GPU with compute capability
-8.0 or newer (Ampere or later, for bfloat16), install the optional backend:
+8.0 or newer (Ampere or later, for bfloat16), install the optional backend. GPUs with compute
+capability 7.5 can use a float16 fallback that is supported but not the optimal path
+([vLLM guide](docs/vllm.md#older-gpus-compute-capability-75)).
 
 ```bash
 pip install "kittenml[vllm]"

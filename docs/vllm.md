@@ -2,7 +2,9 @@
 
 The optional `vllm` backend runs KittenTTS 2's language model with vLLM 0.31.0 on an NVIDIA GPU;
 audio decoding, voice cloning and text preparation stay the same. It needs Linux and a GPU with
-compute capability 8.0 or newer (Ampere or later); older GPUs are refused before any download.
+compute capability 8.0 or newer (Ampere or later). GPUs with compute capability 7.5 can use a
+float16 fallback that is supported but not the optimal path
+([Older GPUs](#older-gpus-compute-capability-75)); older GPUs are refused before any download.
 
 Install and select it as shown in the [README](../README.md#running-with-vllm). That install gets
 CUDA 13.0 builds of vLLM and PyTorch, which need a driver for CUDA 13.0
@@ -25,7 +27,7 @@ uv pip install --torch-backend cu129 "kittenml[vllm]" ./vllm-0.31.0+cu129-cp38-a
 | `kv_cache_memory_bytes` | not set | A fixed cache size in bytes, used instead of sizing the cache from `gpu_memory_utilization`. |
 | `enforce_eager` | `False` | Turns off CUDA graphs. Keep it off: with it on, 4-bit can be slower than the default bf16. |
 | `quantization` | not set | `"w4a16"` for 4-bit weights; see [4-bit weights](#4-bit-weights). |
-| `dtype` | `"bfloat16"` | Precision of the language model. Only `"bfloat16"` is accepted; `"float16"` is refused. |
+| `dtype` | `"bfloat16"` | Precision of the language model. `"float16"` is a fallback for GPUs without bfloat16; see [Older GPUs](#older-gpus-compute-capability-75). |
 
 Pass these as `vllm_options` when constructing the model, for example
 `vllm_options={"max_model_len": 2048}`; unknown option names are refused before any download. Select
@@ -56,7 +58,8 @@ gives the saved memory to its cache; to lower total use, also set `kv_cache_memo
 `gpu_memory_utilization`. It works with `weights="packed"` (the default) or `"full"`, and also
 with `weights="emb4"`. That one is lossy: its embedding is stored in 4 bits (at export, perplexity
 13.60 against 13.50), and it only makes the download smaller, not GPU memory, because the
-embedding is expanded to bf16 on the GPU either way. KittenTTS checks that vLLM runs the 4-bit layers
+embedding is expanded to bf16 on the GPU either way. `"emb4"` is not available with the float16
+fallback below. KittenTTS checks that vLLM runs the 4-bit layers
 with the kernel they were verified with, and refuses settings that would change it.
 
 The biggest gain is with one request at a time: the language model ran about 1.4x faster on an RTX
@@ -70,6 +73,41 @@ both, five sentences one at a time:
 | Peak GPU memory, whole card | 6,116 MiB | 4,096 MiB |
 | Median time per sentence | 2.65 s | 1.73 s |
 | Language-model speed | 54.5 tokens/s | 97.2 tokens/s |
+
+## Older GPUs (compute capability 7.5)
+
+GPUs without bfloat16, such as the GeForce RTX 20 and GTX 16 series, can run the language model in
+float16 instead, with or without 4-bit weights:
+
+```python
+m = KittenTTS("KittenML/kitten-tts-2", backend="vllm",
+              vllm_options={"dtype": "float16", "quantization": "w4a16"})
+```
+
+**This is a fallback: it is supported, but it is not the optimal path.** Float16 is used only when
+you ask for it; on GPUs with compute capability 8.0 or newer, keep the default (bfloat16). Only an
+RTX 2070 (8 GB) was measured.
+
+- **Precision change.** The model is published in bfloat16 and overflows in plain float16, so
+  KittenTTS scales its internal values down by an exact power of two. Rounding follows float16
+  instead of bfloat16. Given the same text and tokens, the next-token probabilities differ from
+  bfloat16's by 0.0085 nats on average (KL divergence; 4-bit weights in bfloat16 differ by
+  0.0047). Word error rates on 36 requests (8 languages, long text, cloning) were 0.9% in
+  bfloat16 and 0.8-0.9% in float16. No listening test was done.
+- **Not the fastest attention kernel.** vLLM's FlashAttention 2 needs compute capability 8.0, so
+  these GPUs use a general kernel; startup logs `Cannot use FA version 2 ...`, which is expected.
+  bfloat16 cannot run on these GPUs, so there is no same-card speed comparison.
+- **More memory.** Float16 keeps a separate copy of the output layer: 618 MiB more than bfloat16.
+
+| RTX 2070 (8 GB), one request at a time | float16 + 4-bit, default settings | float16, `kv_cache_memory_bytes` 1 GiB |
+|---|---:|---:|
+| Language-model speed | 108 tokens/s | 74 tokens/s |
+| Synthesis time per second of audio | 0.30 s | 0.41 s |
+| First audio when streaming (median) | 1.33 s | 1.80 s |
+| Peak GPU memory, whole card | 6,574 MiB | 8,024 MiB |
+| Startup with warm caches | 55 s | 46 s |
+
+Measured with `generate()` on the same 36 texts (29 of them for streaming), one request at a time.
 
 ## Benchmarks
 

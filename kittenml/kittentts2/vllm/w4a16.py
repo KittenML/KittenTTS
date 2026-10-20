@@ -16,6 +16,10 @@ and the KV cache. ``spk_proj`` runs outside vLLM and is dropped here.
 The lossy ``emb4`` packing is refused: W4A16 is offered as an exact
 representation of the published weights and is never combined with it.
 
+In the opt-in float16 mode (fp16.py) the same codes are used; the group scales
+of v/o/up/down are multiplied by that mode's powers of two and stored in
+float16, which must be exact.
+
 vLLM fuses q/k/v into ``qkv_proj`` and gate/up into ``gate_up_proj``
 (``Qwen3ForCausalLM.packed_modules_mapping``), so the 196 source projections
 (7 per layer) become 4 quantized modules per layer: 112 for the 28-layer model.

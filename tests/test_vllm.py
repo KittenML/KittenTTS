@@ -306,15 +306,15 @@ _PROJECTIONS = {"self_attn.q_proj": (256, 256), "self_attn.k_proj": (128, 256),
                 "mlp.down_proj": (256, 384)}
 
 
-def _ternary(rows, cols, generator):
+def _ternary(rows, cols, generator, low=1e-4):
     signs = torch.randint(-1, 2, (rows, cols), generator=generator)
-    scale = (torch.rand(rows, cols // 128, generator=generator) * 0.5 + 1e-4).to(torch.bfloat16)
+    scale = (torch.rand(rows, cols // 128, generator=generator) * 0.5 + low).to(torch.bfloat16)
     scale[0, 0] = 0  # an all-zero group has a zero scale
     signs[0, :128] = 0
     return signs.to(torch.bfloat16) * scale.repeat_interleave(128, dim=1)
 
 
-def _w4a16_checkpoint(tmp_path, layers=2, perturb=None):
+def _w4a16_checkpoint(tmp_path, layers=2, perturb=None, low=1e-4):
     """A small Qwen3-shaped LM written as both full bf16 and packed ternary."""
     generator = torch.Generator().manual_seed(0)
     state = {"model.embed_tokens.weight": torch.randn(32, 256, generator=generator).to(torch.bfloat16),
@@ -328,7 +328,7 @@ def _w4a16_checkpoint(tmp_path, layers=2, perturb=None):
         state[prefix + "input_layernorm.weight"] = torch.ones(256, dtype=torch.bfloat16)
         state[prefix + "self_attn.q_norm.weight"] = torch.ones(128, dtype=torch.bfloat16)
         for name, shape in _PROJECTIONS.items():
-            state[prefix + name + ".weight"] = _ternary(*shape, generator)
+            state[prefix + name + ".weight"] = _ternary(*shape, generator, low)
     if perturb is not None:
         weight = state[perturb]
         weight[1, 5] = weight[1, :128].abs().max() / 2  # no longer ternary in that group
@@ -460,6 +460,8 @@ def test_w4a16_accepts_emb4_and_packs_its_ternary_body_exactly(tmp_path):
         assert torch.equal(out[key], value)
 
     check_options({"quantization": "w4a16"}, "emb4")
+    with pytest.raises(ValueError, match="float16"):
+        check_options({"dtype": "float16"}, "emb4")
 
 
 def test_w4a16_targets_112_fused_modules_for_196_projections():
@@ -510,31 +512,39 @@ def test_vllm_options_validate_quantization_dtype_and_cache_size():
             resolve_options(bad)
 
 
-def test_float16_is_refused_with_the_measured_reason():
-    # float16 was measured to overflow at layer 10 with the current checkpoint
-    # (with and without W4A16) and then produce no audio, so it is refused.
+def test_float16_is_an_explicit_option():
+    # float16 is the opt-in fallback for GPUs without bfloat16 (fp16.py); it is
+    # never chosen unless asked for.
     from kittenml.kittentts2.vllm.backend import resolve_options
 
     for options in ({"dtype": "float16"}, {"dtype": "float16", "quantization": "w4a16"}):
-        with pytest.raises(ValueError, match=r"'float16' is not supported: this model's residual "
-                                             r"stream exceeds the float16 range \(measured overflow "
-                                             r"from layer 10\).*compute capability < 8.0"):
-            resolve_options(options)
+        engine, kitten = resolve_options(options)
+        assert kitten["dtype"] == "float16" and "dtype" not in engine
+    assert resolve_options(None)[1]["dtype"] is None
 
 
-def test_dtype_follows_hardware_and_gpus_without_bfloat16_are_refused():
+def test_dtype_follows_hardware_and_gpus_without_bfloat16_need_the_float16_opt_in():
     from kittenml.kittentts2.vllm.backend import validate_environment
 
     with mock.patch("kittenml.kittentts2.vllm.backend.importlib.util.find_spec", return_value=object()), \
          mock.patch("torch.cuda.is_available", return_value=True):
         for capability in ((8, 0), (8, 6), (12, 0)):
             with mock.patch("torch.cuda.get_device_capability", return_value=capability):
-                validate_environment()
-        for capability, name in (((7, 5), "SM75"), ((7, 0), "SM70")):
+                for dtype in (None, "bfloat16", "float16"):
+                    validate_environment(dtype=dtype)
+        with mock.patch("torch.cuda.get_device_capability", return_value=(7, 5)):
+            for dtype in (None, "bfloat16"):
+                with pytest.raises(RuntimeError, match=r"SM75\) has no bfloat16.*opt in to the "
+                                                       r"float16 fallback with vllm_options="
+                                                       r"\{'dtype': 'float16'\}.*not the optimal"):
+                    validate_environment(dtype=dtype)
+            validate_environment(dtype="float16")
+        for capability, name in (((7, 0), "SM70"), ((6, 1), "SM61")):
             with mock.patch("torch.cuda.get_device_capability", return_value=capability):
-                with pytest.raises(RuntimeError, match=name + ".*no bfloat16.*float16 range"
-                                                       ".*layer 10.*< 8.0"):
-                    validate_environment()
+                for dtype in (None, "float16"):
+                    with pytest.raises(RuntimeError, match=name + r"\) is not supported by the "
+                                                           r"vLLM backend.*7.5 or newer"):
+                        validate_environment(dtype=dtype)
 
 
 def test_vllm_options_are_checked_before_model_download(monkeypatch):
@@ -543,7 +553,8 @@ def test_vllm_options_are_checked_before_model_download(monkeypatch):
          mock.patch("kittenml.kittentts2.vllm.backend.validate_environment"), \
          mock.patch("kittenml.get_model.snapshot_download") as download:
         for options, weights, match in [({"quantisation": "w4a16"}, None, "unknown vllm_options"),
-                                        ({"dtype": "float16"}, None, "float16 range")]:
+                                        ({"dtype": "float16"}, "emb4", "float16.*emb4"),
+                                        ({"dtype": "fp16"}, None, "'float16'")]:
             with pytest.raises(ValueError, match=match):
                 KittenTTS("example/repo", backend="vllm", weights=weights, vllm_options=options)
         monkeypatch.setenv("VLLM_MARLIN_INPUT_DTYPE", "int8")
@@ -559,9 +570,13 @@ def test_gpus_without_bfloat16_are_refused_before_model_download():
          mock.patch("torch.cuda.is_available", return_value=True), \
          mock.patch("torch.cuda.get_device_capability", return_value=(7, 5)), \
          mock.patch("kittenml.get_model.snapshot_download") as download:
-        with pytest.raises(RuntimeError, match="SM75.*no bfloat16"):
+        with pytest.raises(RuntimeError, match="SM75.*no bfloat16.*'dtype': 'float16'"):
             KittenTTS("example/repo", backend="vllm")
         download.assert_not_called()
+        # With the opt-in, the checks pass and the download starts.
+        download.side_effect = RuntimeError("download started")
+        with pytest.raises(RuntimeError, match="download started"):
+            KittenTTS("example/repo", backend="vllm", vllm_options={"dtype": "float16"})
 
 
 def test_w4a16_refuses_marlin_environment_overrides(monkeypatch, tmp_path):
@@ -653,7 +668,7 @@ def test_engine_receives_w4a16_arguments_and_main_process_loads_only_conditionin
     os.environ.pop("VLLM_DISABLED_KERNELS", None)
     owner, kwargs = run(None)
     assert {"quantization", "hf_overrides", "kv_cache_memory_bytes"}.isdisjoint(kwargs)
-    assert "quantization" not in kwargs["model_loader_extra_config"]
+    assert set(kwargs["model_loader_extra_config"]) == {"repo_dir", "config", "weights"}
     assert kwargs["dtype"] is torch.bfloat16 and owner.dtype is torch.bfloat16
     assert kwargs["disabled_kernels"] is None
     owner, kwargs = run({"quantization": "w4a16"})
@@ -663,8 +678,11 @@ def test_engine_receives_w4a16_arguments_and_main_process_loads_only_conditionin
     owner, kwargs = run({"quantization": "w4a16", "kv_cache_memory_bytes": 1 << 30,
                          "dtype": "bfloat16"})
     assert kwargs["quantization"] == "compressed-tensors"
+    # bfloat16 W4A16: only the quantization config, the head stays tied.
+    assert set(kwargs["hf_overrides"]) == {"quantization_config"}
     assert kwargs["hf_overrides"]["quantization_config"]["ignore"] == ["lm_head"]
     assert kwargs["model_loader_extra_config"]["quantization"] == "w4a16"
+    assert "float16_rescale" not in kwargs["model_loader_extra_config"]
     assert kwargs["kv_cache_memory_bytes"] == 1 << 30
     assert kwargs["dtype"] is torch.bfloat16 and owner.dtype is torch.bfloat16
 
@@ -857,3 +875,321 @@ def test_w4a16_exactness_checks_compare_bits_not_values(tmp_path):
     save_file({"model.layers.0.self_attn.o_proj.weight": weight},
               tmp_path / "lm" / "model.safetensors")
     assert len(list(iter_w4a16(tmp_path, {}, "full"))) == 3
+
+
+# ── Opt-in float16 (vllm_options={"dtype": "float16"}), fp16.py ─────────────────
+
+def _qwen3(layers=2, tied=True):
+    from transformers import Qwen3Config, Qwen3ForCausalLM
+
+    config = Qwen3Config(vocab_size=32, hidden_size=256, intermediate_size=384,
+                         num_hidden_layers=layers, num_attention_heads=2, num_key_value_heads=1,
+                         head_dim=128, rms_norm_eps=1e-6, tie_word_embeddings=tied,
+                         max_position_embeddings=64)
+    config._attn_implementation = "eager"
+    return Qwen3ForCausalLM(config).double().eval()
+
+
+def _realistic_state(model, generator):
+    """Random weights at the published model's scales: small embeddings (mean(x^2)
+    around 1e-3, so an unscaled epsilon would matter) and a residual stream that grows."""
+    state = {}
+    for name, tensor in model.state_dict().items():
+        if name == "lm_head.weight":
+            continue
+        if name.endswith("norm.weight"):
+            value = torch.rand(tensor.shape, generator=generator, dtype=torch.float64) + 0.5
+        elif name == "model.embed_tokens.weight":
+            value = torch.randn(tensor.shape, generator=generator, dtype=torch.float64) * 0.033
+        else:
+            value = torch.randn(tensor.shape, generator=generator, dtype=torch.float64) * 0.5
+        state[name] = value
+    return state
+
+
+def test_float16_rescale_is_the_same_model_in_float64():
+    # The rescale is exact: with the stream's inputs at 2^-9, every branch at 2^-9 and
+    # the residual norms' epsilon at 2^-18, the logits equal the original model's.
+    # Checked on transformers' Qwen3 in float64, with the plan's own functions.
+    from kittenml.kittentts2.vllm.fp16 import (EMBEDDING, LM_HEAD, RESIDUAL_SHIFT,
+                                                residual_norms, scale_norm_epsilons, shift_of)
+
+    generator = torch.Generator().manual_seed(3)
+    reference = _qwen3(tied=True)
+    state = _realistic_state(reference, generator)
+    reference.load_state_dict(state, strict=False)
+    reference.tie_weights()
+    rescaled = _qwen3(tied=False)
+    rescaled.load_state_dict({**{name: tensor * 2.0 ** -shift_of(name)
+                                 for name, tensor in state.items()},
+                              LM_HEAD: state[EMBEDDING]}, strict=True)
+    assert rescaled.lm_head.weight.data_ptr() != rescaled.model.embed_tokens.weight.data_ptr()
+    assert scale_norm_epsilons(rescaled, layers=2, eps=1e-6) == 5
+    assert [name for name, _ in residual_norms(rescaled)] == [
+        "model.layers.0.input_layernorm", "model.layers.0.post_attention_layernorm",
+        "model.layers.1.input_layernorm", "model.layers.1.post_attention_layernorm",
+        "model.norm"]
+    assert rescaled.model.layers[0].self_attn.q_norm.variance_epsilon == 1e-6
+
+    ids = torch.tensor([[0, 5, 9, 2, 31, 7]])
+    embeds = state[EMBEDDING][ids].clone()
+    embeds[0, 0] = torch.randn(256, generator=generator, dtype=torch.float64)  # spk_proj slot
+    with torch.no_grad():
+        expected = reference(inputs_embeds=embeds).logits
+        actual = rescaled(inputs_embeds=embeds * 2.0 ** -RESIDUAL_SHIFT).logits
+        # transformers' RMSNorm computes in float32, so agreement is to float32 rounding.
+        torch.testing.assert_close(actual, expected, rtol=1e-5, atol=1e-5)
+        # Negative control: without the epsilon scale the first norm (embeddings at
+        # 2^-9, mean(x^2) ~ 4e-9 << 1e-6) is visibly wrong.
+        for _, module in residual_norms(rescaled):
+            module.variance_epsilon = 1e-6
+        wrong = rescaled(inputs_embeds=embeds * 2.0 ** -RESIDUAL_SHIFT).logits
+    assert (wrong - expected).abs().max() > 1e-2
+
+
+def test_float16_plan_shifts_each_branch_by_the_residual_scale():
+    from kittenml.kittentts2.vllm import fp16
+
+    p = "model.layers.3."
+    shifts = {name: fp16.shift_of(p + name + ".weight") for name in _PROJECTIONS}
+    assert shifts == {"self_attn.q_proj": 0, "self_attn.k_proj": 0, "self_attn.v_proj": 3,
+                      "self_attn.o_proj": 6, "mlp.gate_proj": 0, "mlp.up_proj": 5,
+                      "mlp.down_proj": 4}
+    assert fp16.shift_of(p + "mlp.down_proj.weight_scale") == 4
+    assert fp16.shift_of(p + "mlp.down_proj.weight_packed") == 0
+    assert fp16.shift_of("model.embed_tokens.weight") == fp16.RESIDUAL_SHIFT == 9
+    assert fp16.shift_of(p + "input_layernorm.weight") == 0
+    assert fp16.EPS_SHIFT == 18
+    assert fp16.hf_overrides() == {"tie_word_embeddings": False,
+                                   "kittenml_float16_rescale": fp16.PLAN}
+    assert fp16.PLAN == ("residual 2^-9; v_proj 2^-3, o_proj 2^-6, up_proj 2^-5, down_proj 2^-4; "
+                         "residual-norm eps x 2^-18; untied unscaled lm_head")
+
+
+def test_float16_plan_reaches_the_config_vllm_hashes_for_its_compile_cache():
+    # vLLM's ModelConfig.compute_hash ignores hf_overrides itself but hashes
+    # hf_config.to_json_string() after the overrides are applied with setattr.
+    from transformers import Qwen3Config
+    from kittenml.kittentts2.vllm.fp16 import PLAN, hf_overrides
+
+    config = Qwen3Config(tie_word_embeddings=True)
+    before = config.to_json_string()
+    for key, value in hf_overrides().items():
+        setattr(config, key, value)
+    after = config.to_json_string()
+    assert after != before and PLAN in after and config.tie_word_embeddings is False
+
+
+@pytest.mark.parametrize("variant", ["packed", "full"])
+def test_float16_rescale_dense_and_w4a16_give_the_same_exact_float16_weights(tmp_path, variant):
+    from kittenml.kittentts2.vllm.fp16 import rescale_weights, scaled, shift_of
+    from kittenml.kittentts2.vllm.w4a16 import bit_equal, is_projection, iter_w4a16
+
+    # Group scales >= 2^-6, as in the published checkpoint: every shifted weight
+    # stays a normal float16 number.
+    state, config = _w4a16_checkpoint(tmp_path, low=2.0 ** -6)
+    weights = load_lm_weights(tmp_path, config, variant)
+    dense = dict(rescale_weights((n, t) for n, t in weights.items()
+                                 if not n.startswith("spk_proj.")))
+    original = dict(iter_w4a16(tmp_path, config, variant))
+    quantized = dict(rescale_weights(original.items()))
+    unpack = _reference_unpack()
+    embedding = state["model.embed_tokens.weight"]
+    for out in (dense, quantized):
+        assert bit_equal(out["model.embed_tokens.weight"], scaled(embedding, 9))
+        assert bit_equal(out["lm_head.weight"], embedding.to(torch.float16))  # untied, unscaled
+        assert bit_equal(out["model.norm.weight"], state["model.norm.weight"])  # unchanged
+    for name in (n for n in state if is_projection(n)):
+        exact = state[name].to(torch.float32) * 2.0 ** -shift_of(name)
+        assert dense[name].dtype == torch.float16
+        assert torch.equal(dense[name].to(torch.float32), exact), name
+        base = name.removesuffix(".weight")
+        scale = quantized[base + ".weight_scale"]
+        assert scale.dtype == torch.float16
+        assert quantized[base + ".weight_packed"] is original[base + ".weight_packed"]
+        assert torch.equal(scale.to(torch.float32), original[base + ".weight_scale"].float()
+                           * 2.0 ** -shift_of(name))
+        signs = unpack(quantized[base + ".weight_packed"], state[name].shape)
+        rebuilt = signs.to(torch.float16) * scale.repeat_interleave(128, dim=1)
+        assert bit_equal(rebuilt, dense[name]), name
+
+
+def test_float16_rescale_refuses_weights_it_cannot_hold_exactly():
+    from kittenml.kittentts2.vllm.fp16 import is_exact, rescale_weights
+
+    weight = torch.full((2, 128), 0.25, dtype=torch.bfloat16)
+    weight[1, 7] = 2.0 ** -20  # x 2^-6 = 2^-26: below float16's smallest subnormal
+    pairs = [("model.layers.0.self_attn.o_proj.weight", weight)]
+    with pytest.raises(ValueError, match=r"o_proj.weight x 2\^-6 is not exact in float16"):
+        dict(rescale_weights(pairs))
+    # The same value is exact without a shift (q_proj) ... and -0.0 must stay -0.0.
+    assert len(dict(rescale_weights([("model.layers.0.self_attn.q_proj.weight", weight)]))) == 1
+    zero = torch.tensor([-0.0], dtype=torch.bfloat16)
+    assert is_exact(zero, 6) and is_exact(torch.tensor([65504.0]), 0)
+    assert not is_exact(torch.tensor([65536.0]), 0)  # overflow is not exact
+    with pytest.raises(ValueError, match="tied"):
+        dict(rescale_weights([("lm_head.weight", weight)]))
+
+
+def test_float16_prompt_embeddings_match_the_engine_scale():
+    pytest.importorskip("vllm")
+    from kittenml.kittentts2.vllm.backend import VLLMBackend
+    from kittenml.kittentts2.vllm.fp16 import ScaledSpeakerHead, scale_embedding, scaled
+
+    generator = torch.Generator().manual_seed(5)
+    table = (torch.randn(16, 4, generator=generator) * 0.03).to(torch.bfloat16)
+    head = torch.nn.Linear(4, 4).to(torch.bfloat16)
+    backend = object.__new__(VLLMBackend)
+    backend.max_model_len = 32
+    backend.token_map = TokenMap(5, 10, 1, 2, 3, 4, 0, 15)
+    backend.embedding = scale_embedding(table)
+    backend.spk_proj = ScaledSpeakerHead(head)
+    speaker = torch.randn(1, 4, generator=generator).to(torch.float16)
+    settings = dict(temperature=0.7, top_k=5, top_p=0.8, min_p=0.02)
+    advanced = dict(seed=1, repetition_penalty=1.2, repetition_window=3,
+                    token_run_penalty=1.5, token_run_grace=4)
+    request, _ = backend.prepare_request([0, 3, 1], speaker, settings, 8, advanced)
+    embeds = request["prompt_embeds"]
+    assert embeds.dtype == torch.float16
+    assert torch.equal(embeds[1:], scaled(table[[3, 1]], 9))
+    expected = scaled(torch.nn.functional.linear(speaker.float(), head.weight.float(),
+                                                 head.bias.float()), 9).squeeze(0)
+    assert torch.equal(embeds[0], expected)
+
+
+def _norm(eps=1e-6):
+    module = torch.nn.Module()
+    module.variance_epsilon = eps
+    return module
+
+
+def _float16_engine_model(layers=2, tied=False):
+    """Just enough of vLLM's Qwen3ForCausalLM for the loader's float16 checks."""
+    model = torch.nn.Module()
+    model.model = torch.nn.Module()
+    model.model.embed_tokens = torch.nn.Embedding(4, 2)
+    model.model.layers = torch.nn.ModuleList()
+    for _ in range(layers):
+        layer = torch.nn.Module()
+        layer.input_layernorm, layer.post_attention_layernorm = _norm(), _norm()
+        layer.self_attn = torch.nn.Module()
+        layer.self_attn.q_norm, layer.self_attn.k_norm = _norm(), _norm()
+        model.model.layers.append(layer)
+    model.model.norm = _norm()
+    model.lm_head = model.model.embed_tokens if tied else torch.nn.Embedding(4, 2)
+    model.loaded = {}
+
+    def load_weights(weights):
+        model.loaded.update(weights)
+        return set(dict(model.named_parameters()))
+    model.load_weights = load_weights
+    return model
+
+
+def test_vllm_loader_float16_rescales_weights_and_residual_norm_epsilon_only():
+    pytest.importorskip("vllm")
+    from kittenml.kittentts2.vllm.loader import KittenModelLoader
+
+    loader = object.__new__(KittenModelLoader)
+    loader.load_config = SimpleNamespace(model_loader_extra_config={
+        "repo_dir": "unused", "config": {}, "weights": "packed", "float16_rescale": True})
+    hf_config = SimpleNamespace(num_hidden_layers=2, rms_norm_eps=1e-6, tie_word_embeddings=False)
+    fp16_config = SimpleNamespace(dtype=torch.float16, hf_config=hf_config)
+    embedding = torch.full((4, 2), 0.03, dtype=torch.bfloat16)
+    state = {"model.embed_tokens.weight": embedding, "spk_proj.0.bias": torch.zeros(2),
+             "model.layers.0.mlp.up_proj.weight": torch.full((2, 2), 0.5, dtype=torch.bfloat16)}
+    model = _float16_engine_model()
+    with mock.patch("kittenml.kittentts2.vllm.loader.load_lm_weights", return_value=state):
+        loader.load_weights(model, fp16_config)
+        assert set(model.loaded) == {"model.embed_tokens.weight", "lm_head.weight",
+                                     "model.layers.0.mlp.up_proj.weight"}
+        assert torch.equal(model.loaded["lm_head.weight"], embedding.to(torch.float16))
+        assert model.loaded["model.layers.0.mlp.up_proj.weight"].unique().tolist() == [2.0 ** -6]
+        for layer in model.model.layers:
+            assert layer.input_layernorm.variance_epsilon == 1e-6 * 2.0 ** -18
+            assert layer.post_attention_layernorm.variance_epsilon == 1e-6 * 2.0 ** -18
+            assert layer.self_attn.q_norm.variance_epsilon == 1e-6  # reads a normed input
+            assert layer.self_attn.k_norm.variance_epsilon == 1e-6
+        assert model.model.norm.variance_epsilon == 1e-6 * 2.0 ** -18
+        loader.load_weights(model, fp16_config)  # a second load does not scale twice
+        assert model.model.norm.variance_epsilon == 1e-6 * 2.0 ** -18
+        with pytest.raises(RuntimeError, match="engine dtype is torch.bfloat16, not float16"):
+            loader.load_weights(_float16_engine_model(),
+                                SimpleNamespace(dtype=torch.bfloat16, hf_config=hf_config))
+        with pytest.raises(RuntimeError, match="tied to the scaled embedding"):
+            loader.load_weights(_float16_engine_model(tied=True), fp16_config)
+        with pytest.raises(RuntimeError, match="expected 5 residual-stream norms, found 7"):
+            loader.load_weights(_float16_engine_model(layers=3), fp16_config)
+
+
+def test_vllm_loader_bfloat16_paths_hand_over_the_checkpoint_tensors_untouched():
+    # Without the float16 opt-in the loader passes the very same tensors and never
+    # touches an epsilon, for the dense and the W4A16 path.
+    pytest.importorskip("vllm")
+    from vllm.model_executor.kernels.linear import MarlinLinearKernel
+    from kittenml.kittentts2.vllm.loader import KittenModelLoader
+
+    bf16 = SimpleNamespace(dtype=torch.bfloat16)
+    for quantization in (None, "w4a16"):
+        loader = object.__new__(KittenModelLoader)
+        extra = {"repo_dir": "unused", "config": {}, "weights": "packed"}
+        if quantization:
+            extra["quantization"] = quantization
+        loader.load_config = SimpleNamespace(model_loader_extra_config=extra)
+        model = _float16_engine_model(tied=True)
+        model.proj = _linear_with_kernel(MarlinLinearKernel)
+        tensors = {"model.embed_tokens.weight": torch.full((4, 2), 0.03, dtype=torch.bfloat16),
+                   "model.layers.0.mlp.up_proj.weight": torch.ones(2, 2, dtype=torch.bfloat16)}
+        with mock.patch("kittenml.kittentts2.vllm.loader.load_lm_weights", return_value=tensors), \
+             mock.patch("kittenml.kittentts2.vllm.w4a16.iter_w4a16",
+                        return_value=iter(tensors.items())):
+            loader.load_weights(model, bf16)
+        assert set(model.loaded) == set(tensors)
+        assert all(model.loaded[name] is tensors[name] for name in tensors)
+        assert all(module.variance_epsilon == 1e-6 for name, module in model.named_modules()
+                   if hasattr(module, "variance_epsilon"))
+
+
+def test_engine_receives_the_float16_rescale_only_when_asked(tmp_path):
+    pytest.importorskip("vllm")
+    from kittenml.kittentts2.vllm.backend import VLLMBackend
+    from kittenml.kittentts2.vllm.fp16 import PLAN, ScaledSpeakerHead, scale_embedding
+
+    seen = []
+    embedding = torch.full((2, 4), 0.03, dtype=torch.bfloat16)
+
+    def run(options):
+        owner = SimpleNamespace(device="cpu", repo_dir=tmp_path, config={}, weights="packed",
+                                token_map=None, _load_lm_weights=mock.Mock(return_value={
+                                    "model.embed_tokens.weight": embedding}))
+        with mock.patch("kittenml.kittentts2.vllm.backend.validate_environment") as validate, \
+             mock.patch("transformers.AutoConfig.from_pretrained", return_value=SimpleNamespace(
+                 model_type="qwen3", hidden_size=4)), \
+             mock.patch("transformers.AutoTokenizer.from_pretrained"), \
+             mock.patch("kittenml.kittentts2.speaker.load_speaker_head",
+                        return_value=torch.nn.Linear(4, 4)) as head, \
+             mock.patch("vllm.LLM", side_effect=lambda **kwargs: seen.append(kwargs)):
+            backend = VLLMBackend(owner, options)
+        validate.assert_called_once_with("cpu", (options or {}).get("dtype"))
+        return owner, backend, head, seen[-1]
+
+    for options in ({"dtype": "float16"}, {"dtype": "float16", "quantization": "w4a16"}):
+        owner, backend, head, kwargs = run(options)
+        assert kwargs["dtype"] is torch.float16 and owner.dtype is torch.float16
+        assert kwargs["model_loader_extra_config"]["float16_rescale"] is True
+        overrides = kwargs["hf_overrides"]
+        assert overrides["tie_word_embeddings"] is False
+        assert overrides["kittenml_float16_rescale"] == PLAN
+        assert ("quantization_config" in overrides) == ("quantization" in options)
+        assert torch.equal(backend.embedding, scale_embedding(embedding))
+        assert isinstance(backend.spk_proj, ScaledSpeakerHead)
+        assert head.call_args.args[3] is torch.float32  # the speaker head runs in float32
+    for options in (None, {"dtype": "bfloat16"}, {"quantization": "w4a16"}):
+        owner, backend, head, kwargs = run(options)
+        assert kwargs["dtype"] is torch.bfloat16 and owner.dtype is torch.bfloat16
+        assert "float16_rescale" not in kwargs["model_loader_extra_config"]
+        assert "tie_word_embeddings" not in kwargs.get("hf_overrides", {})
+        assert backend.embedding.dtype is torch.bfloat16 and torch.equal(backend.embedding,
+                                                                         embedding)
+        assert backend.spk_proj is head.return_value
+        assert head.call_args.args[3] is torch.bfloat16
