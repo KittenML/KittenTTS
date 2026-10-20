@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kittenml"
-version = "0.9.4"
+version = "0.9.5"
 description = "Text-to-speech with voice cloning and expression control, plus ultra-lightweight models that run on CPU"
 readme = "README.md"
 requires-python = ">=3.10"
