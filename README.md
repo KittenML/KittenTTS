@@ -213,7 +213,8 @@ print(model.last_report)  # Generation timings and token IDs.
 
 ## Running with vLLM
 
-For GPU inference with vLLM on Linux and an NVIDIA CUDA GPU, install the optional backend:
+For GPU inference with vLLM on Linux and an NVIDIA CUDA GPU with compute capability
+8.0 or newer (Ampere or later, for bfloat16), install the optional backend:
 
 ```bash
 pip install "kittenml[vllm]"
@@ -225,7 +226,8 @@ Select `backend="vllm"`:
 from kittenml import KittenTTS
 
 def main():
-    m = KittenTTS("KittenML/kitten-tts-2", backend="vllm")
+    m = KittenTTS("KittenML/kitten-tts-2", backend="vllm",
+                  vllm_options={"quantization": "w4a16"})
     m.generate_to_file("Hello there.", "output.wav", voice="Bruno")
     print("Saved output.wav")
 
@@ -234,7 +236,10 @@ if __name__ == "__main__":
 ```
 
 Keep the main guard when running a script: vLLM starts a worker process. The same
-voices, decoders, weight choices and generation arguments apply. See the
+voices, decoders, weight choices and generation arguments apply. The example
+uses 4-bit language-model weights (`"quantization": "w4a16"`): the same weights, exactly, in about
+2 GB less GPU memory, and faster for single requests. Leave out `vllm_options` to run in bf16; see
+[4-bit weights](docs/vllm.md#4-bit-weights). See the
 [vLLM guide](docs/vllm.md) for memory settings and benchmarks.
 
 

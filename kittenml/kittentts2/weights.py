@@ -1,5 +1,6 @@
 """Read the selected checkpoint identically for Torch and vLLM."""
 
+import json
 from pathlib import Path
 
 
@@ -20,8 +21,20 @@ def weights_path(repo_dir, config, name):
     return Path(repo_dir) / declared
 
 
-def load_lm_weights(repo_dir, config, variant, lm_dir=None):
-    """Unpack on CPU without re-quantizing or writing an expanded checkpoint."""
+def plain_shards(repo_dir, config, lm_dir=None):
+    """The bf16 ("full") safetensors files of the language model, in load order."""
+    lm_dir = Path(lm_dir) if lm_dir is not None else Path(repo_dir) / config.get("lm_dir", "lm")
+    return lm_dir, [s for s in sorted(lm_dir.glob("model*.safetensors")) if "-" not in s.stem]
+
+
+def load_lm_weights(repo_dir, config, variant, lm_dir=None, include=None):
+    """Unpack on CPU without re-quantizing or writing an expanded checkpoint.
+
+    `include`, if given, is a predicate on tensor names: only those tensors are
+    read (and, for packed files, unpacked), so callers that need a few tensors
+    do not expand the whole model in host memory. The emb4 reader always
+    decodes the full file and filters afterwards.
+    """
     from safetensors import safe_open
     from safetensors.torch import load_file
 
@@ -31,18 +44,30 @@ def load_lm_weights(repo_dir, config, variant, lm_dir=None):
             raise FileNotFoundError(f"{variant!r} weights not found: {path}")
         if variant == "emb4":
             from .tl2_emb4 import load_state_dict
-            return load_state_dict(path)
+            state = load_state_dict(path)
+            return state if include is None else {k: v for k, v in state.items() if include(k)}
         with safe_open(str(path), framework="pt") as handle:
             metadata = handle.metadata() or {}
-            tensors = {k: handle.get_tensor(k) for k in handle.keys()}
+            if include is None:
+                tensors = {k: handle.get_tensor(k) for k in handle.keys()}
+            else:
+                tensors = {k: handle.get_tensor(k) for k in handle.keys()
+                           if include(k.split("::", 1)[0])}
+        if include is not None and "packed" in metadata:
+            packed = json.loads(metadata["packed"])
+            metadata = {**metadata, "packed": json.dumps(
+                {k: v for k, v in packed.items() if include(k)})}
         from .ternary import unpack_state_dict
         return unpack_state_dict(tensors, metadata)
 
-    lm_dir = Path(lm_dir) if lm_dir is not None else Path(repo_dir) / config.get("lm_dir", "lm")
+    lm_dir, shards = plain_shards(repo_dir, config, lm_dir)
     state = {}
-    for shard in sorted(lm_dir.glob("model*.safetensors")):
-        if "-" not in shard.stem:
+    for shard in shards:
+        if include is None:
             state.update(load_file(str(shard)))
-    if not state:
+            continue
+        with safe_open(str(shard), framework="pt") as handle:
+            state.update({k: handle.get_tensor(k) for k in handle.keys() if include(k)})
+    if not shards or (include is None and not state):
         raise FileNotFoundError(f"no plain model weights in {lm_dir}")
     return state

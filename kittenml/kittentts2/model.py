@@ -248,16 +248,18 @@ class KittenTTS2:
         from .weights import available_weights
         return available_weights(self.config)
 
-    def _load_lm_weights(self, lm_dir):
+    def _load_lm_weights(self, lm_dir, include=None):
         """The language model's weights, in whichever packing was selected.
 
         "packed" is a 1.58-bit packing that is exactly equivalent to
         model.safetensors at about a third of the size, and is the default.
         "emb4" is smaller again but quantises the embedding, which is lossy —
-        see tl2_emb4.py. "full" reads the plain bf16 files.
+        see tl2_emb4.py. "full" reads the plain bf16 files. `include`, a
+        predicate on tensor names, limits loading to the tensors it accepts.
         """
         from .weights import load_lm_weights
-        return load_lm_weights(self.repo_dir, self.config, self.weights, lm_dir=lm_dir)
+        return load_lm_weights(self.repo_dir, self.config, self.weights, lm_dir=lm_dir,
+                               include=include)
 
     def _load_voices(self):
         voices_path = self.repo_dir / self.config.get("voices", "voices/voices.json")
