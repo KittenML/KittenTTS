@@ -13,8 +13,9 @@ another kernel or 8-bit activations). Everything that is not ternary stays at
 its stored precision: the token embedding and the tied output head, all norms,
 and the KV cache. ``spk_proj`` runs outside vLLM and is dropped here.
 
-The lossy ``emb4`` packing is refused: W4A16 is offered as an exact
-representation of the published weights and is never combined with it.
+With the lossy ``emb4`` packing the projections are still exact (its TL2 body
+holds the same trits); only its 4-bit embedding, and so the tied output head,
+differs from the published bf16 model.
 
 In the opt-in float16 mode (fp16.py) the same codes are used; the group scales
 of v/o/up/down are multiplied by that mode's powers of two and stored in
@@ -174,10 +175,9 @@ def _iter_packed(path):
 
 
 def _iter_emb4(repo_dir, config):
-    from ..weights import load_lm_weights
+    from ..weights import iter_lm_weights
 
-    state = load_lm_weights(repo_dir, config, "emb4")
-    for name, tensor in state.items():
+    for name, tensor in iter_lm_weights(repo_dir, config, "emb4"):
         if name.startswith("spk_proj."):
             continue
         if is_projection(name):

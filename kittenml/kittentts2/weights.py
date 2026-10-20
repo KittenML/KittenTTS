@@ -32,8 +32,7 @@ def load_lm_weights(repo_dir, config, variant, lm_dir=None, include=None):
 
     `include`, if given, is a predicate on tensor names: only those tensors are
     read (and, for packed files, unpacked), so callers that need a few tensors
-    do not expand the whole model in host memory. The emb4 reader always
-    decodes the full file and filters afterwards.
+    do not expand the whole model in host memory.
     """
     from safetensors import safe_open
     from safetensors.torch import load_file
@@ -44,8 +43,7 @@ def load_lm_weights(repo_dir, config, variant, lm_dir=None, include=None):
             raise FileNotFoundError(f"{variant!r} weights not found: {path}")
         if variant == "emb4":
             from .tl2_emb4 import load_state_dict
-            state = load_state_dict(path)
-            return state if include is None else {k: v for k, v in state.items() if include(k)}
+            return load_state_dict(path, include)
         with safe_open(str(path), framework="pt") as handle:
             metadata = handle.metadata() or {}
             if include is None:
@@ -71,3 +69,14 @@ def load_lm_weights(repo_dir, config, variant, lm_dir=None, include=None):
     if not shards or (include is None and not state):
         raise FileNotFoundError(f"no plain model weights in {lm_dir}")
     return state
+
+
+def iter_lm_weights(repo_dir, config, variant):
+    """load_lm_weights as (name, tensor) pairs; the emb4 reader yields them one at a time."""
+    if variant == "emb4":
+        path = weights_path(repo_dir, config, variant)
+        if not path.is_file():
+            raise FileNotFoundError(f"{variant!r} weights not found: {path}")
+        from .tl2_emb4 import iter_state_dict
+        return iter_state_dict(path)
+    return iter(load_lm_weights(repo_dir, config, variant).items())

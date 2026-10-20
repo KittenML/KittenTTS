@@ -2,7 +2,7 @@
 
 from vllm.model_executor.model_loader.base_loader import BaseModelLoader
 
-from ..weights import load_lm_weights
+from ..weights import iter_lm_weights
 
 
 class KittenModelLoader(BaseModelLoader):
@@ -24,8 +24,8 @@ class KittenModelLoader(BaseModelLoader):
             from .w4a16 import iter_w4a16
             weights = iter_w4a16(options["repo_dir"], options["config"], options["weights"])
         elif quantization is None:
-            state = load_lm_weights(options["repo_dir"], options["config"], options["weights"])
-            weights = ((name, tensor) for name, tensor in state.items()
+            state = iter_lm_weights(options["repo_dir"], options["config"], options["weights"])
+            weights = ((name, tensor) for name, tensor in state
                        if not name.startswith("spk_proj."))
         else:
             raise ValueError(f"unknown KittenTTS quantization {quantization!r}")

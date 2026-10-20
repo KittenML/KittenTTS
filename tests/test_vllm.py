@@ -1,5 +1,6 @@
 """Small checkpoints and sampler parity; no GPU or model download required."""
 
+import json
 from dataclasses import asdict
 from types import SimpleNamespace
 from unittest import mock
@@ -112,6 +113,97 @@ def test_emb4_unpacking_is_independent_of_vllm_default_dtype():
     finally:
         torch.set_default_dtype(previous)
     assert actual.dtype == torch.bfloat16 and torch.equal(actual, expected)
+
+
+def _emb4_tensors(vocab=37, dim=16, seed=0):
+    """A three-tier emb4 table (8-bit and two 4-bit books) and its full-matrix decode.
+
+    Small integer centres, power-of-two scales and dim=16 (Hadamard entries ±1/4)
+    keep every product and sum exact, so the expected matrix does not depend on
+    how a matrix multiply orders its additions.
+    """
+    import math
+    generator = torch.Generator().manual_seed(seed)
+    sizes = [256, 16, 16]
+    tier_map = torch.randint(0, len(sizes), (vocab,), generator=generator).to(torch.uint8)
+    tensors = {"emb4/tier_map": tier_map}
+    hadamard = torch.tensor([[1.0]])
+    for _ in range(int(math.log2(dim))):
+        hadamard = torch.cat([torch.cat([hadamard, hadamard], 1),
+                              torch.cat([hadamard, -hadamard], 1)], 0)
+    hadamard /= math.sqrt(dim)
+    expected = torch.empty(vocab, dim)
+    for tier, size in enumerate(sizes):
+        rows = torch.nonzero(tier_map == tier).flatten()
+        codes = torch.randint(0, size, (rows.numel(), dim), generator=generator)
+        flat = codes.flatten().to(torch.uint8)
+        if size == 16:
+            flat = flat[0::2] | (flat[1::2] << 4)
+        centres = torch.randint(-8, 9, (size, dim), generator=generator).to(torch.float16)
+        row_scale = 2.0 ** torch.randint(-3, 3, (rows.numel(),), generator=generator)
+        col_scale = 2.0 ** torch.randint(-3, 3, (dim,), generator=generator)
+        tensors.update({f"emb4/t{tier}_codes": flat, f"emb4/t{tier}_centers": centres,
+                        f"emb4/t{tier}_s": row_scale.to(torch.float16),
+                        f"emb4/t{tier}_t": col_scale.to(torch.float16)})
+        rotated = torch.gather(centres.float().T, 1, codes.T).T
+        expected[rows] = (rotated @ hadamard.T) * col_scale[None, :] * row_scale[:, None]
+    metadata = {"V": str(vocab), "D": str(dim), "Ks": json.dumps(sizes)}
+    return tensors, metadata, expected.to(torch.bfloat16)
+
+
+@pytest.mark.parametrize("chunk, lookup_chunk", [(1, 1), (5, 2), (8, 3), (1 << 15, 1 << 12)])
+def test_emb4_embedding_is_the_same_decoded_in_chunks(chunk, lookup_chunk):
+    from kittenml.kittentts2.tl2_emb4 import dequant_embedding
+    tensors, metadata, expected = _emb4_tensors()
+    actual = dequant_embedding(tensors.__getitem__, metadata, chunk=chunk,
+                               lookup_chunk=lookup_chunk)
+    assert actual.dtype == torch.bfloat16 and torch.equal(actual, expected)
+
+
+def _write_emb4_checkpoint(path):
+    tensors, metadata, embedding = _emb4_tensors()
+    # One TL2 block (32 output rows x 128 inputs): random trits, finite group scales.
+    tl2 = torch.randint(0, 256, (1, 1, 928), dtype=torch.uint8)
+    tl2[..., :64] = (torch.rand(32) + 0.5).to(torch.float16).view(torch.uint8)
+    tensors = {**tensors,
+               "tl2/model.layers.0.self_attn.o_proj.weight": tl2,
+               "fp/model.norm.weight": torch.rand(16, dtype=torch.bfloat16),
+               "fp/spk_proj.0.weight": torch.rand(16, 4, dtype=torch.bfloat16)}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    save_file(tensors, path, metadata={"schema": "kitten_ternary_tl2_emb4_v1",
+                                       "embedding_metadata": json.dumps(metadata)})
+    return embedding
+
+
+def test_emb4_reader_unpacks_only_the_tensors_asked_for(tmp_path):
+    from kittenml.kittentts2 import tl2_emb4
+    from kittenml.kittentts2.weights import iter_lm_weights
+
+    config = {"lm_emb4": "lm/model-tl2-emb4.safetensors"}
+    embedding = _write_emb4_checkpoint(tmp_path / config["lm_emb4"])
+    full = load_lm_weights(tmp_path, config, "emb4")
+    assert set(full) == {"model.layers.0.self_attn.o_proj.weight", "model.norm.weight",
+                         "spk_proj.0.weight", "model.embed_tokens.weight"}
+    assert full["model.layers.0.self_attn.o_proj.weight"].shape == (32, 128)
+    assert torch.equal(full["model.embed_tokens.weight"], embedding)
+
+    # The main process asks for the speaker head only (and the embedding): nothing
+    # else may be unpacked.
+    with mock.patch.object(tl2_emb4, "unpack_tl2", side_effect=AssertionError), \
+         mock.patch.object(tl2_emb4, "dequant_embedding", side_effect=AssertionError):
+        head = load_lm_weights(tmp_path, config, "emb4",
+                               include=lambda name: name.startswith("spk_proj."))
+    assert list(head) == ["spk_proj.0.weight"]
+    assert torch.equal(head["spk_proj.0.weight"], full["spk_proj.0.weight"])
+
+    # The engine side gets the same tensors one at a time, not a dict.
+    streamed = iter_lm_weights(tmp_path, config, "emb4")
+    assert not isinstance(streamed, dict)
+    streamed = dict(streamed)
+    assert set(streamed) == set(full)
+    assert all(torch.equal(streamed[name], full[name]) for name in full)
+    with pytest.raises(FileNotFoundError):
+        iter_lm_weights(tmp_path, {"lm_emb4": "lm/missing.safetensors"}, "emb4")
 
 
 def test_optional_backend_errors_before_model_download():
@@ -230,10 +322,10 @@ def test_vllm_loader_filters_speaker_weights_and_rejects_missing_parameters():
 
     model = TinyModel()
     state = {"model.weight": torch.ones(2), "spk_proj.0.bias": torch.zeros(2)}
-    with mock.patch("kittenml.kittentts2.vllm.loader.load_lm_weights", return_value=state):
+    with mock.patch("kittenml.kittentts2.vllm.loader.iter_lm_weights", return_value=state.items()):
         loader.load_weights(model, None)
     assert set(model.loaded) == {"model.weight"}
-    with mock.patch("kittenml.kittentts2.vllm.loader.load_lm_weights", return_value={}):
+    with mock.patch("kittenml.kittentts2.vllm.loader.iter_lm_weights", return_value={}.items()):
         with pytest.raises(ValueError, match="missing from the checkpoint"):
             loader.load_weights(model, None)
 
@@ -450,7 +542,8 @@ def test_w4a16_accepts_emb4_and_packs_its_ternary_body_exactly(tmp_path):
     state = {"model.layers.0.self_attn.o_proj.weight": weight,
              "model.embed_tokens.weight": embedding,
              "spk_proj.weight": torch.zeros(2, 2, dtype=torch.bfloat16)}
-    with mock.patch("kittenml.kittentts2.weights.load_lm_weights", return_value=state) as load:
+    with mock.patch("kittenml.kittentts2.weights.iter_lm_weights",
+                    return_value=iter(state.items())) as load:
         out = dict(w4a16.iter_w4a16(tmp_path, {"lm_emb4": "x"}, "emb4"))
     load.assert_called_once_with(tmp_path, {"lm_emb4": "x"}, "emb4")
     assert "spk_proj.weight" not in out
@@ -1099,7 +1192,7 @@ def test_vllm_loader_float16_rescales_weights_and_residual_norm_epsilon_only():
     state = {"model.embed_tokens.weight": embedding, "spk_proj.0.bias": torch.zeros(2),
              "model.layers.0.mlp.up_proj.weight": torch.full((2, 2), 0.5, dtype=torch.bfloat16)}
     model = _float16_engine_model()
-    with mock.patch("kittenml.kittentts2.vllm.loader.load_lm_weights", return_value=state):
+    with mock.patch("kittenml.kittentts2.vllm.loader.iter_lm_weights", return_value=state.items()):
         loader.load_weights(model, fp16_config)
         assert set(model.loaded) == {"model.embed_tokens.weight", "lm_head.weight",
                                      "model.layers.0.mlp.up_proj.weight"}
@@ -1140,7 +1233,8 @@ def test_vllm_loader_bfloat16_paths_hand_over_the_checkpoint_tensors_untouched()
         model.proj = _linear_with_kernel(MarlinLinearKernel)
         tensors = {"model.embed_tokens.weight": torch.full((4, 2), 0.03, dtype=torch.bfloat16),
                    "model.layers.0.mlp.up_proj.weight": torch.ones(2, 2, dtype=torch.bfloat16)}
-        with mock.patch("kittenml.kittentts2.vllm.loader.load_lm_weights", return_value=tensors), \
+        with mock.patch("kittenml.kittentts2.vllm.loader.iter_lm_weights",
+                        return_value=tensors.items()), \
              mock.patch("kittenml.kittentts2.vllm.w4a16.iter_w4a16",
                         return_value=iter(tensors.items())):
             loader.load_weights(model, bf16)
