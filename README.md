@@ -229,19 +229,6 @@ m.generate_to_file("One day, a little girl named Lily found a needle in her room
                    "hello.wav", voice="Bruno")
 ```
 
-This runs the language model on the Mac's GPU through
-[MLX](https://github.com/ml-explore/mlx), and audio decoding on MPS. On an M4 Max
-it synthesizes at roughly **4.7-5.2x realtime**, where the default PyTorch backend
-on the same machine manages 0.4-0.6x — about a **9-13x speedup**, measured in
-[docs/mlx.md](docs/mlx.md).
-
-The speedup is not only the GPU. KittenTTS 2's linear weights are ternary, and
-MLX's 4-bit format can hold the three values a ternary weight takes *exactly*, so
-this backend reads them at 4 bits each instead of expanding them to bf16 first —
-a quarter of the bytes per token, and bit-for-bit the published weights. Voices,
-cloning, expression tags and streaming are unchanged. `backend="auto"` picks MLX
-here and PyTorch elsewhere.
-
 See the [MLX guide](docs/mlx.md) for benchmarks and the full details.
 
 ## Running with vLLM
