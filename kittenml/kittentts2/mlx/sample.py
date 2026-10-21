@@ -14,8 +14,6 @@ to be penalised.
 
 import mlx.core as mx
 
-from ..logits import SILENCE_TOKEN
-
 FILTER_VALUE = -float("inf")
 
 
@@ -43,9 +41,9 @@ class TokenRunPenalty:
 class RepetitionPenaltyExempt:
     """Repetition penalty that never penalises the sequence-terminating tokens.
 
-    See `logits.RepetitionPenaltyExempt`: `<speech_end>`, `[STOP]` and the silence
-    codec token keep their original scores, and `window` restricts the scan to the
-    last N generated positions.
+    See `logits.RepetitionPenaltyExempt`: `<speech_end>` and `[STOP]` keep their
+    original scores, and `window` restricts the scan to the last N generated
+    positions.
     """
 
     def __init__(self, penalty, exempt_ids, window=None, prompt_length=0):
@@ -126,7 +124,7 @@ def build_logits_processors(token_map, temperature, top_k, top_p, min_p,
     if token_run_penalty:
         processors.append(TokenRunPenalty(lo, hi, token_run_grace, token_run_penalty))
     if repetition_penalty != 1.0:
-        exempt = {token_map.speech_end_id, token_map.stop_id, lo + SILENCE_TOKEN}
+        exempt = {token_map.speech_end_id, token_map.stop_id}
         processors.append(RepetitionPenaltyExempt(
             repetition_penalty, exempt, window=repetition_window,
             prompt_length=prompt_length))

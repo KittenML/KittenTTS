@@ -21,18 +21,16 @@ from transformers import (
     TopPLogitsWarper,
 )
 
-# The S3 codec's silence token, as an offset within the audio range. Runs of it are
-# the model's most common stuck state, and it is the one token the repetition
-# penalty must leave alone (see RepetitionPenaltyExempt).
-SILENCE_TOKEN = 4299
-
-
 class RepetitionPenaltyExempt(LogitsProcessor):
     """Repetition penalty that never penalises the sequence-terminating tokens.
 
-    `<speech_end>`, `[STOP]` and the silence codec token are exempt: penalising
-    them suppresses the trailing silence the model needs before it can close a
-    segment, which turns a clean ending into an over-generation.
+    `<speech_end>` and `[STOP]` are exempt: penalising them would push the model
+    away from closing the segment it has just finished.
+
+    The silence codec token is deliberately *not* exempt. Runs of it are the
+    model's most common stuck state, and the windowed penalty is what pulls it out:
+    with silence exempt, the main checkpoint drifts into seconds of silence (or
+    silence until the token cap) and drops sentences from long chunks.
 
     window=None scans the whole sequence. window=N restricts the scan to the last
     N *generated* positions, so codec tokens from a long in-context reference
@@ -99,13 +97,12 @@ def build_logits_processors(token_map, temperature, top_k, top_p, min_p,
     scores; that ordering is part of what the decode presets were tuned against.
     """
     lo, hi = token_map.audio_id_base, token_map.audio_id_end
-    silence_id = lo + SILENCE_TOKEN
     processors = LogitsProcessorList()
 
     if token_run_penalty:
         processors.append(TokenRunPenalty(lo, hi, token_run_grace, token_run_penalty))
     if repetition_penalty != 1.0:
-        exempt = {token_map.speech_end_id, token_map.stop_id, silence_id}
+        exempt = {token_map.speech_end_id, token_map.stop_id}
         processors.append(RepetitionPenaltyExempt(
             repetition_penalty, exempt, window=repetition_window, prompt_length=prompt_length))
     if temperature != 1.0:
