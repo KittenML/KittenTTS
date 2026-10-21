@@ -1,7 +1,7 @@
 # Kitten TTS
 
 <p align="center">
-  <img width="607" alt="Kitten TTS" src="https://raw.githubusercontent.com/KittenML/KittenTTS/main/assets/banner.png" />
+  <img alt="Kitten TTS" src="https://raw.githubusercontent.com/KittenML/KittenTTS/main/assets/kitten_tts_2_announcement.png" />
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@ The library also ships the original [**lightweight legacy models**](docs/onnx-mo
 **Commercial support is available.** For integration assistance, custom voices, or enterprise licensing, [contact us](https://docs.google.com/forms/d/e/1FAIpQLSc49erSr7jmh3H2yeqH4oZyRRuXm0ROuQdOgWguTzx6SMdUnQ/viewform?usp=preview).
 
 
-<img   alt="5325cae7-e2e1-4aad-8d53-caf93a268b36" src="https://github.com/user-attachments/assets/3ed09eab-09e9-457a-acc6-619152cc5a21" />
+<img   alt="5325cae7-e2e1-4aad-8d53-caf93a268b36" src="https://raw.githubusercontent.com/KittenML/KittenTTS/main/assets/kitten_tts_2_features.png" />
 
 
 
