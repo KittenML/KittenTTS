@@ -124,8 +124,8 @@ import soundfile as sf
 
 m = KittenTTS("KittenML/kitten-tts-2")
 
-audio = m.generate("One day, a little girl named Lily found a needle in her room.",
-                   voice="Bruno")
+audio = m.generate("Hi! umm.. how are you, I guess?  .. uh.. nice to meet you??",
+                   voice="WeatherPresenterCheerful")
 sf.write("output.wav", audio, m.sample_rate)
 ```
 > To run Kitten-TTS 2 on a CPU, please refer to  [Running on CPU](#running-on-cpu)
@@ -145,7 +145,7 @@ m = KittenTTS("KittenML/kitten-tts-2", weights="emb4")   # half the download
 
 ```python
 # Trade stability against expressiveness
-audio = m.generate("Hello, world.", voice="Luna", preset="expressive")
+audio = m.generate("Hello, world.", voice="Matthew", preset="expressive")
 
 # Save directly to a file
 m.generate_to_file("Hello, world.", "output.wav", voice="Bruno")
