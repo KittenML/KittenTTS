@@ -37,6 +37,7 @@ The library also ships the original [**lightweight legacy models**](docs/onnx-mo
 - [Voice cloning](#voice-cloning)
 - [Expression controls](#expression-controls)
 - [Running on CPU](#running-on-cpu)
+- [Running on a Mac](#running-on-a-mac)
 - [Running with vLLM](#running-with-vllm)
 - [Long text and streaming](#long-text-and-streaming)
 - [Documentation](#documentation)
@@ -58,6 +59,7 @@ The library also ships the original [**lightweight legacy models**](docs/onnx-mo
 - **Runs without a GPU**
 - **Runs real time on a CPU** -- Check [Running on CPU](#running-on-cpu)
 - **Optimized C++ inference for CPU** -- Our fork of [llama.cpp](https://github.com/KittenML/kitten-tts-2-cpp)
+- **Several times realtime on Apple silicon** -- Check [Running on a Mac](#running-on-a-mac)
 
 
 
@@ -211,6 +213,24 @@ print(model.last_report)  # Generation timings and token IDs.
 
 > Kitten-TTS 2 C++ is in beta. Please report any issues you encounter.
 
+## Running on a Mac
+
+On an Apple-silicon Mac, install the optional MLX backend and select it:
+
+```bash
+pip install "kittenml[mlx]"
+```
+
+```python
+from kittenml import KittenTTS
+
+m = KittenTTS("KittenML/kitten-tts-2", backend="mlx")
+m.generate_to_file("One day, a little girl named Lily found a needle in her room.",
+                   "hello.wav", voice="Bruno")
+```
+
+See the [MLX guide](docs/mlx.md) for benchmarks and the full details.
+
 ## Running with vLLM
 
 For GPU inference with vLLM on Linux and an NVIDIA CUDA GPU with compute capability
@@ -286,6 +306,7 @@ Two consequences worth knowing:
 | [Text normalization](docs/text-normalization.md) | How written text becomes spoken text |
 | [Architecture](docs/architecture.md) | What the model is, package layout, vendored components |
 | [Lightweight ONNX models](docs/onnx-models.md) | The CPU models, 15M-80M parameters, and their API |
+| [MLX on Apple silicon](docs/mlx.md) | The optional Mac GPU backend, and why it is faster |
 
 ## System Requirements
 

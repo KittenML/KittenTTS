@@ -54,6 +54,7 @@ Issues = "https://github.com/KittenML/KittenTTS/issues"
 
 [project.optional-dependencies]
 vllm = ["vllm==0.31.0; sys_platform == 'linux'"]
+mlx = ["mlx>=0.29.0; sys_platform == 'darwin' and platform_machine == 'arm64'"]
 
 [project.entry-points."vllm.general_plugins"]
 kittenml = "kittenml.kittentts2.vllm.loader:register"

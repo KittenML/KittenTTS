@@ -58,13 +58,14 @@ class KittenTTS(KittenTTSOnnx):
 
         m = KittenTTS("KittenML/kitten-tts-mini-0.8")   # ONNX, runs on CPU
         m = KittenTTS("KittenML/kitten-tts-2")          # KittenTTS 2, GPU optional
+        m = KittenTTS("KittenML/kitten-tts-2", backend="mlx")   # on an Apple-silicon Mac
 
     Both also accept a path to a local repository directory.
     """
 
     def __new__(cls, model_name="KittenML/kitten-tts-nano-0.8", cache_dir=None,
                 backend=None, device=None, hf_token=None, decoder=None, weights=None,
-                vllm_options=None):
+                vllm_options=None, mlx_options=None):
         local_dir, repo_id, config = resolve_repo(model_name, cache_dir)
         model_type = config.get("type")
 
@@ -78,6 +79,11 @@ class KittenTTS(KittenTTSOnnx):
                 check_options(vllm_options, weights or config.get("default_weights", "packed"))
             elif vllm_options is not None:
                 raise ValueError("vllm_options requires backend='vllm'")
+            if backend == "mlx":
+                from .kittentts2.mlx.backend import validate_environment
+                validate_environment(device)
+            elif mlx_options is not None:
+                raise ValueError("mlx_options requires backend='mlx'")
             if local_dir is None:
                 local_dir = snapshot_download(
                     repo_id=repo_id, cache_dir=cache_dir, token=hf_token,
@@ -85,7 +91,8 @@ class KittenTTS(KittenTTSOnnx):
             # Returning a different class means __init__ below is never called.
             return KittenTTS2(local_dir, config, device=device, cache_dir=cache_dir,
                               hf_token=hf_token, decoder=decoder, weights=weights,
-                              backend=backend, vllm_options=vllm_options)
+                              backend=backend, vllm_options=vllm_options,
+                              mlx_options=mlx_options)
 
         if model_type not in ONNX_TYPES:
             raise ValueError(
@@ -94,6 +101,9 @@ class KittenTTS(KittenTTSOnnx):
 
         if backend == "vllm" or vllm_options is not None:
             raise ValueError("the vLLM backend requires a KittenTTS 2 model")
+
+        if backend == "mlx" or mlx_options is not None:
+            raise ValueError("the MLX backend requires a KittenTTS 2 model")
 
         instance = super().__new__(cls)
         # Hand the already-resolved repository to KittenTTSOnnx.__init__ rather

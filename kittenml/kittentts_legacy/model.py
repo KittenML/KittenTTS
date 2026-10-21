@@ -25,7 +25,8 @@ class KittenTTSOnnx:
     """
 
     def __init__(self, model_name="KittenML/kitten-tts-nano-0.8", cache_dir=None,
-                 backend=None, device=None, hf_token=None, *, vllm_options=None):
+                 backend=None, device=None, hf_token=None, *, vllm_options=None,
+                 mlx_options=None):
         """Initialize an ONNX KittenTTS model.
 
         Args:
@@ -37,6 +38,8 @@ class KittenTTSOnnx:
         """
         if vllm_options is not None:
             raise ValueError("the vLLM backend requires a KittenTTS 2 model")
+        if mlx_options is not None:
+            raise ValueError("the MLX backend requires a KittenTTS 2 model")
         local_dir, repo_id, config = getattr(self, "_resolved", None) or \
             resolve_repo(model_name, cache_dir)
         self.model = build_onnx_model(config, local_dir, repo_id, cache_dir, backend)

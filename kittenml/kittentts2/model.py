@@ -65,6 +65,43 @@ ADVANCED_OPTIONS = {
 }
 
 
+def _resolve_backend(backend):
+    """Which language-model backend to build.
+
+    "auto" picks MLX on an Apple-silicon Mac with `mlx` installed and the Torch
+    backend everywhere else; it never selects vLLM, which has its own memory
+    settings to choose.
+    """
+    if backend in (None, "torch"):
+        return "torch"
+    if backend == "auto":
+        import importlib.util
+        import platform
+        apple_silicon = platform.system() == "Darwin" and platform.machine() == "arm64"
+        return "mlx" if apple_silicon and importlib.util.find_spec("mlx") else "torch"
+    if backend not in ("vllm", "mlx"):
+        raise ValueError(f"unknown backend {backend!r}; choose from "
+                         "'torch', 'mlx', 'vllm' or 'auto'")
+    return backend
+
+
+def _resolve_device(device, backend):
+    """The Torch device for everything the chosen backend does not run itself.
+
+    The MLX backend runs the language model through MLX, so this is only the
+    device for the parts that stay in Torch: audio decoding, speaker embedding and
+    transcription. Those go to MPS, which is several times faster for s3gen than
+    the CPU is and shares the same unified memory, so nothing is copied between
+    them. Pass `device="cpu"` to keep them off the GPU — on a Torch build whose
+    MPS backend is missing an op s3gen needs, that is the fallback.
+    """
+    if device is not None:
+        return device
+    if backend == "mlx":
+        return "mps" if torch.backends.mps.is_available() else "cpu"
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
 @contextlib.contextmanager
 def _quiet_unexpected_keys():
     """Quieten transformers' loading chatter for one from_pretrained call."""
@@ -92,14 +129,14 @@ class KittenTTS2:
     """
 
     def __init__(self, repo_dir, config, device=None, cache_dir=None, hf_token=None,
-                 decoder=None, weights=None, backend=None, vllm_options=None):
+                 decoder=None, weights=None, backend=None, vllm_options=None,
+                 mlx_options=None):
         self.repo_dir = pathlib.Path(repo_dir)
         self.config = config
         self.cache_dir = cache_dir
 
-        if device is None:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.device = device
+        self.backend = _resolve_backend(backend)
+        self.device = _resolve_device(device, self.backend)
 
         self.token_map = TokenMap.from_config(config)
         generation = config.get("generation", {})
@@ -112,10 +149,12 @@ class KittenTTS2:
         self.chunk_min_chars = generation.get("chunk_min_chars", text_utils.CHUNK_MIN_CHARS)
 
         self.weights = weights or config.get("default_weights", "packed")
-        self.backend = "vllm" if backend == "vllm" else "torch"
         if self.backend == "vllm":
             from .vllm.backend import VLLMBackend
             self.model = VLLMBackend(self, vllm_options)
+        elif self.backend == "mlx":
+            from .mlx.backend import MLXBackend
+            self.model = MLXBackend(self, mlx_options)
         else:
             self._load_language_model()
         self.decoders = config.get("decoders", {})
@@ -317,11 +356,22 @@ class KittenTTS2:
         transcript_ids = self.tokenizer.encode(transcript.strip(), add_special_tokens=False)
         return {
             "prefix": build_reference_prefix(self.token_map, transcript_ids, reference_tokens),
-            "embedding": torch.tensor(np.asarray(embedding, np.float32),
-                                      device=self.device, dtype=self.dtype).unsqueeze(0),
+            "embedding": self._speaker_embedding(embedding),
             "conditioning": self.codec.reference_conditioning(reference_wav),
             "transcript": transcript,
         }
+
+    def _speaker_embedding(self, embedding):
+        """The conditioning the active backend's language model wants.
+
+        MLX keeps its own arrays, and projects the embedding once here rather than
+        once per chunk; the Torch and vLLM backends take the raw embedding as a
+        tensor and run `spk_proj` themselves at prefill.
+        """
+        array = np.asarray(embedding, np.float32)
+        if self.backend == "mlx":
+            return self.model.speaker_embedding(array)
+        return torch.tensor(array, device=self.device, dtype=self.dtype).unsqueeze(0)
 
     # ── generation ────────────────────────────────────────────────────────────
     def _resolve_advanced(self, advanced):
@@ -359,7 +409,7 @@ class KittenTTS2:
             reference_prefix=reference["prefix"] if use_reference_prompt else None,
             emotion_ids=emotion_ids)
 
-        if self.backend == "vllm":
+        if self.backend in ("vllm", "mlx"):
             return self.model.generate_tokens(prompt, reference["embedding"], settings,
                                               max_new_tokens, advanced)
 
@@ -392,6 +442,17 @@ class KittenTTS2:
         generated = output[0].tolist()[len(prompt):]
         return [t - low for t in generated if low <= t < high]
 
+    def _seed(self, seed):
+        """Seed the active backend's sampler, once per generation.
+
+        Once per generation rather than once per chunk, so a seeded multi-chunk
+        generation is reproducible without every chunk drawing from the same
+        stream.
+        """
+        torch.manual_seed(seed)
+        if self.backend == "mlx":
+            self.model.seed(seed)
+
     def _chunk_budget(self, chunk, max_new_tokens, single_chunk):
         """Cap a chunk's generation at what its text plausibly needs.
 
@@ -413,7 +474,7 @@ class KittenTTS2:
                                                 min_chars=advanced["chunk_min_chars"])
         settings = self._resolve_preset(preset, overrides)
         if advanced["seed"] is not None:
-            torch.manual_seed(int(advanced["seed"]))
+            self._seed(int(advanced["seed"]))
 
         use_emotion = advanced["use_emotion"]
         if use_emotion is None:

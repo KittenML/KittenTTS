@@ -31,3 +31,7 @@ kitten-text-processing>=0.1.0
 espeakng_loader
 phonemizer
 onnxruntime
+
+# Optional language-model backends, neither installed by default:
+#   pip install "kittenml[mlx]"    Apple-silicon GPU, see docs/mlx.md
+#   pip install "kittenml[vllm]"   NVIDIA GPU on Linux, see docs/vllm.md
