@@ -46,6 +46,9 @@ def unpack_tl2(buf, out_features, in_features):
     if buf.shape != (rows, groups, TL2_GROUP_BYTES):
         raise ValueError(f"expected {(rows, groups, TL2_GROUP_BYTES)}, got {buf.shape}")
 
+    # The result is allocated before the temporaries, so the memory they free can
+    # be reused by the next tensor rather than left as gaps between results.
+    weight = torch.empty(out_features, groups, GROUP, dtype=torch.bfloat16)
     gamma = buf[:, :, :TL2_ROWS * 2].copy().view(np.float16).transpose(0, 2, 1)
     trits = np.empty((rows, TL2_ROWS, groups, GROUP), dtype=np.int8)
     cursor = TL2_ROWS * 2
@@ -83,7 +86,8 @@ def unpack_tl2(buf, out_features, in_features):
     values = torch.from_numpy(trits.reshape(out_features, groups, GROUP)).to(torch.bfloat16)
     scales = torch.from_numpy(
         np.ascontiguousarray(gamma.reshape(out_features, groups))).to(torch.bfloat16)
-    return (values * scales.unsqueeze(-1)).reshape(out_features, in_features)
+    torch.mul(values, scales.unsqueeze(-1), out=weight)
+    return weight.reshape(out_features, in_features)
 
 
 def _hadamard(n):
@@ -105,7 +109,7 @@ def _unpack_codes(buf, codebook_size, count):
     return out[:count].astype(np.int64)
 
 
-def dequant_embedding(get_tensor, metadata, chunk=1 << 15):
+def dequant_embedding(get_tensor, metadata, chunk=1 << 15, lookup_chunk=1 << 12):
     """4-bit codes -> a bf16 embedding matrix.
 
     Rows are split into frequency tiers with their own codebook sizes — audio
@@ -118,43 +122,63 @@ def dequant_embedding(get_tensor, metadata, chunk=1 << 15):
     tier_map = get_tensor("emb4/tier_map").numpy()
     hadamard = _hadamard(dim)
 
-    weights = torch.empty(vocab, dim, dtype=torch.float32)
+    # Decoding the whole table at once would hold every code as int64 and the
+    # matrix in float32, several GB for 158k x 2048. So codes are looked up
+    # `lookup_chunk` rows at a time and the result goes straight into bf16; the
+    # rotation is still one matrix multiply per `chunk` rows, because a CPU
+    # library can round the last bit differently for a different matrix size.
+    weights = torch.empty(vocab, dim, dtype=torch.bfloat16)
     for tier, codebook_size in enumerate(codebook_sizes):
         rows = np.flatnonzero(tier_map == tier)             # ascending == packing order
-        codes = _unpack_codes(get_tensor(f"emb4/t{tier}_codes").numpy(),
-                              codebook_size, rows.size * dim).reshape(rows.size, dim)
+        packed = get_tensor(f"emb4/t{tier}_codes").numpy()
+        per_byte = 8 // int(math.ceil(math.log2(codebook_size)))
         centres = get_tensor(f"emb4/t{tier}_centers").to(torch.float32).numpy()
-        row_scale = get_tensor(f"emb4/t{tier}_s").to(torch.float32).numpy()
+        row_scale = torch.from_numpy(get_tensor(f"emb4/t{tier}_s").to(torch.float32).numpy())
         col_scale = torch.from_numpy(
             get_tensor(f"emb4/t{tier}_t").to(torch.float32).numpy())
-        centres_t = np.ascontiguousarray(centres.T)
-        # Chunked: the full rotation would otherwise materialise 158k x 2048 floats.
+        rotated = np.empty((min(chunk, rows.size), dim), dtype=np.float32)
         for start in range(0, rows.size, chunk):
             stop = min(start + chunk, rows.size)
-            rotated = np.take_along_axis(centres_t, codes[start:stop].T, axis=1).T
-            restored = torch.from_numpy(np.ascontiguousarray(rotated)) @ hadamard.T
-            weights[rows[start:stop]] = (restored * col_scale[None, :]
-                                         * torch.from_numpy(row_scale[start:stop])[:, None])
-    return weights.to(torch.bfloat16)
+            for low in range(start, stop, lookup_chunk):
+                high = min(low + lookup_chunk, stop)
+                # A byte can hold codes from more than one row: start at this row's first.
+                first, skip = divmod(low * dim, per_byte)
+                codes = _unpack_codes(packed[first:-(-high * dim // per_byte)], codebook_size,
+                                      skip + (high - low) * dim)[skip:].reshape(-1, dim)
+                rotated[low - start:high - start] = np.take_along_axis(centres, codes, axis=0)
+            restored = torch.from_numpy(rotated[:stop - start]) @ hadamard.T
+            restored.mul_(col_scale[None, :]).mul_(row_scale[start:stop, None])
+            weights[rows[start:stop]] = restored.to(torch.bfloat16)
+    return weights
 
 
-def load_state_dict(path):
-    """Rebuild the full bf16 state dict from a TL2 + emb4 checkpoint."""
+def iter_state_dict(path, include=None):
+    """Yield the bf16 (name, tensor) pairs of a TL2 + emb4 checkpoint, one at a time.
+
+    `include`, if given, is a predicate on tensor names: the others are skipped
+    without being unpacked, so a caller that needs a few tensors, or loads them
+    one by one, never holds the expanded model in host memory.
+    """
     from safetensors import safe_open
 
-    state = {}
+    wanted = include or (lambda name: True)
     with safe_open(str(path), framework="pt") as handle:
         metadata = dict(handle.metadata() or {})
         if metadata.get("schema") != "kitten_ternary_tl2_emb4_v1":
             raise ValueError(f"unexpected schema {metadata.get('schema')!r} in {path}")
         embedding_metadata = json.loads(metadata.get("embedding_metadata", "{}"))
         for key in handle.keys():
-            if key.startswith("tl2/"):
+            if key.startswith("tl2/") and wanted(key[4:]):
                 buf = handle.get_tensor(key).numpy()
                 rows, groups, _ = buf.shape
-                state[key[4:]] = unpack_tl2(buf, rows * TL2_ROWS, groups * GROUP)
-            elif key.startswith("fp/"):
-                state[key[3:]] = handle.get_tensor(key)
-        state["model.embed_tokens.weight"] = dequant_embedding(
-            handle.get_tensor, embedding_metadata)
-    return state
+                yield key[4:], unpack_tl2(buf, rows * TL2_ROWS, groups * GROUP)
+            elif key.startswith("fp/") and wanted(key[3:]):
+                yield key[3:], handle.get_tensor(key)
+        if wanted("model.embed_tokens.weight"):
+            yield "model.embed_tokens.weight", dequant_embedding(
+                handle.get_tensor, embedding_metadata)
+
+
+def load_state_dict(path, include=None):
+    """The bf16 state dict, or the tensors `include` selects, of a TL2 + emb4 checkpoint."""
+    return dict(iter_state_dict(path, include))
