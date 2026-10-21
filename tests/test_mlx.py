@@ -17,8 +17,8 @@ mx = pytest.importorskip("mlx.core", reason="the MLX backend is an optional extr
 
 from kittenml.kittentts2.mlx import loader, sample  # noqa: E402
 
-# The real codec vocabulary size: the repetition penalty exempts the silence
-# token at offset 4299, so a toy audio range would not reach it.
+# The real codec vocabulary size, so codec offsets such as the silence token
+# (4299) fall inside the audio range as they do in a real checkpoint.
 TOKEN_MAP = TokenMap(audio_id_base=100, num_audio_tokens=6561, speech_start_id=1,
                      speech_end_id=2, text_start_id=3, text_end_id=4, start_id=5,
                      stop_id=6)
