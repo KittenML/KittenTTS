@@ -1,4 +1,4 @@
-# Kitten TTS
+# Kitten-TTS
 
 <p align="center">
   <img alt="Kitten TTS" src="https://raw.githubusercontent.com/KittenML/KittenTTS/main/assets/kitten_tts_2_announcement.png" />
@@ -11,13 +11,12 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-green.svg" alt="License"></a>
 </p>
 
-> ## **New:** Free Kitten TTS API available at  [https://platform.kittenml.com](https://platform.kittenml.com/)
+> ## **New:** Free Kitten-TTS 2 API available at  [https://platform.kittenml.com](https://platform.kittenml.com/)
 
-Kitten TTS is an open-source text-to-speech library. Its flagship model, **KittenTTS 2**, is a
-1.7B-parameter 1-bit speech language model with in-context voice cloning and expression control: give it
-five seconds of anyone's voice and it speaks your text in that voice. It runs realtime on a CPU!
+Kitten-TTS is a series of sota open-source text-to-speech models, built by KittenML. Its flagship model, **Kitten-TTS 2**, is a
+1.7B-parameter 1-bit TTS model with in-context voice cloning and expression control. It provides SOTA quality while being so efficient that it runs realtime on CPUs and consumer GPU's!
 
-The library also ships the original [**lightweight legacy models**](docs/onnx-models.md),
+The library also ships our existing [**lightweight V0.8 models**](docs/onnx-models.md),
 15M-80M parameters, which run on CPU without a GPU. Both families load through the same
 `KittenTTS(...)` constructor.
 
