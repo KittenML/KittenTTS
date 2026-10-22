@@ -155,12 +155,19 @@ m.generate_to_file("Hello, world.", "output.wav", voice="Bruno")
 
 Pass `reference=` instead of `voice=` — same method, the recording just replaces the built-in
 speaker. Give it 5-30 seconds of a single speaker. The transcript is part of the prompt, but you
-do not have to type it; Whisper fills it in when omitted.
+do not have to type it; Whisper fills it in when omitted or blank. It auto-detects the
+reference language by default and transcribes speech in that language. When the language
+is known, set `reference_language` to a Whisper language code, such as `"en"` for English
+or `"ru"` for Russian.
 
 ```python
 audio = m.generate("This is my own voice, cloned.", reference="my_voice.wav")
 
-# Supplying the transcript skips the Whisper pass
+# Specify the reference language if known
+audio = m.generate("Привет, это мой голос.", reference="russian_voice.wav",
+                   reference_language="ru")
+
+# Supplying a nonblank transcript skips Whisper regardless of reference_language
 audio = m.generate("This is my own voice.", reference="my_voice.wav",
                    reference_text="what is actually said in the clip")
 ```
