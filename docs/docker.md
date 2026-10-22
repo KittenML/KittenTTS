@@ -22,8 +22,14 @@ docker build -f kittenml/kittentts2/docker/Dockerfile -t kittenml .
 Then start the server, from any directory:
 
 ```sh
-docker run --rm --gpus all --ipc=host -p 8000:8000 -v kittenml-cache:/cache kittenml
+docker run --rm --gpus all --ipc=host -p 8000:8000 -v kittenml-cache:/cache \
+  -e KITTENML_VLLM_OPTIONS='{"quantization": "w4a16"}' kittenml
 ```
+
+`KITTENML_VLLM_OPTIONS` selects 4-bit language-model weights: the same weights, exactly,
+in 1.3 instead of 3.2 GiB, and faster for single requests. Leave it out to run in bf16
+or to use `KITTENML_BACKEND=torch`; put any other [options](#options) in the same JSON.
+See [4-bit weights](vllm.md#4-bit-weights).
 
 The first start downloads the model and compiles GPU kernels, which takes a few
 minutes. The named volume keeps both, so later starts are faster. The server is
