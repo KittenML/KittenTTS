@@ -97,6 +97,8 @@ https://github.com/user-attachments/assets/c42c236b-7b7d-41d6-944b-7527a5f30626
 
 Try Kitten TTS directly in your browser on [KittenML Platform](https://platform.kittenml.com).
 
+Or run the Gradio demo locally: `pip install kittenml gradio`, then `python gradio_demo.py`.
+
 ## Quick Start
 
 ### Prerequisites
