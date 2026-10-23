@@ -12,6 +12,7 @@ own text-to-token model is unused, since that is precisely what KittenTTS 2
 replaces.
 """
 
+import contextlib
 import pathlib
 
 import librosa
@@ -40,6 +41,8 @@ CFM_TIMESTEPS = 2
 # it was trained on.
 STUDENT_REF_SECONDS = 4.0
 STUDENT_MAX_PROMPT_TOKENS = 112
+# The stock flow's tensors in the s3gen checkpoint; unused when the student decodes.
+STOCK_FLOW_PREFIX = "flow."
 
 
 class S3Codec:
@@ -57,9 +60,18 @@ class S3Codec:
         self.device = device
         weights_path = hf_hub_download(repo_id=CHATTERBOX_REPO, filename=S3GEN_WEIGHTS,
                                        cache_dir=cache_dir)
-        self.s3gen = S3Gen(meanflow=True)
-        self.s3gen.load_state_dict(load_file(weights_path), strict=True)
+        # The student replaces the whole stock flow, so with it the stock flow is
+        # neither built nor loaded: about 110M parameters (437 MiB in float32) that
+        # would otherwise sit unused on the GPU next to the student's.
+        stock_flow = student_weights is None
+        self.s3gen = S3Gen(meanflow=True, flow=stock_flow)
+        state = load_file(weights_path)
+        if not stock_flow:
+            state = {k: v for k, v in state.items() if not k.startswith(STOCK_FLOW_PREFIX)}
+        self.s3gen.load_state_dict(state, strict=True)
+        del state
         self.s3gen.to(device).eval()
+        _mix_source_without_blas(self.s3gen, device)
         self._ref_cache = {}
 
         self.student = None
@@ -69,7 +81,7 @@ class S3Codec:
     def encode_reference(self, wav_path):
         """Reference clip -> S3 codec token ids, for the in-context prompt."""
         wav16, _ = librosa.load(str(wav_path), sr=S3_SR, mono=True)
-        with torch.inference_mode():
+        with torch.inference_mode(), _convolutions():
             tokens, lengths = self.s3gen.tokenizer(
                 torch.from_numpy(wav16).float().unsqueeze(0).to(self.device))
         return tokens[0, :int(lengths[0].item())].long().cpu().tolist()
@@ -85,7 +97,7 @@ class S3Codec:
         if key not in self._ref_cache:
             seconds = STUDENT_REF_SECONDS if self.student is not None else DECODER_COND_SECONDS
             wav24 = _load_decoder_reference(str(wav_path))[:int(seconds * S3GEN_SR)]
-            with torch.inference_mode():
+            with torch.inference_mode(), _convolutions():
                 ref = self.s3gen.embed_ref(wav24, S3GEN_SR, device=self.device)
             self._ref_cache[key] = self._truncate_prompt(ref) if self.student else ref
         return self._ref_cache[key]
@@ -119,7 +131,7 @@ class S3Codec:
         # to keep the final syllable of the generation.
         tokens = torch.cat([tokens, torch.full((3,), int(S3GEN_SIL),
                                                dtype=torch.long, device=self.device)])
-        with torch.inference_mode():
+        with torch.inference_mode(), _convolutions():
             if self.student is not None:
                 wav = self._decode_with_student(ref_conditioning, tokens)
             else:
@@ -143,6 +155,45 @@ class S3Codec:
         wav = wav.clone()
         wav[:, :len(self.s3gen.trim_fade)] *= self.s3gen.trim_fade
         return wav
+
+
+def _mix_source_without_blas(s3gen, device):
+    """On AMD GPUs (ROCm builds of PyTorch), compute the vocoder's harmonic-source mix without a GEMM.
+
+    The mix is an nn.Linear(9 -> 1) applied to every output sample: about 585,000 rows for a
+    24-second sentence chunk. On an RX 9070 XT (ROCm 7.2, PyTorch 2.13) the GEMM behind F.linear
+    returns wrong values for inputs this long: 121,658 of 585,120 rows in an isolated test, and in
+    the decoder, depending on where PyTorch placed the tensors, every sample after 2^19 (21.8 s),
+    which garbled the end of long chunks (missing words). Below 2^18 rows, or as a multiply and sum
+    over the 9 inputs, the result is right. Unchanged on NVIDIA GPUs and on the CPU.
+    """
+    if getattr(torch.version, "hip", None) and torch.device(device).type == "cuda":
+        source = s3gen.mel2wav.m_source
+        source.l_linear = _SmallLinear(source.l_linear)
+
+
+class _SmallLinear(torch.nn.Module):
+    """nn.Linear as an elementwise multiply and sum; same parameters, so the same state dict."""
+
+    def __init__(self, linear):
+        super().__init__()
+        self.weight = linear.weight
+        self.bias = linear.bias
+
+    def forward(self, x):
+        y = (x.unsqueeze(-2) * self.weight).sum(-1)
+        return y if self.bias is None else y + self.bias
+
+
+def _convolutions():
+    """How the decoder's convolutions run: unchanged, except on AMD GPUs (ROCm builds of
+    PyTorch), where they bypass MIOpen. MIOpen searches and compiles kernels for every new input
+    length, and every utterance has a new length: on an RX 7900 XTX the first decode of a new
+    length took about 4x as long as a repeat (real-time factor 0.9 vs 0.22), and PyTorch's own
+    kernels were faster even after that (0.17-0.19)."""
+    if getattr(torch.version, "hip", None):
+        return torch.backends.cudnn.flags(enabled=False)
+    return contextlib.nullcontext()
 
 
 def _load_decoder_reference(wav_path, min_seconds=DECODER_MIN_SECONDS):
