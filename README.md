@@ -103,9 +103,10 @@ Or run the Gradio demo locally: `pip install kittenml gradio`, then `python grad
 
 ### Prerequisites
 
-- Python 3.9 or later
+- Python 3.10 or later
 - A CUDA GPU with roughly 8 GB free, or a CPU with about 6 GB of RAM
-- About 1 GB of disk space for the model, or 506 MiB with the smaller weights
+- About 2 GB of disk space: about 1 GB for the model (0.6 GB with the smaller weights) and
+  1.06 GB for the audio decoder, downloaded on first use
 
 ### Installation
 
