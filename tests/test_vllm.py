@@ -587,57 +587,90 @@ def test_vllm_options_validate_quantization_dtype_and_cache_size():
     engine, kitten = resolve_options(None)
     assert engine == dict(gpu_memory_utilization=0.5, max_model_len=4096, max_num_seqs=8,
                           enforce_eager=False)
-    assert kitten == dict(quantization=None, dtype=None, kv_cache_memory_bytes=None)
+    assert kitten == dict(quantization=None, dtype=None, kv_cache_memory_bytes=None,
+                          max_num_batched_tokens=None)
     engine, kitten = resolve_options({"quantization": "w4a16", "dtype": "bfloat16",
                                       "kv_cache_memory_bytes": 1 << 30, "max_num_seqs": 4})
     assert engine["kv_cache_memory_bytes"] == 1 << 30 and engine["max_num_seqs"] == 4
     assert "quantization" not in engine and "dtype" not in engine
     assert kitten["quantization"] == "w4a16" and kitten["dtype"] == "bfloat16"
+    engine, _ = resolve_options({"max_num_batched_tokens": 2048})
+    assert engine["max_num_batched_tokens"] == 2048
+    assert "max_num_batched_tokens" not in resolve_options({"max_num_batched_tokens": None})[0]
     for bad, match in [({"quantization": "w8a8"}, "quantization"),
                        ({"quantization": "W4A16"}, "quantization"),
                        ({"dtype": "fp16"}, "dtype"),
-                       ({"dtype": "float32"}, "dtype"),
+                       ({"dtype": "float64"}, "dtype"),
                        ({"kv_cache_memory_bytes": 0}, "kv_cache_memory_bytes"),
                        ({"kv_cache_memory_bytes": 1.5e9}, "kv_cache_memory_bytes"),
                        ({"kv_cache_memory_bytes": True}, "kv_cache_memory_bytes"),
+                       ({"max_num_batched_tokens": 0}, "max_num_batched_tokens"),
+                       ({"max_num_batched_tokens": 2048.0}, "max_num_batched_tokens"),
                        ({"kv_cache_dtype": "fp8"}, "unknown vllm_options")]:
         with pytest.raises(ValueError, match=match):
             resolve_options(bad)
 
 
 def test_float16_is_an_explicit_option():
-    # float16 is the opt-in fallback for GPUs without bfloat16 (fp16.py); it is
-    # never chosen unless asked for.
+    # Explicit dtype overrides are kept separate from vLLM's engine options.
     from kittenml.kittentts2.vllm.backend import resolve_options
 
     for options in ({"dtype": "float16"}, {"dtype": "float16", "quantization": "w4a16"}):
         engine, kitten = resolve_options(options)
         assert kitten["dtype"] == "float16" and "dtype" not in engine
     assert resolve_options(None)[1]["dtype"] is None
+    assert resolve_options({"dtype": "float32"})[1]["dtype"] == "float32"
 
 
-def test_dtype_follows_hardware_and_gpus_without_bfloat16_need_the_float16_opt_in():
+def test_gpu_capability_and_explicit_dtype_are_checked_before_download():
     from kittenml.kittentts2.vllm.backend import validate_environment
 
     with mock.patch("kittenml.kittentts2.vllm.backend.importlib.util.find_spec", return_value=object()), \
-         mock.patch("torch.cuda.is_available", return_value=True):
+         mock.patch("torch.cuda.is_available", return_value=True), \
+         mock.patch("torch.cuda.get_arch_list", return_value=["sm_70", "sm_75", "sm_80"]):
         for capability in ((8, 0), (8, 6), (12, 0)):
             with mock.patch("torch.cuda.get_device_capability", return_value=capability):
-                for dtype in (None, "bfloat16", "float16"):
-                    validate_environment(dtype=dtype)
-        with mock.patch("torch.cuda.get_device_capability", return_value=(7, 5)):
-            for dtype in (None, "bfloat16"):
-                with pytest.raises(RuntimeError, match=r"SM75\) has no bfloat16.*opt in to the "
-                                                       r"float16 fallback with vllm_options="
-                                                       r"\{'dtype': 'float16'\}.*not the optimal"):
-                    validate_environment(dtype=dtype)
-            validate_environment(dtype="float16")
-        for capability, name in (((7, 0), "SM70"), ((6, 1), "SM61")):
+                for dtype in (None, "bfloat16", "float16", "float32"):
+                    assert validate_environment(dtype=dtype) == capability
+        for capability in ((7, 5), (7, 0)):
             with mock.patch("torch.cuda.get_device_capability", return_value=capability):
-                for dtype in (None, "float16"):
-                    with pytest.raises(RuntimeError, match=name + r"\) is not supported by the "
-                                                           r"vLLM backend.*7.5 or newer"):
-                        validate_environment(dtype=dtype)
+                for dtype in (None, "float16", "float32"):
+                    assert validate_environment(dtype=dtype) == capability
+                with pytest.raises(ValueError, match="no native bfloat16"):
+                    validate_environment(dtype="bfloat16")
+        with mock.patch("torch.cuda.get_device_capability", return_value=(6, 1)):
+            for dtype in (None, "float16", "float32"):
+                with pytest.raises(RuntimeError, match="SM61.*default backend"):
+                    validate_environment(dtype=dtype)
+
+
+def test_v100_requires_a_pytorch_build_that_can_execute_sm70():
+    from kittenml.kittentts2.vllm.backend import validate_environment
+
+    with mock.patch("kittenml.kittentts2.vllm.backend.importlib.util.find_spec", return_value=object()), \
+         mock.patch("torch.cuda.is_available", return_value=True), \
+         mock.patch("torch.cuda.get_device_capability", return_value=(7, 0)):
+        with mock.patch("torch.cuda.get_arch_list", return_value=["sm_75", "sm_80", "compute_80"]):
+            with pytest.raises(RuntimeError, match="does not support SM70.*CUDA 12.6"):
+                validate_environment()
+        with mock.patch("torch.cuda.get_arch_list", return_value=["sm_75", "compute_70"]):
+            assert validate_environment() == (7, 0)
+
+
+def test_legacy_gpu_options_choose_the_measured_mode_and_respect_overrides(monkeypatch):
+    from kittenml.kittentts2.vllm.backend import options_for_gpu
+
+    for capability in ((8, 0), (8, 6), (12, 0), None):
+        for given in (None, {}, {"quantization": None}, {"dtype": "bfloat16"}):
+            assert options_for_gpu(given, capability) is given
+    assert options_for_gpu(None, (7, 5)) == {"dtype": "float16", "quantization": "w4a16"}
+    assert options_for_gpu(None, (7, 0)) == {"dtype": "float16"}
+    assert options_for_gpu({"quantization": None}, (7, 5)) == {"dtype": "float16", "quantization": None}
+    assert options_for_gpu({"dtype": "float32"}, (7, 5)) == {"dtype": "float32"}
+    with pytest.raises(ValueError, match="W4A16 requires compute capability 7.5"):
+        options_for_gpu({"quantization": "w4a16"}, (7, 0))
+    monkeypatch.setenv("VLLM_MARLIN_INPUT_DTYPE", "int8")
+    assert options_for_gpu(None, (7, 5)) == {"dtype": "float16"}
 
 
 def test_vllm_options_are_checked_before_model_download(monkeypatch):
@@ -656,20 +689,19 @@ def test_vllm_options_are_checked_before_model_download(monkeypatch):
         download.assert_not_called()
 
 
-def test_gpus_without_bfloat16_are_refused_before_model_download():
+def test_old_gpu_and_automatic_float16_emb4_errors_precede_model_download():
     resolved = (None, "example/repo", {"type": "KITTEN2"})
     with mock.patch("kittenml.get_model.resolve_repo", return_value=resolved), \
          mock.patch("kittenml.kittentts2.vllm.backend.importlib.util.find_spec", return_value=object()), \
          mock.patch("torch.cuda.is_available", return_value=True), \
-         mock.patch("torch.cuda.get_device_capability", return_value=(7, 5)), \
          mock.patch("kittenml.get_model.snapshot_download") as download:
-        with pytest.raises(RuntimeError, match="SM75.*no bfloat16.*'dtype': 'float16'"):
-            KittenTTS("example/repo", backend="vllm")
+        with mock.patch("torch.cuda.get_device_capability", return_value=(6, 1)):
+            with pytest.raises(RuntimeError, match="SM61.*default backend"):
+                KittenTTS("example/repo", backend="vllm")
+        with mock.patch("torch.cuda.get_device_capability", return_value=(7, 5)):
+            with pytest.raises(ValueError, match="float16.*emb4"):
+                KittenTTS("example/repo", backend="vllm", weights="emb4")
         download.assert_not_called()
-        # With the opt-in, the checks pass and the download starts.
-        download.side_effect = RuntimeError("download started")
-        with pytest.raises(RuntimeError, match="download started"):
-            KittenTTS("example/repo", backend="vllm", vllm_options={"dtype": "float16"})
 
 
 def test_w4a16_refuses_marlin_environment_overrides(monkeypatch, tmp_path):
@@ -1107,14 +1139,21 @@ def test_float16_rescale_dense_and_w4a16_give_the_same_exact_float16_weights(tmp
         assert bit_equal(rebuilt, dense[name]), name
 
 
-def test_float16_rescale_refuses_weights_it_cannot_hold_exactly():
+def test_float16_rescale_rounds_small_weights_and_reports_the_error(caplog):
     from kittenml.kittentts2.vllm.fp16 import is_exact, rescale_weights
 
     weight = torch.full((2, 128), 0.25, dtype=torch.bfloat16)
     weight[1, 7] = 2.0 ** -20  # x 2^-6 = 2^-26: below float16's smallest subnormal
     pairs = [("model.layers.0.self_attn.o_proj.weight", weight)]
-    with pytest.raises(ValueError, match=r"o_proj.weight x 2\^-6 is not exact in float16"):
-        dict(rescale_weights(pairs))
+    report = {}
+    with caplog.at_level("INFO", logger="vllm.kittenml"):
+        converted = dict(rescale_weights(pairs, report))
+    assert converted[pairs[0][0]][1, 7] == 0
+    assert converted[pairs[0][0]][0, 0] == 2.0 ** -8
+    assert report["projections"] == {
+        "elements": 256, "rounded": 1, "max_absolute_error": 2.0 ** -26,
+        "worst_tensor": pairs[0][0]}
+    assert sum("float16 weight conversion" in r.message for r in caplog.records) == 1
     # The same value is exact without a shift (q_proj) ... and -0.0 must stay -0.0.
     assert len(dict(rescale_weights([("model.layers.0.self_attn.q_proj.weight", weight)]))) == 1
     zero = torch.tensor([-0.0], dtype=torch.bfloat16)
@@ -1122,6 +1161,32 @@ def test_float16_rescale_refuses_weights_it_cannot_hold_exactly():
     assert not is_exact(torch.tensor([65536.0]), 0)  # overflow is not exact
     with pytest.raises(ValueError, match="tied"):
         dict(rescale_weights([("lm_head.weight", weight)]))
+
+
+@pytest.mark.parametrize("name", ["model.embed_tokens.weight", "model.norm.weight",
+                                  "model.layers.0.self_attn.q_proj.weight",
+                                  "model.layers.0.mlp.down_proj.weight_scale"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), 2.0 ** 24])
+def test_float16_rescale_still_refuses_nonfinite_and_overflowing_weights(name, value):
+    from kittenml.kittentts2.vllm.fp16 import rescale_weights
+
+    with pytest.raises(ValueError, match="nonfinite values or overflows float16"):
+        dict(rescale_weights([(name, torch.tensor([value]))]))
+
+
+def test_float16_rescale_tracks_embedding_rounding_separately_and_keeps_codes():
+    from kittenml.kittentts2.vllm.fp16 import rescale_weights
+
+    embedding = torch.tensor([[2.0 ** -20, -0.0]], dtype=torch.bfloat16)
+    codes = torch.tensor([1, 2], dtype=torch.int32)
+    report = {}
+    converted = dict(rescale_weights([("model.embed_tokens.weight", embedding),
+                                      ("model.layers.0.mlp.up_proj.weight_packed", codes)], report))
+    assert report["embedding"]["rounded"] == 1
+    assert report["output_head"]["rounded"] == 0
+    assert converted["model.layers.0.mlp.up_proj.weight_packed"] is codes
+    assert torch.signbit(converted["model.embed_tokens.weight"][0, 1])
+    assert converted["lm_head.weight"][0, 0] == 2.0 ** -20
 
 
 def test_float16_prompt_embeddings_match_the_engine_scale():
@@ -1244,7 +1309,7 @@ def test_vllm_loader_bfloat16_paths_hand_over_the_checkpoint_tensors_untouched()
                    if hasattr(module, "variance_epsilon"))
 
 
-def test_engine_receives_the_float16_rescale_only_when_asked(tmp_path):
+def test_engine_receives_float16_when_selected_and_warns_once_on_legacy_gpu(tmp_path, caplog):
     pytest.importorskip("vllm")
     from kittenml.kittentts2.vllm.backend import VLLMBackend
     from kittenml.kittentts2.vllm.fp16 import PLAN, ScaledSpeakerHead, scale_embedding
@@ -1252,11 +1317,11 @@ def test_engine_receives_the_float16_rescale_only_when_asked(tmp_path):
     seen = []
     embedding = torch.full((2, 4), 0.03, dtype=torch.bfloat16)
 
-    def run(options):
+    def run(options, capability=None):
         owner = SimpleNamespace(device="cpu", repo_dir=tmp_path, config={}, weights="packed",
                                 token_map=None, _load_lm_weights=mock.Mock(return_value={
                                     "model.embed_tokens.weight": embedding}))
-        with mock.patch("kittenml.kittentts2.vllm.backend.validate_environment") as validate, \
+        with mock.patch("kittenml.kittentts2.vllm.backend.validate_environment", return_value=capability) as validate, \
              mock.patch("transformers.AutoConfig.from_pretrained", return_value=SimpleNamespace(
                  model_type="qwen3", hidden_size=4)), \
              mock.patch("transformers.AutoTokenizer.from_pretrained"), \
@@ -1287,3 +1352,325 @@ def test_engine_receives_the_float16_rescale_only_when_asked(tmp_path):
                                                                          embedding)
         assert backend.spk_proj is head.return_value
         assert head.call_args.args[3] is torch.bfloat16
+    caplog.clear()
+    with caplog.at_level("WARNING"):
+        owner, backend, head, kwargs = run(None, (7, 5))
+    assert kwargs["dtype"] is torch.float16 and kwargs["quantization"] == "compressed-tensors"
+    assert sum("has no native bfloat16" in record.message for record in caplog.records) == 1
+    assert "rounded float16 with 4-bit weights" in caplog.text
+    assert "supported, not optimal" in caplog.text
+
+
+# ── Fitting vLLM to the GPU's free memory ─────────────────────────────────────
+GIB = 1 << 30
+# KittenTTS 2's language model (lm/config.json).
+_LM = SimpleNamespace(hidden_size=2048, num_hidden_layers=28, num_attention_heads=16,
+                      num_key_value_heads=8, head_dim=128, intermediate_size=6144,
+                      vocab_size=158241, tie_word_embeddings=True)
+
+
+def test_lm_memory_matches_what_vllm_reports_for_the_weights():
+    from kittenml.kittentts2.vllm.backend import lm_memory
+
+    # vLLM 0.31.0 logs "Model loading took 3.24 GiB" (bf16) and "1.29 GiB" (w4a16).
+    bf16, kv_token = lm_memory(_LM)
+    assert round(bf16 / GIB, 2) == 3.23 and kv_token == 112 * 1024
+    assert round(lm_memory(_LM, "w4a16")[0] / GIB, 2) == 1.28
+    # float16 keeps a separate output head (618 MiB, docs/vllm.md).
+    assert (lm_memory(_LM, None, float16=True)[0] - bf16) >> 20 == 618
+    assert lm_memory(_LM, float32=True) == (bf16 * 2, kv_token * 2)
+
+
+def test_float32_fits_weights_and_double_width_cache_without_choosing_w4a16():
+    from kittenml.kittentts2.vllm.backend import check_options, fit_to_gpu, lm_memory
+
+    free, total = 11600 << 20, 12288 << 20
+    options, report = fit_to_gpu({"dtype": "float32"}, free, total, _LM, force=True)
+    assert report["fitted"]
+    assert options["dtype"] == "float32" and "quantization" not in options
+    assert options["max_num_batched_tokens"] == 2048
+    assert options.get("max_model_len", 4096) == 4096
+    assert report["planned_kv_cache_tokens"] >= 4096
+    assert options["gpu_memory_utilization"] * total + (2816 + 256) * (1 << 20) <= free
+    with pytest.raises(ValueError, match="W4A16.*not float32"):
+        check_options({"dtype": "float32", "quantization": "w4a16"}, "packed")
+    with pytest.raises(RuntimeError, match="not enough free GPU memory"):
+        fit_to_gpu({"dtype": "float32"}, 5600 << 20, 6000 << 20, _LM)
+
+
+@pytest.mark.parametrize("total_gib, free_gib", [(95.0, 94.0), (31.4, 30.8), (23.5, 23.0),
+                                                 (15.6, 15.0), (11.6, 11.2), (9.6, 9.3)])
+def test_defaults_are_kept_on_gpus_with_room_for_them(total_gib, free_gib):
+    from kittenml.kittentts2.vllm.backend import fit_to_gpu
+
+    for options in ({}, {"quantization": "w4a16"}, {"max_num_seqs": 2}):
+        fitted, report = fit_to_gpu(options, int(free_gib * GIB), int(total_gib * GIB), _LM)
+        assert fitted == options and report["fitted"] is False and "suggested" not in report
+
+
+@pytest.mark.parametrize("total_gib, free_gib, options", [
+    (31.4, 30.8, {"gpu_memory_utilization": 0.9}),   # vLLM's own default share
+    (23.5, 23.0, {"gpu_memory_utilization": 0.9}),
+    (79.15, 41.5, {}),                                # a shared 80 GB GPU
+    (9.77, 7.8, {}),                                  # a 10 GB card with a busy desktop
+    (11.6, 5.0, {}),                                  # a 12 GB card that is mostly in use
+])
+def test_larger_gpus_and_short_settings_are_never_changed_only_given_a_suggestion(
+        total_gib, free_gib, options):
+    from kittenml.kittentts2.vllm.backend import fit_to_gpu
+
+    fitted, report = fit_to_gpu(options, int(free_gib * GIB), int(total_gib * GIB), _LM)
+    assert fitted == options and report["fitted"] is False
+    # The settings leave too little room for audio decoding, so a fitting set is suggested.
+    assert report["decoding_room_mib"] < 2816
+    assert report["suggested"] is None or "gpu_memory_utilization" in report["suggested"]
+
+
+def test_small_gpus_get_4bit_and_a_share_that_leaves_room_for_decoding():
+    from kittenml.kittentts2.vllm.backend import (_ENGINE_CONTEXT_BYTES, _MAIN_PROCESS_BYTES,
+                                                  fit_to_gpu)
+
+    total, free = int(7.62 * GIB), int(7.39 * GIB)   # RTX 4060 8 GB
+    fitted, report = fit_to_gpu({}, free, total, _LM)
+    assert report["fitted"] and fitted["quantization"] == "w4a16"
+    # vLLM's default prefill step still fits here, so it is kept.
+    assert "max_num_batched_tokens" not in fitted and "max_model_len" not in fitted
+    share = fitted["gpu_memory_utilization"] * total
+    assert share <= free - _ENGINE_CONTEXT_BYTES - _MAIN_PROCESS_BYTES
+    # The planned cache holds four full requests (4,096 + 32 tokens each).
+    assert report["planned_kv_cache_tokens"] == 4 * 4128 and report["full_requests"] == 4
+    assert set(report["chosen"]) == {"quantization", "gpu_memory_utilization"}
+    # With 5.25 GiB free a full request fits only with 2,048-token prefill steps.
+    fitted, _ = fit_to_gpu({}, int(5.25 * GIB), total, _LM)
+    assert fitted["max_num_batched_tokens"] == 2048 and "max_model_len" not in fitted
+
+
+def test_prefill_step_choice_keeps_the_same_rounding_margin_as_the_context_check():
+    from kittenml.kittentts2.vllm.backend import (_ENGINE_CONTEXT_BYTES, _KV_MARGIN_TOKENS,
+                                                  _MAIN_PROCESS_BYTES, _VLLM_BATCHED_TOKENS,
+                                                  _engine_bytes, fit_to_gpu, lm_memory)
+
+    # Free memory inside the window where a full request fits with vLLM's 8,192-token prefill
+    # step, but not once the share's rounding margin (total / 10^6) is taken off: the 2,048
+    # step must be chosen then, keeping the full 4,096-token context instead of cutting it.
+    total = int(7.62 * GIB)
+    weights, kv_token = lm_memory(_LM, "w4a16")
+    one_request = (4096 + _KV_MARGIN_TOKENS) * kv_token
+    free = int(_ENGINE_CONTEXT_BYTES + _MAIN_PROCESS_BYTES
+               + _engine_bytes(weights, _VLLM_BATCHED_TOKENS) + one_request + total / 2e6)
+    fitted, _ = fit_to_gpu({}, free, total, _LM)
+    assert fitted["max_num_batched_tokens"] == 2048 and "max_model_len" not in fitted
+
+
+def test_options_the_caller_gives_are_never_changed():
+    from kittenml.kittentts2.vllm.backend import fit_to_gpu
+
+    total, free = int(7.62 * GIB), int(7.39 * GIB)
+    given = {"quantization": None, "max_num_batched_tokens": None, "max_model_len": 4096}
+    fitted, report = fit_to_gpu(given, free, total, _LM)
+    assert {k: fitted[k] for k in given} == given and set(report["chosen"]) == {
+        "gpu_memory_utilization"}
+    # A memory share the caller set is theirs: nothing else is chosen around it, even when
+    # it leaves too little room (then only a suggestion is made).
+    for options in ({"gpu_memory_utilization": 0.45}, {"gpu_memory_utilization": 0.7},
+                    {"kv_cache_memory_bytes": 1 << 29}):
+        fitted, report = fit_to_gpu(options, free, total, _LM)
+        assert fitted == options and report["fitted"] is False
+        assert report["suggested"]["quantization"] == "w4a16"
+    # 4-bit is not chosen where it is not allowed (non-NVIDIA, or a refusing environment).
+    fitted, _ = fit_to_gpu({}, free, total, _LM, w4a16=False)
+    assert "quantization" not in fitted
+
+
+def test_tight_gpus_shorten_the_context_and_hopeless_ones_are_refused_with_a_size():
+    from kittenml.kittentts2.vllm.backend import fit_to_gpu
+
+    total = int(7.62 * GIB)
+    fitted, report = fit_to_gpu({}, int(4.95 * GIB), total, _LM)
+    assert 2048 <= fitted["max_model_len"] < 4096 and report["planned_kv_cache_tokens"] > 2048
+    with pytest.raises(RuntimeError, match=r"about [\d,]+ MiB free is needed and 4,096 MiB"):
+        fit_to_gpu({}, 4 * GIB, total, _LM)
+    # An explicit max_model_len is not shortened: it is refused instead.
+    with pytest.raises(RuntimeError, match="not enough free GPU memory"):
+        fit_to_gpu({"max_model_len": 4096}, int(4.95 * GIB), total, _LM)
+
+
+def test_rounded_share_still_holds_one_full_request():
+    """vLLM's cache is ceil(total * utilization) - the rest; rounding must not cut below a request."""
+    import math
+    from kittenml.kittentts2.vllm.backend import _engine_bytes, fit_to_gpu, lm_memory
+
+    total = int(7.62 * GIB)
+    for free_mib in range(4800, 8000, 7):
+        try:
+            fitted, _ = fit_to_gpu({}, free_mib << 20, total, _LM)
+        except RuntimeError:
+            continue
+        weights, kv_token = lm_memory(_LM, fitted.get("quantization"))
+        fixed = _engine_bytes(weights, fitted.get("max_num_batched_tokens", 8192))
+        cache = math.ceil(total * fitted["gpu_memory_utilization"]) - fixed
+        assert cache >= (fitted.get("max_model_len", 4096) + 32) * kv_token, free_mib
+
+
+def test_fit_never_picks_4bit_on_amd_or_when_the_environment_refuses_it(monkeypatch):
+    from kittenml.kittentts2.vllm.backend import VLLMBackend
+
+    small = (int(7.39 * GIB), int(7.62 * GIB))
+    with mock.patch("kittenml.kittentts2.vllm.backend._free_gpu_memory", return_value=small):
+        assert VLLMBackend._fit({}, _LM)[0]["quantization"] == "w4a16"
+        # An AMD GPU without the checked RDNA 4-bit kernel (Radeon RX 7000/9000 have it,
+        # tests/test_vllm_rocm.py).
+        with mock.patch("torch.version.hip", "6.3"), \
+             mock.patch("torch.cuda.get_device_properties",
+                        return_value=SimpleNamespace(gcnArchName="gfx942:sramecc+:xnack-")):
+            fitted, report = VLLMBackend._fit({}, _LM)
+        assert report["fitted"] and "quantization" not in fitted
+        monkeypatch.setenv("VLLM_MARLIN_USE_ATOMIC_ADD", "1")
+        fitted, report = VLLMBackend._fit({}, _LM)
+        assert report["fitted"] and "quantization" not in fitted
+        # A model that is not 16-bit is left alone (the byte counts assume 2-byte weights).
+        assert VLLMBackend._fit({}, _LM, half=False) == ({}, {"fitted": False,
+                                                              "skipped": "not a 16-bit model"})
+
+
+def test_fit_warnings_label_the_fallback_and_say_when_nothing_was_changed(caplog):
+    from kittenml.kittentts2.vllm.backend import VLLMBackend
+
+    with mock.patch("kittenml.kittentts2.vllm.backend._free_gpu_memory",
+                    return_value=(int(7.39 * GIB), int(7.62 * GIB))), caplog.at_level("WARNING"):
+        VLLMBackend._fit({}, _LM)
+    assert "supported, but not the optimal path" in caplog.text
+    assert "16,512 tokens (4 full-length requests at a time)" in caplog.text
+    caplog.clear()
+    with mock.patch("kittenml.kittentts2.vllm.backend._free_gpu_memory",
+                    return_value=(5691 << 20, 5798 << 20)), caplog.at_level("WARNING"):
+        VLLMBackend._fit({}, _LM)
+    assert "(1 full-length request at a time)" in caplog.text
+    caplog.clear()
+    with mock.patch("kittenml.kittentts2.vllm.backend._free_gpu_memory",
+                    return_value=(int(30.8 * GIB), int(31.4 * GIB))), caplog.at_level("WARNING"):
+        fitted, _ = VLLMBackend._fit({"gpu_memory_utilization": 0.9}, _LM)
+    assert fitted == {"gpu_memory_utilization": 0.9}
+    assert "nothing was changed" in caplog.text and "left for audio decoding" in caplog.text
+    caplog.clear()
+    with mock.patch("kittenml.kittentts2.vllm.backend._free_gpu_memory",
+                    return_value=(int(30.8 * GIB), int(31.4 * GIB))), caplog.at_level("WARNING"):
+        VLLMBackend._fit({}, _LM)
+    assert caplog.text == ""
+
+
+def test_backend_passes_the_unchanged_defaults_on_a_large_gpu_and_fitted_ones_on_a_small_one(
+        tmp_path):
+    pytest.importorskip("vllm")
+    from kittenml.kittentts2.vllm.backend import VLLMBackend
+
+    def run(free, total, options=None):
+        seen = {}
+        owner = SimpleNamespace(device="cuda", repo_dir=tmp_path, config={}, weights="packed",
+                                token_map=None, _load_lm_weights=mock.Mock(return_value={
+                                    "model.embed_tokens.weight": torch.zeros(2, 4)}))
+        with mock.patch("kittenml.kittentts2.vllm.backend.validate_environment"), \
+             mock.patch("kittenml.kittentts2.vllm.backend._free_gpu_memory",
+                        return_value=(free, total)), \
+             mock.patch("transformers.AutoConfig.from_pretrained",
+                        return_value=SimpleNamespace(model_type="qwen3", **vars(_LM))), \
+             mock.patch("transformers.AutoTokenizer.from_pretrained"), \
+             mock.patch("kittenml.kittentts2.speaker.load_speaker_head"), \
+             mock.patch("vllm.LLM", side_effect=lambda **kw: seen.update(kw)):
+            backend = VLLMBackend(owner, options)
+        return backend, seen
+
+    backend, large = run(int(30.8 * GIB), int(31.4 * GIB))
+    _, explicit = run(int(30.8 * GIB), int(31.4 * GIB), {"gpu_memory_utilization": 0.5,
+                                                          "max_model_len": 4096})
+    assert large == explicit and backend.auto_fit["fitted"] is False
+    assert {"quantization", "max_num_batched_tokens", "kv_cache_memory_bytes"}.isdisjoint(large)
+    assert large["gpu_memory_utilization"] == 0.5 and large["max_model_len"] == 4096
+    backend, small = run(int(7.39 * GIB), int(7.62 * GIB))
+    assert backend.auto_fit["fitted"] and small["quantization"] == "compressed-tensors"
+    assert "max_num_batched_tokens" not in small and small["gpu_memory_utilization"] < 0.5
+    _, smaller = run(int(5.25 * GIB), int(7.62 * GIB))
+    assert smaller["max_num_batched_tokens"] == 2048
+    assert small["model_loader_extra_config"]["quantization"] == "w4a16"
+
+
+def test_a_torchcodec_that_cannot_load_is_refused_with_what_to_do():
+    import sys
+    import types
+    from kittenml.kittentts2.vllm.backend import check_torchcodec
+
+    class Broken(types.ModuleType):
+        def __init__(self, error):
+            super().__init__("torchcodec.decoders")
+            self.error = error
+
+        def __getattr__(self, name):
+            raise self.error
+
+    def run(error):
+        modules = {"torchcodec": types.ModuleType("torchcodec"),
+                   "torchcodec.decoders": Broken(error)}
+        with mock.patch("kittenml.kittentts2.vllm.backend.importlib.util.find_spec",
+                        return_value=object()), mock.patch.dict(sys.modules, modules):
+            check_torchcodec()
+
+    # What vLLM copes with passes: no FFmpeg (RuntimeError), an incomplete install.
+    run(RuntimeError("Could not load libtorchcodec. Likely causes: FFmpeg is not installed"))
+    run(ImportError("cannot import name AudioDecoder"))
+    # A build for another CUDA version, with FFmpeg present, raises OSError: refused.
+    with pytest.raises(RuntimeError, match=r"torchcodec is installed but cannot load \(Could "
+                                           r"not load this library.*pip uninstall torchcodec"):
+        run(OSError("Could not load this library: .../libtorchcodec_core6.so\nmore detail"))
+    # Not installed: nothing to check.
+    with mock.patch("kittenml.kittentts2.vllm.backend.importlib.util.find_spec",
+                    return_value=None):
+        check_torchcodec()
+
+
+def test_engine_is_stopped_at_exit_before_multiprocessing_waits_for_it():
+    import weakref
+    from kittenml.kittentts2.vllm.backend import _stop_engine
+
+    class Backend:               # VLLMBackend stand-in; SimpleNamespace takes no weak references
+        pass
+
+    calls = []
+    backend = Backend()
+    backend.engine = SimpleNamespace(llm_engine=SimpleNamespace(
+        engine_core=SimpleNamespace(shutdown=lambda: calls.append("shutdown"))))
+    ref = weakref.ref(backend)
+    _stop_engine(ref)
+    assert calls == ["shutdown"]
+
+    def refuse():
+        raise RuntimeError("already stopped")
+    backend.engine.llm_engine.engine_core.shutdown = refuse
+    _stop_engine(ref)          # errors at exit are swallowed
+    del backend
+    _stop_engine(ref)          # a backend already collected is skipped
+
+
+def test_backend_registers_the_engine_stop_at_exit(tmp_path):
+    pytest.importorskip("vllm")
+    import weakref
+    from kittenml.kittentts2.vllm.backend import VLLMBackend, _stop_engine
+
+    owner = SimpleNamespace(device="cuda", repo_dir=tmp_path, config={}, weights="packed",
+                            token_map=None, _load_lm_weights=mock.Mock(return_value={
+                                "model.embed_tokens.weight": torch.zeros(2, 4)}))
+    with mock.patch("kittenml.kittentts2.vllm.backend.validate_environment"), \
+         mock.patch("torch.cuda.get_device_capability", return_value=(8, 6)), \
+         mock.patch("transformers.AutoConfig.from_pretrained", return_value=SimpleNamespace(
+             model_type="qwen3", hidden_size=4)), \
+         mock.patch("transformers.AutoTokenizer.from_pretrained"), \
+         mock.patch("kittenml.kittentts2.speaker.load_speaker_head"), \
+         mock.patch("vllm.LLM", return_value=mock.sentinel.engine), \
+         mock.patch("kittenml.kittentts2.vllm.backend.atexit") as fake_atexit:
+        backend = VLLMBackend(owner)
+    # Registered once, after the engine exists, with a weak reference so the
+    # handler does not keep the backend (and its engine) alive.
+    fake_atexit.register.assert_called_once()
+    handler, ref = fake_atexit.register.call_args.args
+    assert handler is _stop_engine
+    assert isinstance(ref, weakref.ref) and ref() is backend
+    assert backend.engine is mock.sentinel.engine
