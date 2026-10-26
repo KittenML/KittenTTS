@@ -65,10 +65,9 @@ extend them if you want more tags protected.
 
 ## Built-in voices
 
-Forty-seven voices, listed by `model.available_voices`: thirty-eight English, plus nine named
-after the [languages](#languages) below. Bella, Jasper, Luna, Bruno, Rosie, Hugo, Kiki and Leo
-are the same speakers as in KittenTTS 0.8, so code written against the ONNX models keeps
-working.
+`model.available_voices` lists all 115 voices. The original 47 are listed below and under
+[Languages](#languages). Bella, Jasper, Luna, Bruno, Rosie, Hugo, Kiki and Leo are the same
+speakers as in KittenTTS 0.8, so code written against the ONNX models keeps working.
 
 | Voice | Character | | Voice | Character |
 |---|---|---|---|---|
@@ -98,9 +97,7 @@ transcript: both go into the prompt, which is why cloning a new voice wants a tr
 
 ## Languages
 
-The model is multilingual. Its SFT mix is about 10% non-English across nine languages, and a
-Hindi voice was added on top, giving ten in total. Each ships as one built-in voice, named
-after its language:
+The model supports 20 languages. These built-in voices are named after their language:
 
 | Voice | Language | Voice | Language |
 |---|---|---|---|
@@ -125,7 +122,7 @@ oversight — the upstream demo carries the same caveat.
 
 One reference clip per language is a modest base, so expect these to be less robust than the
 English voices, and quality to vary by language. Measured by transcribing generated audio back
-with Whisper, all ten reproduce their prompt: German, Spanish, French, Italian, Portuguese,
+with Whisper, the original ten reproduce their prompt: German, Spanish, French, Italian, Portuguese,
 Russian and Chinese came back verbatim; Arabic and Hindi came back with small errors.
 
 ## Getting more expressive output

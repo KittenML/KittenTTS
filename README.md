@@ -48,7 +48,7 @@ The library also ships our existing [**lightweight V0.8 models**](docs/onnx-mode
 ## Features
 
 - **Voice cloning** -- Clone any speaker from 5-30 seconds of audio, no fine-tuning
-- **47 built-in voices** -- Including the eight from KittenTTS 0.8 and nine non-English
+- **115 built-in voices** -- Including the eight from KittenTTS 0.8
 - **Multilingual** -- 20 languages: English, Arabic, Chinese, French, German, Hindi, Italian, Portuguese, Russian, Spanish, Japanese, Korean, Turkish, Dutch, Swedish, Danish, Finnish, Swahili, Greek, Hebrew
 - **Expression control** -- `[emotion]` tags, inline `<event>` tags, and `(((emphasis)))` spans
 - **Decoding presets** -- Trade stability against expressiveness per request
@@ -69,7 +69,7 @@ The library also ships our existing [**lightweight V0.8 models**](docs/onnx-mode
 
 | Model | Parameters | Size | Voices | Download |
 |---|---|---|---|---|
-| kitten-tts-2 | 1.7B | 506 MiB | 47 + cloning | [KittenML/kitten-tts-2](https://huggingface.co/KittenML/kitten-tts-2) |
+| kitten-tts-2 | 1.7B | 492 MB | 115 + cloning | [KittenML/kitten-tts-2](https://huggingface.co/KittenML/kitten-tts-2) |
 
 **Lightweight ONNX** -- runs on CPU, no GPU required:
 
@@ -103,9 +103,9 @@ Or run the Gradio demo locally: `pip install kittenml gradio`, then `python grad
 
 ### Prerequisites
 
-- Python 3.9 or later
+- Python 3.10 or later
 - A CUDA GPU with roughly 8 GB free, or a CPU with about 6 GB of RAM
-- About 1 GB of disk space for the model, or 506 MiB with the smaller weights
+- About 2 GB of disk space for the model and audio decoder, plus Python dependencies
 
 ### Installation
 
@@ -113,10 +113,12 @@ Or run the Gradio demo locally: `pip install kittenml gradio`, then `python grad
 pip install kittenml
 ```
 
-That is the whole install. KittenTTS 2 is the default model, voice cloning is included, and no
-Hugging Face login is needed -- every weight the model uses ships in its own repository. It also
-pulls the small ONNX runtime, so the [lightweight models](docs/onnx-models.md) work from the
-same install.
+For NVIDIA GPU support, use a [PyTorch CUDA build](https://pytorch.org/get-started/locally/)
+compatible with your driver. If PyTorch reports a missing Visual C++ runtime on Windows,
+install [Microsoft's runtime](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist).
+
+Voice cloning is included, and no Hugging Face login is needed. It also pulls the small ONNX
+runtime, so the [lightweight models](docs/onnx-models.md) work from the same install.
 
 ### Basic usage
 
@@ -132,12 +134,12 @@ sf.write("output.wav", audio, m.sample_rate)
 ```
 > To run Kitten-TTS 2 on a CPU, please refer to  [Running on CPU](#running-on-cpu)
 
-`m.available_voices` lists all 47 built-in voices, described in
+`m.available_voices` lists all 115 built-in voices, described in
 [voices and expression](docs/voices-and-expression.md). Bella, Jasper, Luna, Bruno, Rosie, Hugo,
 Kiki and Leo are the same speakers as in KittenTTS 0.8, so code written against the ONNX models
 keeps working.
 
-The weights come in two sizes. The default is 947 MiB and lossless; `weights="emb4"` is 506 MiB
+The weights come in two sizes. The default is 954 MB and lossless; `weights="emb4"` is 492 MB
 because it quantises the token embedding, which costs a little quality. Only the one you ask for
 is downloaded.
 
@@ -234,16 +236,15 @@ See the [MLX guide](docs/mlx.md) for benchmarks and the full details.
 
 ## Running with vLLM
 
-For GPU inference with vLLM on Linux and an NVIDIA CUDA GPU with compute capability
-8.0 or newer (Ampere or later, for bfloat16), install the optional backend. GPUs with compute
-capability 7.5 can use a float16 fallback that is supported but not the optimal path
-([vLLM guide](docs/vllm.md#older-gpus-compute-capability-75)).
+For GPU inference on Linux or WSL2, install the optional backend. The NVIDIA install below
+requires driver 580 or newer, a C compiler and Python development headers. For older drivers,
+AMD GPUs and hardware compatibility, see the [vLLM guide](docs/vllm.md).
 
 ```bash
 pip install "kittenml[vllm]"
 ```
 
-Select `backend="vllm"`:
+Save this as `vllm_hello.py` and run `python vllm_hello.py`:
 
 ```python
 from kittenml import KittenTTS
@@ -251,19 +252,17 @@ from kittenml import KittenTTS
 def main():
     m = KittenTTS("KittenML/kitten-tts-2", backend="vllm",
                   vllm_options={"quantization": "w4a16"})
-    m.generate_to_file("Hello there.", "output.wav", voice="Bruno")
-    print("Saved output.wav")
+    m.generate_to_file("Hello there.", "vllm_output.wav", voice="Bruno")
+    print("Saved vllm_output.wav")
 
 if __name__ == "__main__":
     main()
 ```
 
-Keep the main guard when running a script: vLLM starts a worker process. The same
-voices, decoders, weight choices and generation arguments apply. The example
-uses 4-bit language-model weights (`"quantization": "w4a16"`): the same weights, exactly, in about
-2 GB less GPU memory, and faster for single requests. Leave out `vllm_options` to run in bf16; see
-[4-bit weights](docs/vllm.md#4-bit-weights). See the
-[vLLM guide](docs/vllm.md) for memory settings and benchmarks.
+Keep the main guard: vLLM starts a worker process. The first start downloads weights and compiles
+kernels. The example uses [4-bit weights](docs/vllm.md#4-bit-weights); settings adjust automatically
+on [small GPUs](docs/vllm.md#small-gpus). See the [vLLM guide](docs/vllm.md) for options and
+[benchmarks](docs/vllm.md#benchmarks) for performance.
 
 
 ## Long text and streaming
@@ -283,9 +282,7 @@ for chunk in m.generate_stream(long_text, voice="Luna"):
 It takes the same arguments as `generate`, so `reference=` streams a cloned voice too.
 
 Streaming is **chunk-level, not token-level**: a chunk is generated and vocoded in full before it
-is yielded, so the first chunk still costs its own generation time. On an A100, a 936-character
-passage yielded its first 21 s of audio after 17 s and finished 54 s of audio in 42 s of wall
-clock -- so playback keeps ahead of generation, but there is a real initial delay.
+is yielded, so the first chunk still costs its own generation time.
 
 Two consequences worth knowing:
 
@@ -302,7 +299,7 @@ Two consequences worth knowing:
 | | |
 |---|---|
 | [API reference](docs/api.md) | Every argument to `generate`, streaming, and the advanced knobs |
-| [Voices and expression](docs/voices-and-expression.md) | The 47 voices, emotion and vocal-event tags, the ten languages |
+| [Voices and expression](docs/voices-and-expression.md) | The built-in voices, languages, emotion and vocal-event tags |
 | [Decoders](docs/decoders.md) | How audio is decoded, and the smaller quantised decoders |
 | [Text normalization](docs/text-normalization.md) | How written text becomes spoken text |
 | [Architecture](docs/architecture.md) | What the model is, package layout, vendored components |
@@ -315,7 +312,7 @@ Two consequences worth knowing:
 **KittenTTS 2**
 
 - **Operating system:** Linux, Windows or Mac
-- **Python:** 3.9 or later
+- **Python:** 3.10 or later
 
 
 A virtual environment (conda, venv, or similar) is recommended to avoid dependency conflicts.
