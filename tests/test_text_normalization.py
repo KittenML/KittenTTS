@@ -61,6 +61,19 @@ class TextNormalizationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             normalize_text("Bonjour 2026", locale="fr-FR")
 
+    def test_currency_unit_stays_singular_for_one_dollar_amounts(self):
+        cases = {
+            "It cost $1.00 exactly.": "It cost one dollar exactly.",
+            "The ticket is $1.50.": "The ticket is one dollar and fifty cents.",
+            "£1.99 each": "one pound and ninety-nine cents each",
+            "It was $1.01 in total.": "It was one dollar and one cent in total.",
+            "He paid $10.00.": "He paid ten dollars.",
+            "$0.50 left": "zero dollars and fifty cents left",
+        }
+        for raw, expected in cases.items():
+            with self.subTest(raw=raw):
+                self.assertEqual(normalize_text(raw), expected)
+
 
 if __name__ == "__main__":
     unittest.main()
