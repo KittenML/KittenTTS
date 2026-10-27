@@ -66,7 +66,7 @@ class KittenTTS(KittenTTSOnnx):
     def __new__(cls, model_name="KittenML/kitten-tts-nano-0.8", cache_dir=None,
                 backend=None, device=None, hf_token=None, decoder=None, weights=None,
                 vllm_options=None, mlx_options=None):
-        local_dir, repo_id, config = resolve_repo(model_name, cache_dir)
+        local_dir, repo_id, config = resolve_repo(model_name, cache_dir, hf_token=hf_token)
         model_type = config.get("type")
 
         if model_type == KITTEN2_TYPE:
