@@ -3914,7 +3914,7 @@ class S3Token2Mel(torch.nn.Module):
 
     TODO: make these modules configurable?
     """
-    def __init__(self, meanflow=False):
+    def __init__(self, meanflow=False, flow=True):
         super().__init__()
         self.tokenizer = S3Tokenizer("speech_tokenizer_v2_25hz")
         self.mel_extractor = mel_spectrogram # TODO: make it a torch module?
@@ -3924,6 +3924,13 @@ class S3Token2Mel(torch.nn.Module):
             memory_efficient=False,
         )
         self.meanflow = meanflow
+        self.resamplers = {}
+        # KittenTTS: flow=False leaves out the token-to-mel flow, for a caller that
+        # decodes with a replacement flow and only needs the tokenizer, speaker
+        # encoder and (in S3Token2Wav) the vocoder from here.
+        if not flow:
+            self.flow = None
+            return
 
         encoder = UpsampleConformerEncoder(
             output_size=512,
@@ -3967,8 +3974,6 @@ class S3Token2Mel(torch.nn.Module):
             decoder=decoder
         )
 
-        self.resamplers = {}
-
     @property
     def device(self):
         params = self.tokenizer.parameters()
@@ -3976,7 +3981,9 @@ class S3Token2Mel(torch.nn.Module):
 
     @property
     def dtype(self):
-        params = self.flow.parameters()
+        # Without the flow (flow=False), the speaker encoder sets the dtype; both
+        # are float32 as loaded.
+        params = (self.flow if self.flow is not None else self.speaker_encoder).parameters()
         return next(params).dtype
 
     def embed_ref(
@@ -4101,8 +4108,8 @@ class S3Token2Wav(S3Token2Mel):
 
     ignore_state_dict_missing = ("tokenizer._mel_filters", "tokenizer.window")
 
-    def __init__(self, meanflow=False):
-        super().__init__(meanflow)
+    def __init__(self, meanflow=False, flow=True):
+        super().__init__(meanflow, flow=flow)
 
         f0_predictor = ConvRNNF0Predictor()
         self.mel2wav = HiFTGenerator(

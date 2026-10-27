@@ -1,6 +1,11 @@
-"""Opt-in float16 mode for GPUs without bfloat16 (compute capability 7.5).
+"""Rescaled float16 mode for GPUs without bfloat16.
 
-``vllm_options={"dtype": "float16"}`` is a fallback with a precision change:
+Finite weights that are not exactly representable are rounded once. Loading
+reports the number rounded and the largest absolute error, separately for the
+embedding, projections (or their 4-bit group scales), and other weights.
+Nonfinite values and float16 overflow remain errors.
+
+``vllm_options={"dtype": "float16"}`` brings a precision change:
 the language model was trained and is published in bfloat16, whose range
 float16 (largest value 65,504) does not have. Measured in bfloat16 over a
 multilingual, long-form and cloning corpus, the residual stream (the running
@@ -8,7 +13,7 @@ sum every layer adds to) reaches 69,376 after layer 9 and 3,957,760 at the
 final norm, and the MLP's inner activation (the ``down_proj`` input) reaches
 154,624. Run as is in float16 these overflow and the model emits no speech.
 
-The fix rescales the model exactly instead of changing what it computes:
+Before rounding, the rescaling preserves the model's real-valued equations:
 
 - Every read of the residual stream goes through an RMSNorm, and
   ``RMSNorm(c * x)`` with epsilon ``c**2 * eps`` equals ``RMSNorm(x)`` with
@@ -22,9 +27,9 @@ The fix rescales the model exactly instead of changing what it computes:
   inside the branch is scaled too: ``v_proj`` x ``2**-3`` and ``o_proj`` x
   ``2**-6`` (attention is linear in V), ``up_proj`` x ``2**-5`` and
   ``down_proj`` x ``2**-4`` (silu(gate) * up is linear in up). Multiplying by
-  a power of two only changes the exponent, and every scaled weight of the
-  published checkpoint is still exactly representable in float16 (checked at
-  load time; the loader refuses otherwise).
+  a power of two only changes the exponent, but small scaled values can enter
+  float16's subnormal range and lose precision. The loader permits and measures
+  this rounding instead of rejecting the whole checkpoint.
 - The output head shares the embedding matrix in the checkpoint. It is
   untied here and keeps the unscaled values, so the logits are not scaled
   either (the final norm already removes the stream's scale).
@@ -32,9 +37,9 @@ The fix rescales the model exactly instead of changing what it computes:
 What does change is float16 rounding: activations and weights are stored
 with float16's precision instead of bfloat16's, and the scaled embedding
 (``2**-9`` of values around 0.03) partly falls into float16's subnormal
-range, where 1.35% of its elements are rounded (worst error 4.6e-4 of a
-token's RMS, a quarter of bfloat16's own rounding step). The untied head
-costs one extra copy of the embedding (158,241 x 2,048, 618 MiB).
+range. The loader reports this rounding separately from the projections and
+the unscaled output head. The untied head costs one extra copy of the embedding
+(158,241 x 2,048, 618 MiB).
 
 The scales were chosen from those measurements: ``2**-9`` leaves 8.5x
 headroom below 65,504 at the largest value seen, and the MLP's inner
@@ -44,6 +49,7 @@ checkpoint; another checkpoint needs new measurements.
 This module does not import vLLM, so it can be tested on any machine.
 """
 
+import logging
 import re
 
 import torch
@@ -69,7 +75,7 @@ _RESIDUAL_NORM = re.compile(
 _SCALED = re.compile(r"^model\.layers\.\d+\.(self_attn\.(?:v|o)_proj|mlp\.(?:up|down)_proj)"
                      r"\.(weight|weight_scale)$")
 # Every projection weight (dense) or W4A16 group scale: converted to float16
-# here, so a lossy conversion is refused rather than left to vLLM's copy.
+# here, so rounding and overflow are measured before vLLM's copy.
 _PROJECTION = re.compile(r"^model\.layers\.\d+\.(?:self_attn\.(?:q|k|v|o)_proj|"
                          r"mlp\.(?:gate|up|down)_proj)\.(?:weight|weight_scale)$")
 
@@ -120,12 +126,20 @@ def is_exact(tensor, shift):
     return _scaled_and_exact(tensor, shift)[1]
 
 
-def exact(name, tensor, shift):
-    """`scaled`, refusing a weight float16 cannot hold exactly at this scale."""
-    result, ok = _scaled_and_exact(tensor, shift)
-    if not ok:
-        raise ValueError(f"{name} x 2^-{shift} is not exact in float16; the float16 rescale "
-                         "was measured for the published checkpoint and does not fit this one")
+def rounded(name, tensor, shift, report, group):
+    """Round once, rejecting nonfinite values and accumulating conversion errors."""
+    target = tensor.to(torch.float32) * 2.0 ** -shift
+    result = target.to(torch.float16)
+    if not torch.isfinite(result).all():
+        raise ValueError(f"{name} x 2^-{shift} has nonfinite values or overflows float16")
+    error = (result.to(torch.float32) - target).abs()
+    stats = report.setdefault(group, dict(elements=0, rounded=0, max_absolute_error=0.0,
+                                         worst_tensor=None))
+    stats["elements"] += tensor.numel()
+    stats["rounded"] += int(torch.count_nonzero(error))
+    worst = float(error.max()) if error.numel() else 0.0
+    if worst > stats["max_absolute_error"]:
+        stats.update(max_absolute_error=worst, worst_tensor=name)
     return result
 
 
@@ -134,27 +148,34 @@ def scale_embedding(weight):
     return scaled(weight, RESIDUAL_SHIFT)
 
 
-def rescale_weights(weights):
+def rescale_weights(weights, report=None):
     """Rescale (name, tensor) pairs, dense or W4A16, for the float16 engine.
 
     - ``model.embed_tokens.weight`` becomes the scaled embedding, and an
       unscaled float16 copy is added as ``lm_head.weight`` (the untied head);
     - every projection weight (dense) or W4A16 group scale becomes float16,
-      with its shift for v/o/up/down, and must be exact;
+      with its shift for v/o/up/down, permitting finite rounding;
     - everything else (norm weights, W4A16 codes and shapes) passes through
       unchanged, and vLLM converts floating-point tensors to float16 itself.
     """
+    report = {} if report is None else report
     for name, tensor in weights:
         if name == LM_HEAD:
             raise ValueError("the float16 rescale expects a checkpoint whose output head is "
                              "tied to the embedding, not a separate lm_head.weight")
         if name == EMBEDDING:
-            yield name, scale_embedding(tensor)
-            yield LM_HEAD, tensor.to(torch.float16)
+            yield name, rounded(name, tensor, RESIDUAL_SHIFT, report, "embedding")
+            yield LM_HEAD, rounded(LM_HEAD, tensor, 0, report, "output_head")
         elif _PROJECTION.match(name):
-            yield name, exact(name, tensor, shift_of(name))
+            yield name, rounded(name, tensor, shift_of(name), report, "projections")
         else:
+            if tensor.is_floating_point():
+                # Preserve the loader interface: vLLM still converts these tensors.
+                rounded(name, tensor, 0, report, "other")
             yield name, tensor
+    # Use vLLM's configured logger so VLLM_LOGGING_LEVEL=INFO also exposes this
+    # diagnostic in its spawned worker. No vLLM import is needed for unit tests.
+    logging.getLogger("vllm.kittenml").info("float16 weight conversion: %s", report)
 
 
 class ScaledSpeakerHead(torch.nn.Module):

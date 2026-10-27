@@ -3,7 +3,7 @@
     pip install kittenml gradio
     python gradio_demo.py                       # then open http://localhost:7860
     python gradio_demo.py --share               # also print a public link
-    python gradio_demo.py --backend vllm        # NVIDIA GPU, needs pip install "kittenml[vllm]"
+    python gradio_demo.py --backend vllm        # GPU, after the README's vLLM install
 
 All of the speech side goes through the `kittenml` package. This file only builds
 the interface: built-in voices, cloning from an uploaded or recorded clip, the

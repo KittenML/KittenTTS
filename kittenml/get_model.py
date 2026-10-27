@@ -72,8 +72,10 @@ class KittenTTS(KittenTTSOnnx):
         if model_type == KITTEN2_TYPE:
             from .kittentts2 import KittenTTS2
             if backend == "vllm":
-                from .kittentts2.vllm.backend import check_options, validate_environment
-                validate_environment(device, dict(vllm_options or {}).get("dtype"))
+                from .kittentts2.vllm.backend import (check_options, options_for_gpu,
+                                                     validate_environment)
+                capability = validate_environment(device, dict(vllm_options or {}).get("dtype"))
+                vllm_options = options_for_gpu(vllm_options, capability)
                 # Before the download: an unsupported GPU or a misspelled option
                 # should not cost gigabytes.
                 check_options(vllm_options, weights or config.get("default_weights", "packed"))

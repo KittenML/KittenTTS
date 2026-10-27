@@ -1,5 +1,7 @@
 """vLLM plugin: selected KittenTTS weights, without an intermediate export."""
 
+import logging
+
 from vllm.model_executor.model_loader.base_loader import BaseModelLoader
 
 from ..weights import iter_lm_weights
@@ -10,16 +12,28 @@ class KittenModelLoader(BaseModelLoader):
         # KittenTTS resolves the selected files before constructing the engine.
         pass
 
+    def load_model(self, vllm_config, model_config, prefix=""):
+        model = super().load_model(vllm_config, model_config, prefix=prefix)
+        # AMD GPUs: check the 4-bit kernel on the weights as it repacked them (rocm.py).
+        references = getattr(self, "_probe_references", None)
+        self._probe_references = None
+        if references:
+            from .rocm import probe_w4a16
+            report = probe_w4a16(model, references, model_config.dtype)
+            logging.getLogger("vllm.kittenml").info("W4A16 kernel check passed: %s", report)
+        return model
+
     def load_weights(self, model, model_config):
         options = self.load_config.model_loader_extra_config
         quantization = options.get("quantization")
-        # The opt-in float16 fallback for GPUs without bfloat16 (fp16.py).
+        # Rescaled float16: finite rounding is measured; overflow remains an error.
         float16 = options.get("float16_rescale", False)
         if float16:
             _check_float16_model(model, model_config)
+        probe = False
         if quantization == "w4a16":
             # vLLM chose each layer's kernel when it built the model; check before loading.
-            _check_w4a16_kernels(model, model_config, float16)
+            probe = _check_w4a16_kernels(model, model_config, float16)
             # Exact 4-bit weights straight from the trits, one tensor at a time.
             from .w4a16 import iter_w4a16
             weights = iter_w4a16(options["repo_dir"], options["config"], options["weights"])
@@ -32,6 +46,10 @@ class KittenModelLoader(BaseModelLoader):
         if float16:
             from .fp16 import rescale_weights
             weights = rescale_weights(weights)
+        if probe:
+            from .rocm import keep_references
+            self._probe_references = {}
+            weights = keep_references(weights, self._probe_references)
         loaded = model.load_weights(weights)
         missing = set(dict(model.named_parameters())) - loaded - _kv_cache_scale_names(model)
         if missing:
@@ -66,7 +84,7 @@ def _quantized_layers(model):
 
 
 def _check_w4a16_kernels(model, model_config, float16=False):
-    """Every quantized linear layer must run exact W4A16 on Marlin.
+    """Every quantized linear layer must run exact W4A16 on Marlin (NVIDIA).
 
     vLLM picks the mixed-precision kernel per GPU (Machete on Hopper, Marlin
     elsewhere, others when a kernel is disabled). Exact W4A16 was verified with
@@ -74,9 +92,15 @@ def _check_w4a16_kernels(model, model_config, float16=False):
     engine process: VLLM_MARLIN_INPUT_DTYPE keeps the Marlin kernel but quantizes
     its activations to 8 bits (W4A8), which shows in the kernel's activation type
     (in vLLM 0.31.0 that is the only way the setting acts).
+
+    On AMD GPUs (ROCm), where vLLM has no Marlin, the one allowed kernel is
+    rocm.W4A16_KERNEL; True is returned so the loader checks its results after
+    loading (rocm.probe_w4a16).
     """
     import torch
     from vllm.model_executor.kernels.linear import MarlinLinearKernel
+
+    from .rocm import W4A16_KERNEL as ROCM_KERNEL, is_rocm
 
     refuse = "W4A16: refusing to load: "
     # bfloat16, or float16 in the opt-in float16 mode (its group scales are rescaled).
@@ -91,12 +115,15 @@ def _check_w4a16_kernels(model, model_config, float16=False):
         activations.setdefault(str(act_type), []).append(name)
     if not chosen:
         raise RuntimeError("W4A16: vLLM created no quantized linear layers")
-    other = {kind: names for kind, names in chosen.items()
-             if kind != MarlinLinearKernel.__name__}
+    rocm = is_rocm()
+    allowed = ROCM_KERNEL if rocm else MarlinLinearKernel.__name__
+    other = {kind: names for kind, names in chosen.items() if kind != allowed}
     if other:
         layers = sum(map(len, other.values()))
+        where = (f"on AMD GPUs only with {ROCM_KERNEL} (Radeon RX 7000 and RX 9000 series)"
+                 if rocm else "only with MarlinLinearKernel")
         raise RuntimeError(f"W4A16: vLLM chose {sorted(other)} for {layers} linear layers, but "
-                           "exact W4A16 is verified only with MarlinLinearKernel (check "
+                           f"exact W4A16 is verified {where} (check "
                            "VLLM_DISABLED_KERNELS; with VLLM_ENABLE_V1_MULTIPROCESSING=0 vLLM "
                            "may still use the value from the first engine in this process)")
     wrong = {act: names for act, names in activations.items() if act != str(model_config.dtype)}
@@ -105,6 +132,7 @@ def _check_w4a16_kernels(model, model_config, float16=False):
         raise RuntimeError(refuse + f"{layers} linear layers would quantize their activations to "
                            f"{sorted(wrong)} instead of computing in {model_config.dtype} (check "
                            "VLLM_MARLIN_INPUT_DTYPE)")
+    return rocm
 
 
 def _kv_cache_scale_names(model):
