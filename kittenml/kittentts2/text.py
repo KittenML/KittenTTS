@@ -131,7 +131,7 @@ _NONTAG_BRACKET_SPAN = re.compile(r"\[([^\[\]\n]{1,400})\]|<([^<>\n]{1,60})>|\((
 _COMMA_COLLISION = re.compile(r",\s*([,.!?;:])")
 
 _TRAILING_NONTERMINAL = re.compile(r"[,;:\-\u2013\u2014]+\s*$")
-_ALREADY_TERMINATED = set('.!?"\u2019\u201d\')]')
+_ALREADY_TERMINATED = set('.!?।"\u2019\u201d\')]')
 
 # Em/en dashes -> commas. The checkpoint has little dash-delimited training data, and
 # nested em-dashes were the most reliable way to make a chunk run away in testing. A
@@ -277,8 +277,8 @@ CHUNK_CHARS = 380
 CHUNK_MIN_CHARS = 130
 CHUNK_GAP_S = 0.16
 
-_SENT_END = re.compile(r'(?<=[.!?])["’”\')\]]*\s+')
-_TERMINAL = '.!?,;:'
+_SENT_END = re.compile(r'(?<=[.!?।])["’”\')\]]*\s+')
+_TERMINAL = '.!?।,;:'
 
 
 def split_for_synthesis(text, max_chars=CHUNK_CHARS, min_chars=CHUNK_MIN_CHARS):
