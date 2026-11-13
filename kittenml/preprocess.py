@@ -177,7 +177,7 @@ _RE_RANGE    = re.compile(r"(?<!\w)(\d+)-(\d+)(?!\w)")
 _RE_MODEL_VER = re.compile(r"\b([a-zA-Z][a-zA-Z0-9]*)-(\d[\d.]*)(?=[^\d.]|$)")
 
 # Measurement units glued to numbers: 100km, 50kg, 25°C, 5GB
-_RE_UNIT     = re.compile(r"(\d+(?:\.\d+)?)\s*(km|kg|mg|ml|gb|mb|kb|tb|hz|khz|mhz|ghz|mph|kph|°[cCfF]|[cCfF]°|ms|ns|µs)\b",
+_RE_UNIT     = re.compile(r"(\d+(?:\.\d+)?)\s*(km|kg|mg|ml|gb|mb|kb|tb|hz|khz|mhz|ghz|mph|kph|°[cCfF]|[cCfF]°|ms|ns|µs|min|sec)\b",
                           re.IGNORECASE)
 
 # Scale suffixes (uppercase only to avoid ambiguity): 7B, 340M, 1.5K, 2T
@@ -416,6 +416,7 @@ def expand_units(text: str) -> str:
         "50kg"   → "fifty kilograms"
         "25°C"   → "twenty-five degrees Celsius"
         "5GB"    → "five gigabytes"
+        "30min"  → "thirty minutes"
     """
     _unit_map = {
         "km": "kilometers", "kg": "kilograms", "mg": "milligrams",
@@ -424,6 +425,7 @@ def expand_units(text: str) -> str:
         "hz": "hertz", "khz": "kilohertz", "mhz": "megahertz", "ghz": "gigahertz",
         "mph": "miles per hour", "kph": "kilometers per hour",
         "ms": "milliseconds", "ns": "nanoseconds", "µs": "microseconds",
+        "min": "minutes", "sec": "seconds",
         "°c": "degrees Celsius", "c°": "degrees Celsius",
         "°f": "degrees Fahrenheit", "f°": "degrees Fahrenheit",
     }
@@ -972,6 +974,7 @@ def normalize_text_result(
         (re.compile(r"\b(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\b", re.IGNORECASE), _replace_read_aloud_time, "time"),
         (_RE_CURRENCY, lambda m: expand_currency(m.group(0)), "currency"),
         (_RE_PERCENT, lambda m: expand_percentages(m.group(0)), "number"),
+        (_RE_UNIT, lambda m: expand_units(m.group(0)), "unit"),
         (_RE_ORDINAL, lambda m: _ordinal_suffix(int(m.group(1))), "ordinal"),
         (re.compile(r"\bet\s+al\.", re.IGNORECASE), lambda m: "et al", "citation"),
         (re.compile(r"\b(Dr|Prof|Mr|Mrs|Ms|Fig|Figs|pp|p|ch|sec)\.", re.IGNORECASE), lambda m: _COMMON_ABBREVIATIONS[m.group(1).lower()], "abbreviation"),
