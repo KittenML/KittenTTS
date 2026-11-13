@@ -61,6 +61,28 @@ class TextNormalizationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             normalize_text("Bonjour 2026", locale="fr-FR")
 
+    def test_bare_time_does_not_eat_following_space(self):
+        cases = {
+            "We leave at 10:00 in the morning.": "We leave at ten in the morning.",
+            "The train leaves at 14:30 on platform 2.": "The train leaves at fourteen thirty on platform two.",
+            "I woke up at 6:15 and slept at 23:45.": "I woke up at six fifteen and slept at twenty-three forty-five.",
+        }
+        for raw, expected in cases.items():
+            with self.subTest(raw=raw):
+                self.assertEqual(normalize_text(raw), expected)
+
+    def test_attached_meridiem_suffix_still_expands(self):
+        cases = {
+            "We leave at 3:30pm.": "We leave at three thirty p m.",
+            "The call is at 12:00pm.": "The call is at twelve p m.",
+            "Lunch at 11:30am, dinner at 7:45pm.": "Lunch at eleven thirty a m, dinner at seven forty-five p m.",
+            "Dr. Rivera paid $12.50 at 3:05p.m.": "Doctor Rivera paid twelve dollars and fifty cents at three oh five p m.",
+            "Standup at 9:30am.": "Standup at nine thirty a m.",
+        }
+        for raw, expected in cases.items():
+            with self.subTest(raw=raw):
+                self.assertEqual(normalize_text(raw), expected)
+
 
 if __name__ == "__main__":
     unittest.main()
