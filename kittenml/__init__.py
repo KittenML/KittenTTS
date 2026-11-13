@@ -14,6 +14,7 @@ __all__ = [
     "KittenTTS",
     "KittenTTS2",
     "KittenTTSOnnx",
+    "KittenTTS2Tiny",
     "normalize_text",
     "normalize_text_result",
     "NormalizedSpan",
@@ -32,6 +33,10 @@ def __getattr__(name):
         from kittenml.kittentts2 import KittenTTS2
 
         return KittenTTS2
+    if name == "KittenTTS2Tiny":
+        from kittenml.kittentts2_tiny import KittenTTS2Tiny
+
+        return KittenTTS2Tiny
     # Likewise the ONNX backend, which needs espeak and phonemizer.
     if name == "KittenTTSOnnx":
         from kittenml.kittentts_legacy import KittenTTSOnnx

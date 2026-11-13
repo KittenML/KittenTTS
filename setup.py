@@ -49,7 +49,17 @@ setup(
         "espeakng_loader",
         "phonemizer",
         "onnxruntime",
+        # KittenTTS 2 nano / pico / mini text front end (misaki without extras: its [en] extra
+        # would pull phonemizer-fork, which installs over phonemizer)
+        "misaki>=0.9.4",
+        "spacy>=3.8",
+        "num2words",
     ],
+    extras_require={
+        # Japanese for kitten-tts-2-mini. unidic-lite, not misaki[ja]'s unidic, whose dictionary
+        # needs a separate 500 MB download before fugashi can open it.
+        "ja": ["fugashi", "unidic-lite", "pyopenjtalk", "jaconv", "mojimoji"],
+    },
     keywords="text-to-speech, tts, speech-synthesis, voice-cloning, neural-networks, onnx",
     project_urls={
         "Bug Reports": "https://github.com/KittenML/KittenTTS/issues",

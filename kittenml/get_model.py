@@ -1,15 +1,16 @@
-"""The shared entry point: one constructor, two model families.
+"""The shared entry point: one constructor, three model families.
 
 `KittenTTS(...)` reads the repository's config.json and builds whichever backend
-it declares — `kittentts2` for the KittenTTS 2 speech language model, `kittentts_legacy`
-for the ONNX models. Neither backend is imported until it is the one selected, so
+it declares — `kittentts2` for the KittenTTS 2 speech language model, `kittentts2_tiny`
+for the small KittenTTS 2 nano / pico / mini models (ONNX or PyTorch), `kittentts_legacy` for the
+0.8 ONNX models. Neither backend is imported until it is the one selected, so
 a KittenTTS 2 install never needs espeak and an ONNX install never needs torch.
 """
 
 from huggingface_hub import snapshot_download
 
 from .kittentts_legacy import KittenTTSOnnx, download_from_huggingface  # noqa: F401
-from .repo import KITTEN2_TYPE, ONNX_TYPES, resolve_repo
+from .repo import KITTEN2_TINY_TYPE, KITTEN2_TYPE, ONNX_TYPES, resolve_repo
 
 
 def _kitten2_files(config, decoder=None, weights=None):
@@ -57,6 +58,8 @@ class KittenTTS(KittenTTSOnnx):
     cloning, expression tags, decoding presets.
 
         m = KittenTTS("KittenML/kitten-tts-mini-0.8")   # ONNX, runs on CPU
+        m = KittenTTS("KittenML/kitten-tts-2-nano")     # KittenTTS 2 nano, 8 languages, ONNX on CPU
+        m = KittenTTS("KittenML/kitten-tts-2-nano", backend="torch")   # the same model in PyTorch
         m = KittenTTS("KittenML/kitten-tts-2")          # KittenTTS 2, GPU optional
         m = KittenTTS("KittenML/kitten-tts-2", backend="mlx")   # on an Apple-silicon Mac
 
@@ -96,10 +99,21 @@ class KittenTTS(KittenTTSOnnx):
                               backend=backend, vllm_options=vllm_options,
                               mlx_options=mlx_options)
 
+        if model_type == KITTEN2_TINY_TYPE:
+            if backend in ("vllm", "mlx") or vllm_options is not None or mlx_options is not None:
+                raise ValueError(f"the {backend or 'vLLM/MLX'} backend requires a KittenTTS 2 model")
+            from .kittentts2_tiny import KittenTTS2Tiny
+            instance = KittenTTS2Tiny.__new__(KittenTTS2Tiny)
+            instance._resolved = (local_dir, repo_id, config)
+            # Returning a different class means __init__ below is never called.
+            instance.__init__(model_name, cache_dir=cache_dir, backend=backend, device=device,
+                              hf_token=hf_token)
+            return instance
+
         if model_type not in ONNX_TYPES:
             raise ValueError(
                 f"Unsupported model type {model_type!r}; expected one of "
-                f"{[*ONNX_TYPES, KITTEN2_TYPE]}")
+                f"{[*ONNX_TYPES, KITTEN2_TINY_TYPE, KITTEN2_TYPE]}")
 
         if backend == "vllm" or vllm_options is not None:
             raise ValueError("the vLLM backend requires a KittenTTS 2 model")
