@@ -12,4 +12,5 @@ Fuller detail than the [project README](../README.md), which covers getting star
 | [docker.md](docker.md) | A basic OpenAI-compatible speech API, with voice cloning, in a container |
 | [text-normalization.md](text-normalization.md) | How written text becomes spoken text |
 | [architecture.md](architecture.md) | What the model is, package layout, vendored components |
+| [kitten-tts-2-tiny.md](kitten-tts-2-tiny.md) | KittenTTS 2 nano, pico and mini: small multilingual int8 ONNX models |
 | [onnx-models.md](onnx-models.md) | The lightweight CPU models and their API |

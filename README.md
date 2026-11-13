@@ -71,6 +71,20 @@ The library also ships our existing [**lightweight V0.8 models**](docs/onnx-mode
 |---|---|---|---|---|
 | kitten-tts-2 | 1.7B | 492 MB | 115 + cloning | [KittenML/kitten-tts-2](https://huggingface.co/KittenML/kitten-tts-2) |
 
+**KittenTTS 2 nano / pico / mini** -- small multilingual models: int8 ONNX for CPU, or the float32 weights in PyTorch ([docs](docs/kitten-tts-2-tiny.md)):
+
+| Model | Parameters | Size | Languages | Download |
+|---|---|---|---|---|
+| kitten-tts-2-mini | 82M | ~82 MB | 16 | [KittenML/kitten-tts-2-mini](https://huggingface.co/KittenML/kitten-tts-2-mini) |
+| kitten-tts-2-nano | 17M | 17 MB per language | 8 | [KittenML/kitten-tts-2-nano](https://huggingface.co/KittenML/kitten-tts-2-nano) |
+| kitten-tts-2-pico | 7M | 8 MB per language | 8 | [KittenML/kitten-tts-2-pico](https://huggingface.co/KittenML/kitten-tts-2-pico) |
+
+```python
+m = KittenTTS("KittenML/kitten-tts-2-nano")                    # ONNX, int8
+audio = m.generate("Guten Morgen.", voice="Paul")              # a German voice
+m = KittenTTS("KittenML/kitten-tts-2-nano", backend="torch")   # PyTorch, float32
+```
+
 **Lightweight ONNX** -- runs on CPU, no GPU required:
 
 | Model | Parameters | Size | Download |

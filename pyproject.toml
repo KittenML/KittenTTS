@@ -45,6 +45,11 @@ dependencies = [
     "espeakng_loader",
     "phonemizer",
     "onnxruntime",
+    # KittenTTS 2 nano / pico / mini text front end (misaki without extras: its [en] extra
+    # would pull phonemizer-fork, which installs over phonemizer)
+    "misaki>=0.9.4",
+    "spacy>=3.8",
+    "num2words",
 ]
 
 [project.urls]
@@ -54,6 +59,9 @@ Issues = "https://github.com/KittenML/KittenTTS/issues"
 
 [project.optional-dependencies]
 vllm = ["vllm==0.31.0; sys_platform == 'linux'"]
+# Japanese for kitten-tts-2-mini. unidic-lite, not misaki[ja]'s unidic, whose dictionary needs a
+# separate 500 MB download before fugashi can open it.
+ja = ["fugashi", "unidic-lite", "pyopenjtalk", "jaconv", "mojimoji"]
 mlx = ["mlx>=0.29.0; sys_platform == 'darwin' and platform_machine == 'arm64'"]
 
 [project.entry-points."vllm.general_plugins"]

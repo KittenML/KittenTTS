@@ -11,6 +11,7 @@ from huggingface_hub import hf_hub_download
 
 # config.json "type" values, and the backend each selects.
 ONNX_TYPES = ("ONNX1", "ONNX2")
+KITTEN2_TINY_TYPE = "KITTEN2_TINY"  # KittenTTS 2 nano / pico / mini (kittentts2_tiny)
 KITTEN2_TYPE = "KITTEN2"
 
 
