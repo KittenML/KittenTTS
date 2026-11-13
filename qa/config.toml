@@ -1,0 +1,106 @@
+# What the Platform QA workflow tests.
+#
+# Every job installs this checkout of kittenml on one GitHub-hosted runner and
+# Python version, runs the models listed for that platform, and reports to the PR.
+# Change platforms, Python versions, models or the sample text here — the
+# workflow reads this file at run time and needs no edits.
+
+[sample]
+# Spoken by every model. WER is measured against it.
+text = "Kitten TTS runs fully on your device and creates clear speech quickly. This benchmark compares every model for speed, quality, and consistency."
+voice = "Bruno"
+
+[limits]
+step_minutes = 10   # one test or transcription; stopped and reported past this
+install_minutes = 20  # pip install: on Linux it unpacks about 4 GB of CUDA libraries, at disk speeds that vary a lot
+job_minutes = 45    # a whole platform job; no new test starts near the end. A target can set timeout_minutes
+
+[report]
+slow_job_minutes = 30   # a platform job slower than this is flagged in the report
+
+[asr]
+# Each runner transcribes its own audio to measure word error rate.
+enabled = true
+model = "openai/whisper-small.en"
+fail_above = 0.50   # WER above this means the audio does not say the text
+
+# ── Models ─────────────────────────────────────────────────────────────────────
+# Every model gets a Speak test: load it and generate() the sample text. Each
+# check is one more README example. Every test runs in its own Python process
+# and is stopped at [limits] step_minutes. Known checks:
+#   stream, to_file                        (any model)
+#   speed                                  (ONNX models)
+#   expression, clone, clone_whisper, emb4 (KittenTTS 2)
+# warm_runs: generations after the first in the Speak test; RTF uses the fastest.
+
+[models.nano]
+repo = "KittenML/kitten-tts-nano-0.8"
+label = "Nano (fp32)"
+warm_runs = 3
+checks = ["stream", "speed", "to_file"]
+
+[models.nano-int8]
+repo = "KittenML/kitten-tts-nano-0.8-int8"
+label = "Nano (int8)"
+warm_runs = 3
+checks = []
+
+[models.micro]
+repo = "KittenML/kitten-tts-micro-0.8"
+label = "Micro"
+warm_runs = 3
+checks = []
+
+[models.mini]
+repo = "KittenML/kitten-tts-mini-0.8"
+label = "Mini"
+warm_runs = 3
+checks = []
+
+[models.tts2]
+repo = "KittenML/kitten-tts-2"
+label = "KittenTTS 2"
+warm_runs = 1
+checks = ["to_file", "stream", "expression", "clone", "clone_whisper", "emb4"]
+# weights = "emb4"   # the 506 MiB variant; default is the 947 MiB one
+
+# ── Platforms ──────────────────────────────────────────────────────────────────
+# Every platform runs every Python in [matrix]. Nothing here says what should
+# work: the report shows what does, and a pull request fails only when something
+# that works on main stops working.
+#
+# runner:    a GitHub-hosted runner label (its CPU is recorded in the report)
+# pythons:   this platform's own list instead of [matrix] pythons
+# models:    the models to run (all of them by default)
+# overrides: per-model settings for this platform only
+# text:      a different sample text for this platform
+# events:    run only for these triggers (pull_request, push, workflow_dispatch)
+# timeout_minutes: this platform's job limit instead of [limits] job_minutes
+
+[matrix]
+pythons = ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+
+[[target]]
+name = "Linux x64"
+runner = "ubuntu-24.04"            # AMD EPYC or Intel Xeon, 4 vCPU, 16 GB
+
+[[target]]
+name = "Linux ARM64"
+runner = "ubuntu-24.04-arm"        # Arm Neoverse, 4 vCPU, 16 GB
+
+[[target]]
+name = "Windows x64"
+runner = "windows-2025"            # AMD EPYC or Intel Xeon, 4 vCPU, 16 GB
+
+[[target]]
+name = "Windows ARM64"
+runner = "windows-11-arm"          # Arm Cobalt 100, 4 vCPU, 16 GB
+
+[[target]]
+name = "macOS Apple Silicon"
+runner = "macos-15"                # Apple M1, 3 vCPU, 7 GB
+timeout_minutes = 90               # KittenTTS 2 is slow on this runner
+
+[[target]]
+name = "macOS Intel"
+runner = "macos-15-intel"          # Intel Core i7, 4 vCPU, 14 GB
