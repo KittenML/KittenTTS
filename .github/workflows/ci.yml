@@ -74,13 +74,16 @@ jobs:
       - name: Unit tests
         run: python -m pytest -q tests
 
+      # The smoke test still runs when a unit test fails: its audio is the other half of the picture.
       - uses: actions/cache@v4
+        if: ${{ !cancelled() }}
         with:
           path: .hf-cache
           key: hf-light-${{ runner.os }}-${{ hashFiles('ci/smoke.py') }}
           restore-keys: hf-light-${{ runner.os }}-
 
       - name: Audio smoke test
+        if: ${{ !cancelled() }}
         run: python ci/smoke.py --suite light --out smoke-out
 
       - uses: actions/upload-artifact@v4
