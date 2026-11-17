@@ -6,7 +6,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, gh_testing]
   pull_request:
   workflow_dispatch:
     inputs:
