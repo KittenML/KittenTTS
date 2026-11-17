@@ -3,6 +3,10 @@ import espeakng_loader
 from phonemizer.backend.espeak.wrapper import EspeakWrapper
 EspeakWrapper.set_library(espeakng_loader.get_library_path())
 os.environ['ESPEAK_DATA_PATH'] = espeakng_loader.get_data_path()
+# phonemizer >= 3.4 hands espeak-ng its own data path, which defaults to the one compiled into
+# espeakng_loader's library (a build-machine path) and ignores ESPEAK_DATA_PATH.
+if hasattr(EspeakWrapper, "set_data_path"):
+    EspeakWrapper.set_data_path(espeakng_loader.get_data_path())
 import numpy as np
 import phonemizer
 import soundfile as sf

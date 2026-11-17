@@ -29,7 +29,7 @@ kitten-text-processing>=0.1.0
 
 # Lightweight ONNX models (kittenml/kittentts_legacy)
 espeakng_loader
-phonemizer
+phonemizer>=3.4
 onnxruntime
 
 # Optional language-model backends, neither installed by default:

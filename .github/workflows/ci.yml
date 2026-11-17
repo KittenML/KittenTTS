@@ -1,0 +1,167 @@
+name: CI
+
+# Unit tests and an end-to-end audio smoke test on Linux, Windows and macOS for every
+# supported Python, then one HTML page with every clip so a human can listen for
+# anything that sounds wrong. See ci/smoke.py for the cases and ci/report.py for the page.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      heavy:
+        description: Also run KittenTTS 2 (1.7B) on CPU
+        type: boolean
+        default: true
+  schedule:
+    # Weekly, to catch a new release of a dependency breaking a clean install.
+    - cron: "17 5 * * 1"
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: "1"                     # Windows consoles print the Hindi / Russian / Japanese case ids
+  PYTHONUNBUFFERED: "1"
+  UV_TORCH_BACKEND: cpu               # CPU wheels: the CUDA ones are gigabytes and no runner has a GPU
+  UV_SYSTEM_PYTHON: "1"
+  HF_HUB_DISABLE_PROGRESS_BARS: "1"
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}   # optional; avoids anonymous rate limits on the Hub
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    continue-on-error: ${{ matrix.python == '3.14' }}   # newest Python: reported, not yet required
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+    env:
+      HF_HOME: ${{ github.workspace }}/.hf-cache
+      CI_LABEL: ${{ matrix.os }}-py${{ matrix.python }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Build and install the wheel
+        run: |
+          uv build --wheel --out-dir dist
+          uv pip install "$(ls dist/*.whl)" pytest
+
+      - name: Install the Japanese extra (best effort)
+        continue-on-error: true
+        run: uv pip install fugashi unidic-lite pyopenjtalk jaconv mojimoji
+
+      - name: Import check
+        run: |
+          cd "$RUNNER_TEMP"
+          python -c "import kittenml; from kittenml import KittenTTS, KittenTTS2, KittenTTS2Tiny, KittenTTSOnnx; print(kittenml.__version__, kittenml.__file__)"
+
+      - name: Unit tests
+        run: python -m pytest -q tests
+
+      - uses: actions/cache@v4
+        with:
+          path: .hf-cache
+          key: hf-light-${{ runner.os }}-${{ hashFiles('ci/smoke.py') }}
+          restore-keys: hf-light-${{ runner.os }}-
+
+      - name: Audio smoke test
+        run: python ci/smoke.py --suite light --out smoke-out
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-light-${{ env.CI_LABEL }}
+          path: smoke-out
+          if-no-files-found: ignore
+          retention-days: 14
+
+  heavy:
+    # KittenTTS 2 is 1.7B parameters, ~10 s per sentence on a runner CPU, so one Python per OS.
+    name: kittentts2 (${{ matrix.os }}, py${{ matrix.python }})
+    if: github.event_name != 'workflow_dispatch' || inputs.heavy
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.12"]
+    env:
+      HF_HOME: ${{ github.workspace }}/.hf-cache
+      CI_LABEL: ${{ matrix.os }}-py${{ matrix.python }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Build and install the wheel
+        run: |
+          uv build --wheel --out-dir dist
+          uv pip install "$(ls dist/*.whl)"
+
+      - name: Install the MLX extra
+        if: runner.os == 'macOS'
+        continue-on-error: true
+        run: uv pip install "mlx>=0.29.0"
+
+      - uses: actions/cache@v4
+        with:
+          path: .hf-cache
+          key: hf-heavy-${{ runner.os }}-${{ hashFiles('ci/smoke.py') }}
+          restore-keys: hf-heavy-${{ runner.os }}-
+
+      - name: Audio smoke test, KittenTTS 2 on CPU
+        run: python ci/smoke.py --suite heavy --out smoke-out
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-heavy-${{ env.CI_LABEL }}
+          path: smoke-out
+          if-no-files-found: ignore
+          retention-days: 14
+
+  report:
+    name: listening report
+    needs: [test, heavy]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install soundfile numpy
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: smoke-*
+          path: smoke-results
+      - name: Build the report
+        run: python ci/report.py --inputs smoke-results --out audio-report --summary "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: audio-report
+          path: audio-report
+          retention-days: 30
