@@ -99,7 +99,7 @@ jobs:
     name: kittentts2 (${{ matrix.os }}, py${{ matrix.python }})
     if: github.event_name != 'workflow_dispatch' || inputs.heavy
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:

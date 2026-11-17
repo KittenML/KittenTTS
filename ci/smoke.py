@@ -248,13 +248,26 @@ def run_group(group, out):
 
     wav_dir = os.path.join(out, "wav")
     os.makedirs(wav_dir, exist_ok=True)
+    os.makedirs(os.path.join(out, "parts"), exist_ok=True)
+    part = os.path.join(out, "parts", f"{group.id}.json")
     results = []
+    # Use every CPU: PyTorch defaults to one thread per physical core, which is a single
+    # thread on a 2-vCPU runner and makes KittenTTS 2 take most of an hour.
+    try:
+        import torch
+        torch.set_num_threads(max(torch.get_num_threads(), os.cpu_count() or 1))
+    except Exception:
+        pass
 
     def record(case, **kw):
         r = dict(id=case.id, group=group.id, family=group.family, repo=group.repo, load=group.load,
                  gen=case.gen, mode=case.mode, text=case.text, note=case.note)
         r.update(kw)
         results.append(r)
+        # Written after every case, so a timeout or a native crash keeps what finished.
+        with open(part + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(results, f, ensure_ascii=False, indent=1)
+        os.replace(part + ".tmp", part)
         status = r["status"].upper()
         extra = "; ".join(r.get("errors", []) + r.get("warnings", [])) or r.get("reason", "")
         print(f"  [{status:7}] {case.id:32} {r.get('stats', {}).get('duration_s', ''):>7} {extra}", flush=True)
@@ -361,7 +374,7 @@ def main():
     ap.add_argument("--out", default="smoke-out")
     ap.add_argument("--suite", choices=["light", "heavy", "all"], default="light")
     ap.add_argument("--only", nargs="*", help="run only these group ids")
-    ap.add_argument("--group-timeout", type=float, default=2400,
+    ap.add_argument("--group-timeout", type=float, default=4500,
                     help="seconds before a model group is killed and its remaining cases failed")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--_group", help=argparse.SUPPRESS)
@@ -369,10 +382,7 @@ def main():
 
     by_id = {g.id: g for g in GROUPS}
     if args._group:                                  # child process
-        res = run_group(by_id[args._group], args.out)
-        os.makedirs(os.path.join(args.out, "parts"), exist_ok=True)
-        with open(os.path.join(args.out, "parts", f"{args._group}.json"), "w", encoding="utf-8") as f:
-            json.dump(res, f, ensure_ascii=False, indent=1)
+        run_group(by_id[args._group], args.out)
         return 0
 
     groups = [g for g in GROUPS if args.suite == "all" or g.suite == args.suite]
@@ -404,13 +414,14 @@ def main():
         if os.path.exists(part):
             with open(part, encoding="utf-8") as f:
                 results += json.load(f)
-        else:
-            # The child died without writing its results: a native crash or a hard exit.
-            msg = f"process {code} after {time.perf_counter() - t:.0f}s without reporting"
-            print(f"  [FAILED ] {g.id}: {msg}", flush=True)
-            done = {r["id"] for r in results}
-            for c in g.cases:
-                if c.id not in done:
+        done = {r["id"] for r in results}
+        missing = [c for c in g.cases if c.id not in done]
+        if missing:
+            # The child died before reaching these: a timeout, a native crash or a hard exit.
+            msg = f"process {code} after {time.perf_counter() - t:.0f}s, before this case finished"
+            print(f"  [FAILED ] {g.id}: {msg} ({len(missing)} cases)", flush=True)
+            for c in missing:
+                if True:
                     results.append(dict(id=c.id, group=g.id, family=g.family, repo=g.repo, load=g.load, gen=c.gen,
                                         mode=c.mode, text=c.text, note=c.note, status="failed", errors=[msg]))
 
