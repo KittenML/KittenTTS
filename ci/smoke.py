@@ -332,7 +332,8 @@ def run_group(group, out):
 
 def environment():
     info = dict(os=platform.system(), os_release=platform.release(), machine=platform.machine(),
-                python=platform.python_version(), runner=os.environ.get("CI_LABEL", ""))
+                python=platform.python_version(), runner=os.environ.get("CI_LABEL", ""),
+                cpus=os.cpu_count())
     for mod in ("kittenml", "torch", "onnxruntime", "numpy", "transformers", "phonemizer", "misaki",
                 "espeakng_loader", "spacy", "mlx"):
         try:
@@ -360,6 +361,8 @@ def main():
     ap.add_argument("--out", default="smoke-out")
     ap.add_argument("--suite", choices=["light", "heavy", "all"], default="light")
     ap.add_argument("--only", nargs="*", help="run only these group ids")
+    ap.add_argument("--group-timeout", type=float, default=2400,
+                    help="seconds before a model group is killed and its remaining cases failed")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--_group", help=argparse.SUPPRESS)
     args = ap.parse_args()
@@ -392,13 +395,18 @@ def main():
         if os.path.exists(part):
             os.remove(part)
         t = time.perf_counter()
-        proc = subprocess.run([sys.executable, os.path.abspath(__file__), "--out", args.out, "--_group", g.id])
+        try:
+            proc = subprocess.run([sys.executable, os.path.abspath(__file__), "--out", args.out, "--_group", g.id],
+                                  timeout=args.group_timeout)
+            code = f"exited with code {proc.returncode}"
+        except subprocess.TimeoutExpired:
+            code = f"was killed after the {args.group_timeout:.0f}s group timeout"
         if os.path.exists(part):
             with open(part, encoding="utf-8") as f:
                 results += json.load(f)
         else:
             # The child died without writing its results: a native crash or a hard exit.
-            msg = f"process exited with code {proc.returncode} after {time.perf_counter() - t:.0f}s without reporting"
+            msg = f"process {code} after {time.perf_counter() - t:.0f}s without reporting"
             print(f"  [FAILED ] {g.id}: {msg}", flush=True)
             done = {r["id"] for r in results}
             for c in g.cases:
