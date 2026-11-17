@@ -43,7 +43,7 @@ dependencies = [
     "pyloudnorm",
     "kitten-text-processing>=0.1.0",
     "espeakng_loader",
-    "phonemizer",
+    "phonemizer>=3.4",
     "onnxruntime",
     # KittenTTS 2 nano / pico / mini text front end (misaki without extras: its [en] extra
     # would pull phonemizer-fork, which installs over phonemizer)
