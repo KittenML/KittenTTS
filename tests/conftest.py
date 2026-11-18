@@ -14,6 +14,20 @@ def _nvidia_platform_for_nvidia_tests(request, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _linux_platform_for_vllm_tests(request, monkeypatch):
+    """The vLLM tests describe a Linux GPU host, so they also run on Windows and macOS. Only the
+    backend's view of sys is replaced, not the real sys.platform the rest of the process reads."""
+    if not request.module.__name__.split(".")[-1].startswith(("test_vllm", "test_small_gpu")):
+        return
+    try:
+        import kittenml.kittentts2.vllm.backend as backend
+    except ImportError:
+        return
+    from types import SimpleNamespace
+    monkeypatch.setattr(backend, "sys", SimpleNamespace(platform="linux"))
+
+
+@pytest.fixture(autouse=True)
 def _no_real_gpu_memory(monkeypatch):
     """Unit tests never size vLLM from the real GPU of the machine they run on (on a GPU host
     the small-GPU fitting would otherwise read its free memory and size the tests' stub model

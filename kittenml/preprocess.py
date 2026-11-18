@@ -155,7 +155,8 @@ _RE_SPACES   = re.compile(r"\s+")
 
 # Number: do NOT match a leading minus if it is immediately preceded by a letter
 # (handles "gpt-3", "gpl-3", "v-2" etc.)
-_RE_NUMBER   = re.compile(r"(?<![a-zA-Z])-?[\d,]+(?:\.\d+)?")
+# Starts on a digit: a lone comma after a non-ASCII letter ("café, ok") is not a number.
+_RE_NUMBER   = re.compile(r"(?<![a-zA-Z])-?\d[\d,]*(?:\.\d+)?")
 
 # Ordinals: 1st, 2nd, 3rd, 4th … 21st, 101st …
 _RE_ORDINAL  = re.compile(r"\b(\d+)(st|nd|rd|th)\b", re.IGNORECASE)

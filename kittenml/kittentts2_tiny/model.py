@@ -1,15 +1,21 @@
 """KittenTTS 2 nano / pico / mini: small multilingual TTS models, run with ONNX Runtime (int8 weights, the
-default, CPU-first) or with PyTorch (the float32 weights).
+default, or int4 weights; CPU-first) or with PyTorch (the float32 weights).
 
 A repository is one model family. `kitten-tts-2-nano` and `kitten-tts-2-pico` hold one model per language,
 `kitten-tts-2-mini` one model for every language; config.json says which files serve which language:
 
     {"type": "KITTEN2_TINY", "phonemizer": "v1", "vocab": "vocab.json", "g2p_dir": "g2p",
+     "default_weights": "int8",
      "languages": {"en": {"model": "kitten_tts_2_nano_en", "model_file": "kitten_tts_2_nano_en.onnx",
+                          "model_files": {"int8": "kitten_tts_2_nano_en.onnx",
+                                          "int4": "kitten_tts_2_nano_en_int4.onnx"},
                           "weights_file": "kitten_tts_2_nano_en.safetensors", "voices": "voices_en.npz"}, ...},
      "models": {"kitten_tts_2_nano_en": {"architecture": {...}, ...}, ...},
      "voices": {"en": [{"key": "eleanor", "name": "Eleanor", "description": "Somber historian (female)"}, ...]},
      ...}
+
+`model_files` lists the ONNX graphs by weight format (`weights=`); a repository without it has only the int8
+graph, `model_file`. The int4 graphs are drop-in replacements with the same inputs and outputs.
 
 Each voice is a pack of style vectors, one per input length (float32 [510, 256]); a chunk uses the row of its
 token count. Both runtimes compute `input_ids [1, T], style [1, 256], speed [1] -> waveform, durations` and
@@ -31,12 +37,15 @@ END_TOKEN = 10
 PROVIDERS = {None: None, "cpu": ["CPUExecutionProvider"], "cuda": ["CUDAExecutionProvider", "CPUExecutionProvider"],
              "amd_gpu": ["ROCMExecutionProvider", "CPUExecutionProvider"]}
 BACKENDS = (None, "onnx", "torch", *[k for k in PROVIDERS if k])     # "cpu" / "cuda" / "amd_gpu": ONNX on that device
+TORCH_WEIGHTS = (None, "fp32", "float32")
+INT4_MIN_ORT = (1, 20)              # int4 DequantizeLinear with block_size (ONNX opset 21)
 
 
 class KittenTTS2Tiny:
     """A KittenTTS 2 nano / pico / mini repository.
 
         m = KittenTTS("KittenML/kitten-tts-2-nano")                    # ONNX Runtime, int8 weights
+        m = KittenTTS("KittenML/kitten-tts-2-nano", weights="int4")    # ONNX Runtime, int4 weights (half the size)
         m = KittenTTS("KittenML/kitten-tts-2-nano", backend="torch")   # PyTorch, float32 weights (device="cuda")
         audio = m.generate("Guten Morgen.", language="de")             # the language's first voice
         audio = m.generate("Hello there.", voice="Eleanor")             # a name (any case) or a description
@@ -44,7 +53,7 @@ class KittenTTS2Tiny:
     """
 
     def __init__(self, model_name="KittenML/kitten-tts-2-nano", cache_dir=None, backend=None, device=None,
-                 hf_token=None, *, vllm_options=None, mlx_options=None, threads=None):
+                 hf_token=None, *, weights=None, vllm_options=None, mlx_options=None, threads=None):
         if vllm_options is not None:
             raise ValueError("the vLLM backend requires a KittenTTS 2 model")
         if mlx_options is not None:
@@ -60,8 +69,15 @@ class KittenTTS2Tiny:
             if onnx_device not in PROVIDERS:
                 raise ValueError(f"Unsupported ONNX device {onnx_device!r}; expected one of {list(PROVIDERS)}")
             self.providers, self.device = PROVIDERS[onnx_device], onnx_device
+            self.weights = weights or config.get("default_weights", "int8")
+            if self.weights not in self.onnx_weights:
+                raise ValueError(f"{config.get('name', 'this repository')} has no {self.weights!r} ONNX weights; "
+                                 f"expected one of {self.onnx_weights}")
         else:
-            self.providers, self.device = None, device
+            if weights not in TORCH_WEIGHTS:
+                raise ValueError(f"backend='torch' runs the float32 weights; weights={weights!r} needs the ONNX "
+                                 f"backend (weights= one of {self.onnx_weights})")
+            self.providers, self.device, self.weights = None, device, "fp32"
         self.threads = threads
         self.sample_rate = int(config.get("sample_rate", SAMPLE_RATE))
         self.languages = list(config["languages"])
@@ -74,6 +90,17 @@ class KittenTTS2Tiny:
         self._sessions, self._torch, self._packs = {}, {}, {}
 
     # ---- files ------------------------------------------------------------------------------------
+    @staticmethod
+    def _model_files(entry):
+        """{weight format: ONNX file} of one language entry."""
+        return entry.get("model_files") or {"int8": entry["model_file"]}
+
+    @property
+    def onnx_weights(self):
+        """The ONNX weight formats every language has, e.g. ["int8", "int4"]."""
+        per_lang = [self._model_files(e) for e in self.config["languages"].values()]
+        return [w for w in per_lang[0] if all(w in f for f in per_lang)]
+
     def _fetch(self, filename):
         if self.local_dir is not None:
             return os.path.join(self.local_dir, filename)
@@ -97,8 +124,13 @@ class KittenTTS2Tiny:
 
     def _session(self, lang):
         import onnxruntime as ort
-        path = self.config["languages"][lang]["model_file"]
+        path = self._model_files(self.config["languages"][lang])[self.weights]
         if path not in self._sessions:
+            if self.weights == "int4":
+                version = tuple(int(x) for x in ort.__version__.split(".")[:2] if x.isdigit())
+                if version < INT4_MIN_ORT:
+                    raise RuntimeError(f"the int4 models need onnxruntime >= {'.'.join(map(str, INT4_MIN_ORT))} "
+                                       f"(installed: {ort.__version__}); upgrade it or use weights='int8'")
             so = ort.SessionOptions()
             if self.threads:
                 so.intra_op_num_threads = self.threads

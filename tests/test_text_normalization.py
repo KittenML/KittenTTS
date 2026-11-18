@@ -18,6 +18,13 @@ class TextNormalizationTests(unittest.TestCase):
             with self.subTest(raw=raw):
                 self.assertEqual(normalize_text(raw), expected)
 
+    def test_comma_after_non_ascii_letter_is_not_a_number(self):
+        # The number pattern used to match a bare "," here, and int("") raised ValueError.
+        for text in ("café, ok", "Привет, мир", "Señor, 12 apples"):
+            with self.subTest(text=text):
+                self.assertIn(",", normalize_text(text))
+        self.assertEqual(normalize_text("Señor, 12 apples"), "Señor, twelve apples")
+
     def test_normalizes_common_document_forms(self):
         cases = {
             "May 5, 2026": "May fifth, twenty twenty-six",
