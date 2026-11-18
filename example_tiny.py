@@ -1,4 +1,4 @@
-"""KittenTTS 2 nano / pico / mini: small multilingual models, int8 ONNX (CPU) or float32 PyTorch.
+"""KittenTTS 2 nano / pico / mini: small multilingual models, int8 or int4 ONNX (CPU) or float32 PyTorch.
 
 kitten-tts-2-nano and kitten-tts-2-pico hold one model per language (en de es it pt ru hi fr);
 kitten-tts-2-mini is one model for 16 languages. Only the files of the languages you use are downloaded.
@@ -11,6 +11,7 @@ m = KittenTTS("KittenML/kitten-tts-2-nano")          # 17M parameters per langua
 # m = KittenTTS("KittenML/kitten-tts-2-pico")        # 7M, the smallest
 # m = KittenTTS("KittenML/kitten-tts-2-mini")        # 82M, 16 languages in one model
 # m = KittenTTS("path/to/kitten-tts-2-nano")         # a local copy of the repository
+# m = KittenTTS("KittenML/kitten-tts-2-nano", weights="int4")    # int4 ONNX: half the download (8.8 MB)
 # m = KittenTTS("KittenML/kitten-tts-2-nano", backend="torch")   # the float32 weights in PyTorch
 
 print(m.languages)
