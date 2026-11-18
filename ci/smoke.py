@@ -120,8 +120,17 @@ GROUPS = [
           family="KittenTTS 2 nano/pico/mini", cases=[
         *tiny_cases("tiny-nano-torch", ["en", "de"]),
     ]),
+    Group("tiny-nano-int4", "KittenML/kitten-tts-2-nano", {"weights": "int4"}, family="KittenTTS 2 nano/pico/mini",
+          cases=[
+        *tiny_cases("tiny-nano-int4", ["en", "de", "ru", "hi"]),
+        Case("tiny-nano-int4-stream", EN_LONG, dict(voice="Serena"), mode="stream", note="weights='int4'"),
+    ]),
     Group("tiny-pico-onnx", "KittenML/kitten-tts-2-pico", {}, family="KittenTTS 2 nano/pico/mini", cases=[
         *tiny_cases("tiny-pico-onnx", ["en", "es", "hi"]),
+    ]),
+    Group("tiny-pico-int4", "KittenML/kitten-tts-2-pico", {"weights": "int4"}, family="KittenTTS 2 nano/pico/mini",
+          cases=[
+        *tiny_cases("tiny-pico-int4", ["en", "es", "hi", "fr"]),
     ]),
     Group("tiny-mini-onnx", "KittenML/kitten-tts-2-mini", {}, family="KittenTTS 2 nano/pico/mini", cases=[
         *tiny_cases("tiny-mini-onnx", ["en", "de", "fr", "ru", "da", "fi", "ja", "ko", "nl", "sv", "sw", "tr"]),
@@ -130,6 +139,11 @@ GROUPS = [
     Group("tiny-mini-torch", "KittenML/kitten-tts-2-mini", {"backend": "torch", "device": "cpu"},
           family="KittenTTS 2 nano/pico/mini", cases=[
         *tiny_cases("tiny-mini-torch", ["en", "it"]),
+    ]),
+    Group("tiny-mini-int4", "KittenML/kitten-tts-2-mini", {"weights": "int4"}, family="KittenTTS 2 nano/pico/mini",
+          cases=[
+        *tiny_cases("tiny-mini-int4", ["en", "de", "ru", "ja", "ko", "tr"]),
+        Case("tiny-mini-int4-stream", EN_LONG, dict(language="en"), mode="stream", note="weights='int4'"),
     ]),
 
     # --- KittenTTS 2 (1.7B), PyTorch on CPU ---------------------------------------------------

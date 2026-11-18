@@ -5,7 +5,7 @@ a dependency release breaking a clean install), and on demand from the Actions t
 
 | Job | Matrix | What it does |
 |---|---|---|
-| `test` | Linux, Windows, macOS × Python 3.10-3.14 (3.14 allowed to fail) | builds and installs the wheel, runs `pytest`, then the light smoke suite |
+| `test` | Linux, Windows, macOS × Python 3.10-3.14 (3.14 allowed to fail) | builds and installs the wheel, runs `pytest`, then the light smoke suite (0.8 ONNX; KittenTTS 2 nano / pico / mini with int8, int4 and torch weights) |
 | `kittentts2` | Linux, Windows, macOS × Python 3.12 | KittenTTS 2 (1.7B) on CPU: both weight packings, both decoders, presets, expression tags, streaming, cloning, a fixed seed; MLX on macOS if the runner has Metal |
 | `listening report` | | merges every job's audio into one page |
 
