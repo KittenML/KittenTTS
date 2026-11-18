@@ -59,6 +59,7 @@ class KittenTTS(KittenTTSOnnx):
 
         m = KittenTTS("KittenML/kitten-tts-mini-0.8")   # ONNX, runs on CPU
         m = KittenTTS("KittenML/kitten-tts-2-nano")     # KittenTTS 2 nano, 8 languages, ONNX on CPU
+        m = KittenTTS("KittenML/kitten-tts-2-nano", weights="int4")    # its int4 ONNX graphs
         m = KittenTTS("KittenML/kitten-tts-2-nano", backend="torch")   # the same model in PyTorch
         m = KittenTTS("KittenML/kitten-tts-2")          # KittenTTS 2, GPU optional
         m = KittenTTS("KittenML/kitten-tts-2", backend="mlx")   # on an Apple-silicon Mac
@@ -107,7 +108,7 @@ class KittenTTS(KittenTTSOnnx):
             instance._resolved = (local_dir, repo_id, config)
             # Returning a different class means __init__ below is never called.
             instance.__init__(model_name, cache_dir=cache_dir, backend=backend, device=device,
-                              hf_token=hf_token)
+                              hf_token=hf_token, weights=weights)
             return instance
 
         if model_type not in ONNX_TYPES:

@@ -12,9 +12,14 @@ from kittenml.kittentts2_tiny.model import END_TOKEN, KittenTTS2Tiny
 VOCAB = {"$": 0, ",": 3, "…": 10, "h": 50, "i": 51, " ": 16}
 
 
-def make_repo(tmp_path, languages=("en", "de")):
+def make_repo(tmp_path, languages=("en", "de"), int4=False, **kw):
+    def entry(lang):
+        e = dict(model_file=f"m_{lang}.onnx", voices=f"v_{lang}.npz")
+        if int4:
+            e["model_files"] = {"int8": f"m_{lang}.onnx", "int4": f"m_{lang}_int4.onnx"}
+        return e
     cfg = dict(type="KITTEN2_TINY", name="test", phonemizer="v1", vocab="vocab.json", default_language="en",
-               languages={lang: dict(model_file=f"m_{lang}.onnx", voices=f"v_{lang}.npz") for lang in languages},
+               languages={lang: entry(lang) for lang in languages},
                voices={"en": [dict(key="alpha", name="Alpha"), dict(key="shared", name="Shared")],
                        "de": [dict(key="anna", name="Anna", description="Female 1"), dict(key="shared", name="Shared")]})
     (tmp_path / "config.json").write_text(json.dumps(cfg))
@@ -22,7 +27,7 @@ def make_repo(tmp_path, languages=("en", "de")):
     for lang in languages:
         keys = [v["key"] for v in cfg["voices"][lang]]
         np.savez(tmp_path / f"v_{lang}.npz", **{k: np.full((510, 256), i, np.float32) for i, k in enumerate(keys)})
-    return KittenTTS2Tiny(str(tmp_path))
+    return KittenTTS2Tiny(str(tmp_path), **kw)
 
 
 def test_voice_resolution(tmp_path):
@@ -94,12 +99,44 @@ def test_backends(tmp_path):
         KittenTTS2Tiny(str(tmp_path), backend="torch")._torch_model("en")
 
 
-@pytest.mark.skipif(not os.environ.get("KITTEN_TTS2_TINY_REPO"), reason="KITTEN_TTS2_TINY_REPO not set")
-@pytest.mark.parametrize("backend", ["onnx", "torch"])
-def test_synthesis_local_repo(backend):
+def test_weights(tmp_path):
+    m = make_repo(tmp_path)                                       # an int8-only repository (no model_files)
+    assert m.weights == "int8" and m.onnx_weights == ["int8"]
+    with pytest.raises(ValueError):
+        KittenTTS2Tiny(str(tmp_path), weights="int4")
+    m = make_repo(tmp_path, int4=True)
+    assert m.weights == "int8" and m.onnx_weights == ["int8", "int4"]
+    m = KittenTTS2Tiny(str(tmp_path), weights="int4")
+    fake = FakeSession()
+    m._sessions["m_en_int4.onnx"] = fake                          # the int4 graph serves the language
+    m._chunk("en", "shared", "hi", 1.0, keep_start=True)
+    assert fake.feeds is not None
+    assert KittenTTS2Tiny(str(tmp_path), backend="torch").weights == "fp32"
+    with pytest.raises(ValueError):                              # PyTorch runs the float32 weights only
+        KittenTTS2Tiny(str(tmp_path), backend="torch", weights="int4")
+    with pytest.raises(ValueError):
+        KittenTTS2Tiny(str(tmp_path), weights="int2")
+    cfg = json.loads((tmp_path / "config.json").read_text())
+    cfg["default_weights"] = "int4"
+    (tmp_path / "config.json").write_text(json.dumps(cfg))
+    assert KittenTTS2Tiny(str(tmp_path)).weights == "int4"
+
+
+def test_weights_through_entry_point(tmp_path):
     from kittenml import KittenTTS
-    m = KittenTTS(os.environ["KITTEN_TTS2_TINY_REPO"], backend=backend)
+    make_repo(tmp_path, int4=True)
+    m = KittenTTS(str(tmp_path), weights="int4")
+    assert isinstance(m, KittenTTS2Tiny) and m.weights == "int4"
+
+
+@pytest.mark.skipif(not os.environ.get("KITTEN_TTS2_TINY_REPO"), reason="KITTEN_TTS2_TINY_REPO not set")
+@pytest.mark.parametrize("backend,weights", [("onnx", "int8"), ("onnx", "int4"), ("torch", None)])
+def test_synthesis_local_repo(backend, weights):
+    from kittenml import KittenTTS
+    m = KittenTTS(os.environ["KITTEN_TTS2_TINY_REPO"], backend=backend, weights=weights)
     assert isinstance(m, KittenTTS2Tiny) and m.runtime == backend
+    if weights not in m.onnx_weights + [None]:
+        pytest.skip(f"no {weights} graphs in this repository")
     lang = m.languages[0]
     text = {"en": "Hello there, this is a test.", "de": "Hallo, das ist ein Test."}.get(lang, "Hello.")
     wav = m.generate(text, language=lang)
