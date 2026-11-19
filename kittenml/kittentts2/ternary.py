@@ -115,6 +115,6 @@ def _pack_trits(trits):
 
 
 def _unpack_trits(packed, numel):
-    values = packed.to(torch.int32).unsqueeze(1)
-    digits = torch.div(values, _POWERS, rounding_mode="floor") % 3
-    return digits.reshape(-1)[:numel]
+    # Decode every possible byte once, then look the packed bytes up.
+    table = torch.arange(256, dtype=torch.int32).unsqueeze(1) // _POWERS % 3
+    return table.index_select(0, packed.int()).reshape(-1)[:numel]
