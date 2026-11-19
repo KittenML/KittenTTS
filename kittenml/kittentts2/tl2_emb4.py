@@ -133,6 +133,7 @@ def dequant_embedding(get_tensor, metadata, chunk=1 << 15, lookup_chunk=1 << 12)
         packed = get_tensor(f"emb4/t{tier}_codes").numpy()
         per_byte = 8 // int(math.ceil(math.log2(codebook_size)))
         centres = get_tensor(f"emb4/t{tier}_centers").to(torch.float32).numpy()
+        columns = np.arange(centres.shape[1]) if centres.ndim == 2 else None
         row_scale = torch.from_numpy(get_tensor(f"emb4/t{tier}_s").to(torch.float32).numpy())
         col_scale = torch.from_numpy(
             get_tensor(f"emb4/t{tier}_t").to(torch.float32).numpy())
@@ -145,7 +146,9 @@ def dequant_embedding(get_tensor, metadata, chunk=1 << 15, lookup_chunk=1 << 12)
                 first, skip = divmod(low * dim, per_byte)
                 codes = _unpack_codes(packed[first:-(-high * dim // per_byte)], codebook_size,
                                       skip + (high - low) * dim)[skip:].reshape(-1, dim)
-                rotated[low - start:high - start] = np.take_along_axis(centres, codes, axis=0)
+                rotated[low - start:high - start] = (
+                    centres[codes, columns] if columns is not None
+                    else np.take_along_axis(centres, codes, axis=0))
             restored = torch.from_numpy(rotated[:stop - start]) @ hadamard.T
             restored.mul_(col_scale[None, :]).mul_(row_scale[start:stop, None])
             weights[rows[start:stop]] = restored.to(torch.bfloat16)
