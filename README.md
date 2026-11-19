@@ -1,7 +1,7 @@
 # Kitten-TTS
 
 <p align="center">
-  <img alt="Kitten TTS" src="https://raw.githubusercontent.com/KittenML/KittenTTS/main/assets/kitten_tts_2_announcement.png" />
+  <img alt="Kitten TTS" src="https://raw.githubusercontent.com/KittenML/KittenTTS/main/assets/Kitten-TTS_Model_Family_Banner.png" />
 </p>
 
 <p align="center">
