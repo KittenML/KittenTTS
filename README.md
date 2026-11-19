@@ -1,5 +1,8 @@
 # Kitten-TTS
 
+
+# Kitten-TTS
+
 <p align="center">
   <img alt="Kitten TTS" src="https://raw.githubusercontent.com/KittenML/KittenTTS/main/assets/Kitten-TTS_ Model_Family_Banner.png" />
 </p>
@@ -11,17 +14,26 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-green.svg" alt="License"></a>
 </p>
 
-> ## **New:** Free Kitten-TTS 2 API available at  [https://platform.kittenml.com](https://platform.kittenml.com/)
+> ## **New:** Free Kitten-TTS API available at [platform.kittenml.com](https://platform.kittenml.com/)
 
-Kitten-TTS is a series of sota open-source text-to-speech models, built by KittenML. Its flagship model, **Kitten-TTS 2**, is a
-1.7B-parameter 1-bit TTS model with in-context voice cloning and expression control. It provides SOTA quality while being so efficient that it runs realtime on CPUs and consumer GPU's!
+**Kitten-TTS** is a family of state-of-the-art open-source text-to-speech models built by KittenML. From ultra-tiny **4 MB models** to our powerful **1.7B-parameter Kitten-TTS 2**, we make high-quality speech generation accessible on CPUs and consumer GPUs.
 
-The library also ships our existing [**lightweight V0.8 models**](docs/onnx-models.md),
-15M-80M parameters, which run on CPU without a GPU. Both families load through the same
-`KittenTTS(...)` constructor.
+
+### 🐾 Meet the Kitten Family
+
+- **Kitten-TTS-2 Pico (~7M)** — Just **4 MB**, supporting 8 languages. **Faster-than-realtime speech generation on a single smartphone CPU thread**, with only **40–50 MB peak memory usage**.
+- **Kitten-TTS-2 Nano (~17M)** — Only **8.8 MB**, supporting 8 languages with higher-quality voices.
+- **Kitten-TTS-2 Mini (~82M)** — **48 MB**, supporting 16 languages.
+- **Kitten-TTS-2 Ternary (1.7B)** — Our most capable model, featuring **20+ languages, zero-shot voice cloning, and expressive speech generation**, with a compact ternary architecture (~450 MB).
+
+**The Pico model brings realtime voice AI to smartphones and edge devices.** At just 4 MB, it generates speech faster than realtime on a single smartphone CPU thread, with a peak memory footprint of only 40–50 MB.
+
+**Kitten-TTS 2 Ternary** delivers state-of-the-art speech quality with in-context voice cloning and expression control, while supporting realtime inference on CPUs and consumer GPUs.
+
+
+The library also includes our existing [**lightweight V0.8 models**](docs/onnx-models.md). Both model families load through the same `KittenTTS(...)` constructor.
 
 **Commercial support is available.** For integration assistance, custom voices, or enterprise licensing, [contact us](https://docs.google.com/forms/d/e/1FAIpQLSc49erSr7jmh3H2yeqH4oZyRRuXm0ROuQdOgWguTzx6SMdUnQ/viewform?usp=preview).
-
 
 <img   alt="5325cae7-e2e1-4aad-8d53-caf93a268b36" src="https://raw.githubusercontent.com/KittenML/KittenTTS/main/assets/kitten_tts_2_features.png" />
 
