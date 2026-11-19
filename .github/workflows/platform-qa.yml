@@ -1,0 +1,250 @@
+name: Platform QA
+
+# Installs this checkout of kittenml on every OS, CPU and Python version listed in
+# qa/config.toml, runs each model, and posts one report to the pull request.
+# To change what is tested, edit qa/config.toml — not this file.
+
+on:
+  pull_request:
+    paths:
+      - "kittenml/**"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - "qa/**"
+      - ".github/workflows/platform-qa*.yml"
+  push:
+    branches: [main]
+    paths:
+      - "kittenml/**"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - "qa/**"
+      - ".github/workflows/platform-qa*.yml"
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: "Only platforms whose name or runner contains one of these, comma-separated (e.g. 'Linux, macos'). Empty runs all."
+        default: ""
+      pythons:
+        description: "Only these Python versions, comma-separated (e.g. '3.12'). Empty runs all."
+        default: ""
+      models:
+        description: "Only these models from qa/config.toml, comma-separated (e.g. 'nano,tts2'). Empty runs all."
+        default: ""
+      source:
+        description: "'checkout' tests this branch; a pip requirement (e.g. 'kittenml==0.9.3') tests a PyPI release."
+        default: "checkout"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-qa-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  QA_SOURCE: ${{ inputs.source || 'checkout' }}
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test the QA scripts
+        run: python -m unittest discover -s qa/tests -v
+
+      - name: Expand qa/config.toml into jobs
+        id: plan
+        env:
+          QA_TARGETS: ${{ inputs.targets }}
+          QA_PYTHONS: ${{ inputs.pythons }}
+          QA_MODELS: ${{ inputs.models }}
+        run: python qa/plan.py --out plan.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qa-plan
+          path: plan.json
+
+  platform:
+    name: ${{ matrix.name }} · py${{ matrix.python }}
+    needs: plan
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      PYTHONUTF8: "1"
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        id: python
+        continue-on-error: true
+        with:
+          python-version: ${{ matrix.python }}
+          allow-prereleases: true
+
+      # No build of this Python for this runner is a result too, not an error.
+      - name: Record that this Python is not available
+        if: steps.python.outcome != 'success'
+        shell: bash
+        env:
+          QA_SPEC: ${{ matrix.spec }}
+        run: |
+          mkdir -p qa-out
+          printf '{"spec": %s, "env": {}, "install": {"ok": false, "secs": 0, "error": "actions/setup-python has no Python %s for %s", "reason": "actions/setup-python has no build of this Python for %s"}}' \
+            "$QA_SPEC" "${{ matrix.python }}" "${{ matrix.runner }}" "${{ matrix.runner }}" > qa-out/result.json
+
+      - name: Install and test
+        if: steps.python.outcome == 'success'
+        shell: bash
+        env:
+          QA_SPEC: ${{ matrix.spec }}
+        run: |
+          printf '%s' "$QA_SPEC" > "$RUNNER_TEMP/spec.json"
+          python qa/run_target.py --spec "$RUNNER_TEMP/spec.json" --out qa-out
+
+      - name: Upload audio
+        id: audio
+        if: always() && hashFiles('qa-out/audio/*.wav') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-audio-${{ matrix.id }}
+          path: qa-out/audio/
+          retention-days: 14
+
+      - name: Link the audio from the result
+        if: always() && steps.audio.outputs.artifact-url != '' && hashFiles('qa-out/result.json') != ''
+        shell: bash
+        env:
+          AUDIO_URL: ${{ steps.audio.outputs.artifact-url }}
+        run: |
+          python - <<'EOF'
+          import json, os
+          path = "qa-out/result.json"
+          with open(path, encoding="utf-8") as f:
+              result = json.load(f)
+          result["audio_url"] = os.environ["AUDIO_URL"]
+          with open(path, "w", encoding="utf-8") as f:
+              json.dump(result, f, indent=1)
+          EOF
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-result-${{ matrix.id }}
+          path: |
+            qa-out/result.json
+            qa-out/install.log
+            qa-out/logs/
+          if-no-files-found: ignore
+
+  report:
+    name: Report
+    needs: [plan, platform]
+    # Not always(): a run cancelled by a newer push must not post a report of
+    # "no result" for every job it cancelled.
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read          # job log links and times for the report
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: qa-result-*
+          path: results
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: qa-plan
+          path: plan
+
+      # A pull request fails only if something that works there stops working here:
+      # the latest finished run on the base branch (main), else this branch's last run.
+      - name: Find the run to compare with
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.base_ref || github.ref_name }}
+          HEAD: ${{ github.head_ref }}
+        run: |
+          # Finished runs on a branch, newest first, cancelled ones last (a newer push cancels a
+          # run, often before most jobs report); not manual runs, which may cover only some
+          # platforms. One that stopped before any job reported has nothing to compare with,
+          # so try the next.
+          runs() {
+            gh run list -R "$GITHUB_REPOSITORY" --workflow platform-qa.yml --branch "$1" --limit 30 \
+              --json databaseId,status,conclusion,event \
+              --jq "[.[] | select(.status == \"completed\" and .conclusion != \"skipped\" and .event != \"workflow_dispatch\" and .databaseId != $GITHUB_RUN_ID)] | sort_by(.conclusion == \"cancelled\") | .[].databaseId"
+          }
+          mkdir -p baseline
+          for branch in "$BASE" "$HEAD"; do
+            [ -n "$branch" ] || continue
+            for id in $(runs "$branch" | head -5); do
+              if gh run download "$id" -R "$GITHUB_REPOSITORY" -p 'qa-result-*' -D baseline 2>/dev/null \
+                  && [ -n "$(find baseline -name result.json | head -1)" ]; then
+                label="$branch"; [ "$branch" = "$BASE" ] || label="this branch's previous run"
+                printf '{"run_id": %s, "label": "%s"}' "$id" "$label" > baseline/about.json
+                echo "Comparing with run $id ($label)"
+                break 2
+              fi
+              rm -rf baseline && mkdir -p baseline
+            done
+          done
+          [ -f baseline/about.json ] || echo "Nothing to compare with yet."
+
+      - name: Build report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QA_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" --paginate \
+            --jq '.jobs[] | {name, html_url, started_at, completed_at}' | jq -s . > jobs.json
+          started=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq .run_started_at)
+          python qa/report.py results report --plan plan/plan.json --jobs jobs.json --run-started "$started" \
+            --baseline baseline
+          cat report/summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Record the pull request for the fork commenter
+        if: github.event_name == 'pull_request'
+        run: echo "${{ github.event.pull_request.number }}" > report/pr-number.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qa-report
+          path: report/
+
+      # Pull requests from forks get a read-only token; platform-qa-comment.yml
+      # posts their report from the base repository instead.
+      - name: Comment on the pull request
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: >
+          python qa/pr_comment.py --repo "${{ github.repository }}"
+          --pr "${{ github.event.pull_request.number }}"
+          --sha "${{ github.event.pull_request.head.sha }}"
+          --body report/pr-comment.md
+
+      - name: Fail on platform failures
+        run: python qa/report.py --gate report/summary.json

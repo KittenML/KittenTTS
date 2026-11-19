@@ -1,0 +1,46 @@
+name: Platform QA comment
+
+# A pull request from a fork runs Platform QA with a read-only token, so its
+# report job cannot comment. This runs afterwards in the base repository and
+# posts the report that run uploaded. It never checks out or runs the pull
+# request's code, and only comments if the report's commit is still the PR head.
+# GitHub runs workflow_run workflows from the default branch only.
+
+on:
+  workflow_run:
+    workflows: [Platform QA]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+jobs:
+  comment:
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name != github.repository
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        id: report
+        continue-on-error: true
+        with:
+          name: qa-report
+          path: report
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Comment on the pull request
+        if: steps.report.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          pr=$(tr -cd '0-9' < report/pr-number.txt)
+          if [ -z "$pr" ]; then echo "The report names no pull request."; exit 0; fi
+          python qa/pr_comment.py --repo "$GITHUB_REPOSITORY" --pr "$pr" --sha "$HEAD_SHA" \
+            --body report/pr-comment.md --expect-head
