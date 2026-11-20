@@ -34,15 +34,16 @@ class KittenTTSOnnx:
             cache_dir: Directory to cache downloaded files
             backend: ONNX execution provider ("cpu", "cuda", "amd_gpu")
             device: Unused here; accepted so both backends share a signature
-            hf_token: Unused here; accepted so both backends share a signature
+            hf_token: Token for downloading a private model repository
         """
         if vllm_options is not None:
             raise ValueError("the vLLM backend requires a KittenTTS 2 model")
         if mlx_options is not None:
             raise ValueError("the MLX backend requires a KittenTTS 2 model")
         local_dir, repo_id, config = getattr(self, "_resolved", None) or \
-            resolve_repo(model_name, cache_dir)
-        self.model = build_onnx_model(config, local_dir, repo_id, cache_dir, backend)
+            resolve_repo(model_name, cache_dir, hf_token=hf_token)
+        self.model = build_onnx_model(config, local_dir, repo_id, cache_dir, backend,
+                                      hf_token=hf_token)
 
     def normalize_text(self, text, locale="en-US", return_spans=False):
         """Normalize text for TTS without generating audio."""
@@ -88,7 +89,7 @@ class KittenTTSOnnx:
         return self.model.all_voice_names
 
 
-def build_onnx_model(config, local_dir, repo_id, cache_dir, backend):
+def build_onnx_model(config, local_dir, repo_id, cache_dir, backend, hf_token=None):
     """Instantiate KittenTTS_1_Onnx from an already-resolved repository config."""
     # Imported here, not at module scope: the ONNX runtime pulls in espeak and
     # phonemizer, which a KittenTTS 2 install has no reason to carry.
@@ -97,7 +98,8 @@ def build_onnx_model(config, local_dir, repo_id, cache_dir, backend):
     def _fetch(filename):
         if local_dir is not None:
             return os.path.join(local_dir, filename)
-        return hf_hub_download(repo_id=repo_id, filename=filename, cache_dir=cache_dir)
+        return hf_hub_download(repo_id=repo_id, filename=filename, cache_dir=cache_dir,
+                                token=hf_token)
 
     return KittenTTS_1_Onnx(
         model_path=_fetch(config["model_file"]),

@@ -231,7 +231,7 @@ def test_explicit_default_options_do_not_break_legacy_models():
          mock.patch("kittenml.kittentts_legacy.model.build_onnx_model") as build:
         model = KittenTTS("legacy", vllm_options=None)
     assert model.model is build.return_value
-    build.assert_called_once_with(resolved[2], None, "legacy", None, None)
+    build.assert_called_once_with(resolved[2], None, "legacy", None, None, hf_token=None)
 
 
 def test_environment_rejects_unsupported_devices_before_engine_start():
