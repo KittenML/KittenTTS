@@ -462,7 +462,10 @@ class KittenTTS2:
         """
         if single_chunk:
             return int(max_new_tokens)
-        expected = len(chunk) / CHARS_PER_SECOND * TOKENS_PER_SECOND * CHUNK_BUDGET_SLACK
+        # Devanagari is spoken at about half the English character rate (vowel signs
+        # are characters of their own), so it counts double or the cap truncates Hindi.
+        length = len(chunk) + sum("ऀ" <= ch <= "ॿ" for ch in chunk)
+        expected = length / CHARS_PER_SECOND * TOKENS_PER_SECOND * CHUNK_BUDGET_SLACK
         return max(MIN_CHUNK_BUDGET, min(int(max_new_tokens), int(expected)))
 
     def _synthesize(self, reference, target_text, preset, max_new_tokens, normalize,
