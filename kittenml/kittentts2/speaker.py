@@ -77,6 +77,8 @@ def attach_speaker_head(model, checkpoint_dir, device, dtype,
         embeds = module.get_input_embeddings()(input_ids)
         cache_position = kwargs.get("cache_position")
         past = kwargs.get("past_key_values")
+        if past is None:
+            past = kwargs.get("cache")
         is_prefill = (int(cache_position[0]) == 0) if cache_position is not None else (
             past is None or (hasattr(past, "get_seq_length") and past.get_seq_length() == 0))
         # Only at prefill: position 0 carries the speaker, every later step is
