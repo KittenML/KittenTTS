@@ -81,6 +81,20 @@ def test_chunk_postprocessing(tmp_path):
     assert fake.feeds["speed"].dtype == np.float32
 
 
+def test_long_start_pause_becomes_capped_silence(tmp_path):
+    # mini predicts up to ~40 start frames for German; the decoder fills them with noise
+    from kittenml.kittentts2_tiny.model import MAX_START_FRAMES
+    m = make_repo(tmp_path)
+    m._sessions["m_en.onnx"] = type("S", (), {"run": lambda self, _, feeds: (
+        np.ones(600 * (40 + 2 * (feeds["input_ids"].shape[1] - 2) + 4), np.float32),
+        np.array([40] + [2] * (feeds["input_ids"].shape[1] - 2) + [4], np.int64))})()
+    w_first = m._chunk("en", "shared", "hi", 1.0, keep_start=True)
+    w_later = m._chunk("en", "shared", "hi", 1.0, keep_start=False)
+    pad = (MAX_START_FRAMES - 1) * 600
+    assert len(w_first) == len(w_later) + pad
+    assert not w_first[:pad].any() and np.array_equal(w_first[pad:], w_later)
+
+
 def test_backends(tmp_path):
     m = make_repo(tmp_path)
     assert m.runtime == "onnx" and m.providers is None

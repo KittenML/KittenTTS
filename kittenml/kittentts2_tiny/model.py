@@ -20,7 +20,8 @@ graph, `model_file`. The int4 graphs are drop-in replacements with the same inpu
 Each voice is a pack of style vectors, one per input length (float32 [510, 256]); a chunk uses the row of its
 token count. Both runtimes compute `input_ids [1, T], style [1, 256], speed [1] -> waveform, durations` and
 synthesis follows the training recipe: tokens [0] + phonemes + [10] + [0]; the start pause of the first chunk is
-kept, the end token's frames are cut, 5 ms fades, 0.15 s of silence between chunks.
+kept as silence of at most MAX_START_FRAMES frames, the end token's frames are cut, 5 ms fades, 0.15 s of
+silence between chunks.
 """
 from __future__ import annotations
 
@@ -33,6 +34,7 @@ from ..repo import resolve_repo
 
 SAMPLE_RATE = 24000
 GAP_S = 0.15
+MAX_START_FRAMES = 10             # longer start pauses (mini de/es/it/pt/ru, nano fr) decode to noise
 END_TOKEN = 10
 PROVIDERS = {None: None, "cpu": ["CPUExecutionProvider"], "cuda": ["CUDAExecutionProvider", "CPUExecutionProvider"],
              "amd_gpu": ["ROCMExecutionProvider", "CPUExecutionProvider"]}
@@ -226,7 +228,7 @@ class KittenTTS2Tiny:
         w = np.clip(wav.astype(np.float32), -1, 1)
         total = int(dur.sum())
         spf = max(1, round(len(w) / max(total, 1)))             # samples per duration frame
-        lead = 0 if keep_start else max(0, int(dur[0]) - 1) * spf
+        lead = max(0, int(dur[0]) - 1) * spf
         trail = max(0, int(dur[-1]) - 1) * spf
         if lead + trail + spf < len(w):
             w = w[lead: len(w) - trail] if trail else w[lead:]
@@ -235,6 +237,8 @@ class KittenTTS2Tiny:
         if f:
             w[:f] *= np.linspace(0, 1, f, dtype=np.float32)
             w[-f:] *= np.linspace(1, 0, f, dtype=np.float32)
+        if keep_start:                                           # the model's start pause, as clean silence
+            w = np.concatenate([np.zeros((min(int(dur[0]), MAX_START_FRAMES) - 1) * spf, np.float32), w])
         return w
 
     def generate_stream(self, text, voice=None, language=None, speed=1.0):
